@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -28,5 +29,15 @@ class AttendanceOut(BaseModel):
     id: int
     lesson_id: int
     student_id: int
+    status: AttendanceStatus
+    grade: Optional[int] = None
+
+
+class StudentAttendanceHistoryItemOut(BaseModel):
+    id: int
+    lesson_id: int
+    lesson_date: date
+    group_id: int
+    group_name: str
     status: AttendanceStatus
     grade: Optional[int] = None

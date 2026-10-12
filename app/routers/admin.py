@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -8,6 +10,18 @@ from app.models.user import User, UserRole
 from app.schemas.user import PasswordUpdate, UserCreate, UserOut
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+
+@router.get("/users", response_model=list[UserOut])
+def list_staff_users(
+    role: Optional[UserRole] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    query = db.query(User).filter(User.role != UserRole.student)
+    if role is not None:
+        query = query.filter(User.role == role)
+    return query.order_by(User.created_at.desc()).all()
 
 
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)

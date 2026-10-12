@@ -4,12 +4,29 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_roles
 from app.core.security import hash_password
 from app.db.session import get_db
+from app.models.attendance import Attendance
+from app.models.group import Group
+from app.models.lesson import Lesson
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
+from app.schemas.attendance import StudentAttendanceHistoryItemOut
 from app.schemas.transaction import DepositCreate, TransactionOut
 from app.schemas.user import UserCreate, UserOut
 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
+
+
+@router.get("", response_model=list[UserOut])
+def list_students(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    return (
+        db.query(User)
+        .filter(User.role == UserRole.student)
+        .order_by(User.created_at.desc())
+        .all()
+    )
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -88,3 +105,42 @@ def get_student_transactions(
         .order_by(Transaction.created_at.desc())
         .all()
     )
+
+
+@router.get("/{student_id}/attendance", response_model=list[StudentAttendanceHistoryItemOut])
+def get_student_attendance_history(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+
+    if current_user.role == UserRole.student and current_user.id != student.id:
+        raise HTTPException(status_code=403, detail="Faqat o'z tarixingizni ko'rishingiz mumkin")
+
+    rows = (
+        db.query(Attendance, Lesson, Group)
+        .join(Lesson, Lesson.id == Attendance.lesson_id)
+        .join(Group, Group.id == Lesson.group_id)
+        .filter(Attendance.student_id == student.id)
+        .order_by(Lesson.lesson_date.desc())
+        .all()
+    )
+
+    if current_user.role == UserRole.teacher:
+        rows = [row for row in rows if row[2].teacher_id == current_user.id]
+
+    return [
+        StudentAttendanceHistoryItemOut(
+            id=attendance.id,
+            lesson_id=lesson.id,
+            lesson_date=lesson.lesson_date,
+            group_id=group.id,
+            group_name=group.name,
+            status=attendance.status,
+            grade=attendance.grade,
+        )
+        for attendance, lesson, group in rows
+    ]

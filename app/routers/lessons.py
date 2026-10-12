@@ -33,6 +33,25 @@ def create_lesson(
     return lesson
 
 
+@router.get("/{lesson_id}/attendance", response_model=list[AttendanceOut])
+def get_lesson_attendance(
+    lesson_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Dars topilmadi")
+
+    group = db.get(Group, lesson.group_id)
+    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
+
+    return db.query(Attendance).filter(Attendance.lesson_id == lesson.id).all()
+
+
 @router.post(
     "/{lesson_id}/attendance",
     response_model=list[AttendanceOut],
