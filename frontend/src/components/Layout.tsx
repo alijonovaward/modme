@@ -14,6 +14,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { to: "/admin/subjects", label: "Fanlar" },
     { to: "/admin/groups", label: "Guruhlar" },
     { to: "/admin/transactions", label: "Tranzaksiyalar" },
+    { to: "/superadmin/stats", label: "Statistika" },
   ],
   admin: [
     { to: "/admin/students", label: "O'quvchilar" },

@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { LoginPage } from "./pages/Login";
 import { HomePage } from "./pages/Home";
 import { StaffPage } from "./pages/superadmin/StaffPage";
+import { StatsPage } from "./pages/superadmin/StatsPage";
 import { StudentsPage } from "./pages/admin/StudentsPage";
 import { SubjectsPage } from "./pages/admin/SubjectsPage";
 import { GroupsPage } from "./pages/admin/GroupsPage";
@@ -29,6 +30,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["superadmin"]}>
                 <StaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/stats"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin"]}>
+                <StatsPage />
               </ProtectedRoute>
             }
           />

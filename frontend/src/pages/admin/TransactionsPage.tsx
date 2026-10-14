@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { listStaffUsers, listTransactions } from "../../api/endpoints";
+import { listGroups, listStaffUsers, listTransactions } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
-import { Badge, Card, ErrorMessage, extractErrorMessage, Select, Table } from "../../components/ui";
-import type { TransactionListItem, User } from "../../types";
+import { Badge, Button, Card, ErrorMessage, extractErrorMessage, Input, Label, Select, Table } from "../../components/ui";
+import type { GroupListItem, TransactionListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
 export function TransactionsPage() {
@@ -11,16 +11,27 @@ export function TransactionsPage() {
 
   const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
   const [admins, setAdmins] = useState<User[]>([]);
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+
   const [adminFilter, setAdminFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const load = async (createdById?: string) => {
+  const load = async () => {
     setIsLoading(true);
     try {
-      const data = await listTransactions(
-        createdById ? { created_by_id: Number(createdById) } : undefined,
-      );
+      const data = await listTransactions({
+        created_by_id: adminFilter ? Number(adminFilter) : undefined,
+        group_id: groupFilter ? Number(groupFilter) : undefined,
+        type: typeFilter ? (typeFilter as "deposit" | "deduction") : undefined,
+        date_from: dateFrom ? `${dateFrom}T00:00:00` : undefined,
+        date_to: dateTo ? `${dateTo}T23:59:59` : undefined,
+      });
       setTransactions(data);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -31,6 +42,7 @@ export function TransactionsPage() {
 
   useEffect(() => {
     load();
+    listGroups().then(setGroups).catch(() => undefined);
     if (isSuperadmin) {
       listStaffUsers().then(setAdmins).catch(() => undefined);
     }
@@ -39,46 +51,71 @@ export function TransactionsPage() {
 
   return (
     <Layout>
-      <Card
-        title="Tranzaksiyalar tarixi"
-        action={
-          isSuperadmin ? (
-            <Select
-              className="w-56"
-              value={adminFilter}
-              onChange={(e) => {
-                setAdminFilter(e.target.value);
-                load(e.target.value || undefined);
-              }}
-            >
-              <option value="">Barcha xodimlar</option>
-              {admins
-                .filter((a) => a.role === "admin" || a.role === "superadmin")
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.full_name}
-                  </option>
-                ))}
-            </Select>
-          ) : undefined
-        }
-      >
+      <Card title="Tranzaksiyalar tarixi">
         <ErrorMessage message={error} />
         {!isSuperadmin && (
           <p className="mb-4 text-sm text-slate-500">
             Faqat o'zingiz amalga oshirgan tranzaksiyalar ko'rsatilmoqda.
           </p>
         )}
+
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div>
+            <Label>Dan</Label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label>Gacha</Label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </div>
+          <div>
+            <Label>Turi</Label>
+            <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-40">
+              <option value="">Barchasi</option>
+              <option value="deposit">To'ldirish</option>
+              <option value="deduction">Yechim</option>
+            </Select>
+          </div>
+          <div>
+            <Label>Guruh</Label>
+            <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-48">
+              <option value="">Barcha guruhlar</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {isSuperadmin && (
+            <div>
+              <Label>Kim tomonidan</Label>
+              <Select value={adminFilter} onChange={(e) => setAdminFilter(e.target.value)} className="w-48">
+                <option value="">Barcha xodimlar</option>
+                {admins
+                  .filter((a) => a.role === "admin" || a.role === "superadmin")
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.full_name}
+                    </option>
+                  ))}
+              </Select>
+            </div>
+          )}
+          <Button onClick={load}>Filtrlash</Button>
+        </div>
+
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <Table headers={["Sana", "O'quvchi", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
+          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
             {transactions.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
                 <td className="px-3 py-2 font-medium text-slate-800">{t.student_name}</td>
+                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
                 <td className="px-3 py-2">
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}

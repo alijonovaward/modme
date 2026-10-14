@@ -79,6 +79,29 @@ export function Badge({ children, color = "slate" }: { children: ReactNode; colo
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}>{children}</span>;
 }
 
+export function StatTile({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: "green" | "red" | "amber" | "indigo";
+}) {
+  const styles = {
+    green: "bg-emerald-50 text-emerald-700",
+    red: "bg-rose-50 text-rose-700",
+    amber: "bg-amber-50 text-amber-700",
+    indigo: "bg-indigo-50 text-indigo-700",
+  }[color];
+  return (
+    <div className={`rounded-xl border border-slate-200 p-5 ${styles}`}>
+      <p className="text-sm font-medium opacity-80">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
 export function ErrorMessage({ message }: { message: string | null }) {
   if (!message) return null;
   return (

@@ -100,6 +100,13 @@ export interface Attendance {
   grade: number | null;
 }
 
+export interface StatsOverview {
+  total_deposits: number;
+  total_deductions: number;
+  total_teacher_earnings: number;
+  total_teacher_payouts: number;
+}
+
 export interface StudentAttendanceHistoryItem {
   id: number;
   lesson_id: number;

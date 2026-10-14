@@ -5,6 +5,7 @@ import type {
   GroupDetail,
   GroupListItem,
   Lesson,
+  StatsOverview,
   StudentAttendanceHistoryItem,
   Subject,
   TeacherTransaction,
@@ -112,6 +113,14 @@ export async function listTransactions(params?: {
   const { data } = await apiClient.get<TransactionListItem[]>("/api/v1/transactions", {
     params,
   });
+  return data;
+}
+
+export async function getStatsOverview(params?: {
+  date_from?: string;
+  date_to?: string;
+}): Promise<StatsOverview> {
+  const { data } = await apiClient.get<StatsOverview>("/api/v1/stats/overview", { params });
   return data;
 }
 
