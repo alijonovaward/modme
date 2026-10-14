@@ -15,19 +15,18 @@ from app.schemas.transaction import TeacherPayoutCreate, TeacherTransactionListI
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
 
 
-@router.get("/finance", response_model=list[TeacherTransactionListItemOut])
-def get_teacher_finance(
-    date_from: Optional[datetime] = Query(default=None),
-    date_to: Optional[datetime] = Query(default=None),
-    group_id: Optional[int] = Query(default=None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.teacher)),
-):
+def _query_teacher_finance(
+    db: Session,
+    teacher_id: int,
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
+    group_id: Optional[int],
+) -> list[TeacherTransactionListItemOut]:
     query = (
         db.query(TeacherTransaction, Lesson, Group)
         .outerjoin(Lesson, Lesson.id == TeacherTransaction.lesson_id)
         .outerjoin(Group, Group.id == Lesson.group_id)
-        .filter(TeacherTransaction.teacher_id == current_user.id)
+        .filter(TeacherTransaction.teacher_id == teacher_id)
     )
 
     if date_from is not None:
@@ -52,6 +51,32 @@ def get_teacher_finance(
         )
         for tt, lesson, group in rows
     ]
+
+
+@router.get("/finance", response_model=list[TeacherTransactionListItemOut])
+def get_teacher_finance(
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.teacher)),
+):
+    return _query_teacher_finance(db, current_user.id, date_from, date_to, group_id)
+
+
+@router.get("/{teacher_id}/finance", response_model=list[TeacherTransactionListItemOut])
+def get_teacher_finance_by_id(
+    teacher_id: int,
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    teacher = db.get(User, teacher_id)
+    if teacher is None or teacher.role != UserRole.teacher:
+        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
 
 
 @router.post(

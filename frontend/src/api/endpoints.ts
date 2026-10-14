@@ -223,6 +223,21 @@ export async function getTeacherFinance(params?: {
   return data;
 }
 
+export async function getTeacherFinanceById(
+  teacherId: number,
+  params?: {
+    date_from?: string;
+    date_to?: string;
+    group_id?: number;
+  },
+): Promise<TeacherTransaction[]> {
+  const { data } = await apiClient.get<TeacherTransaction[]>(
+    `/api/v1/teachers/${teacherId}/finance`,
+    { params },
+  );
+  return data;
+}
+
 export async function payoutTeacher(
   teacherId: number,
   amount: number,

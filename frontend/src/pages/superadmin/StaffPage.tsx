@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { createStaffUser, listStaffUsers, payoutTeacher } from "../../api/endpoints";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { createStaffUser, listStaffUsers } from "../../api/endpoints";
 import { Button, Card, ErrorMessage, extractErrorMessage, Input, Label, Select, SuccessMessage, Table, Badge } from "../../components/ui";
-import type { User } from "../../types";
+import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -22,7 +23,9 @@ export function StaffPage() {
   const [role, setRole] = useState<"admin" | "teacher">("teacher");
   const [percentage, setPercentage] = useState("40");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [payoutAmounts, setPayoutAmounts] = useState<Record<number, string>>({});
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
 
   const loadStaff = async () => {
     setIsLoading(true);
@@ -39,6 +42,18 @@ export function StaffPage() {
   useEffect(() => {
     loadStaff();
   }, []);
+
+  const filteredStaff = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return staff.filter((s) => {
+      const matchesRole = !roleFilter || s.role === roleFilter;
+      const matchesSearch =
+        !term ||
+        s.full_name.toLowerCase().includes(term) ||
+        s.phone.toLowerCase().includes(term);
+      return matchesRole && matchesSearch;
+    });
+  }, [staff, search, roleFilter]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -62,22 +77,6 @@ export function StaffPage() {
       setError(extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePayout = async (teacherId: number) => {
-    const amountStr = payoutAmounts[teacherId];
-    const amount = Number(amountStr);
-    if (!amount || amount <= 0) return;
-    setError(null);
-    setSuccess(null);
-    try {
-      await payoutTeacher(teacherId, amount, "Admin tomonidan pul berildi");
-      setSuccess("Pul o'qituvchi balansidan yechildi");
-      setPayoutAmounts((prev) => ({ ...prev, [teacherId]: "" }));
-      await loadStaff();
-    } catch (err) {
-      setError(extractErrorMessage(err));
     }
   };
 
@@ -138,11 +137,29 @@ export function StaffPage() {
 
         <div className="lg:col-span-2">
           <Card title="Xodimlar ro'yxati">
+            <div className="mb-4 flex flex-wrap gap-3">
+              <Input
+                placeholder="F.I.O yoki telefon raqam bo'yicha qidirish"
+                className="flex-1 min-w-[220px]"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Select
+                className="w-48"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
+              >
+                <option value="">Barcha rollar</option>
+                <option value="superadmin">Bosh Admin</option>
+                <option value="admin">Administrator</option>
+                <option value="teacher">O'qituvchi</option>
+              </Select>
+            </div>
             {isLoading ? (
               <p className="text-sm text-slate-500">Yuklanmoqda...</p>
             ) : (
-              <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", "Pul berish"]}>
-                {staff.map((s) => (
+              <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
+                {filteredStaff.map((s) => (
                   <tr key={s.id}>
                     <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
                     <td className="px-3 py-2 text-slate-600">{s.phone}</td>
@@ -158,22 +175,12 @@ export function StaffPage() {
                       {s.balance.toLocaleString("uz-UZ")} so'm
                     </td>
                     <td className="px-3 py-2">
-                      {s.role === "teacher" && (
-                        <div className="flex gap-1">
-                          <Input
-                            type="number"
-                            placeholder="Summa"
-                            className="w-28"
-                            value={payoutAmounts[s.id] ?? ""}
-                            onChange={(e) =>
-                              setPayoutAmounts((prev) => ({ ...prev, [s.id]: e.target.value }))
-                            }
-                          />
-                          <Button variant="secondary" onClick={() => handlePayout(s.id)}>
-                            Berish
-                          </Button>
-                        </div>
-                      )}
+                      <Link
+                        to={`/superadmin/staff/${s.id}`}
+                        className="text-sm text-indigo-600 hover:underline"
+                      >
+                        Batafsil
+                      </Link>
                     </td>
                   </tr>
                 ))}
