@@ -75,6 +75,7 @@ export interface GroupRosterItem {
   student_name: string;
   student_phone: string;
   status: GroupStudentStatus;
+  status_reason: string | null;
 }
 
 export interface GroupDetail extends GroupListItem {

@@ -116,6 +116,7 @@ def get_group_detail(
                 student_name=student.full_name if student else "",
                 student_phone=student.phone if student else "",
                 status=gs.status,
+                status_reason=gs.status_reason,
             )
         )
 
@@ -200,7 +201,13 @@ def update_group_student_status(
     if group_student is None:
         raise HTTPException(status_code=404, detail="O'quvchi ushbu guruhda topilmadi")
 
+    if payload.status == GroupStudentStatus.dropped and not (payload.reason or "").strip():
+        raise HTTPException(
+            status_code=400, detail="O'quvchini chiqarish uchun sabab kiritilishi shart"
+        )
+
     group_student.status = payload.status
+    group_student.status_reason = payload.reason if payload.status == GroupStudentStatus.dropped else None
     db.commit()
     db.refresh(group_student)
     return group_student

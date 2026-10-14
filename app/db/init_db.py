@@ -15,6 +15,9 @@ REQUIRED_COLUMNS = {
         "comment": "VARCHAR",
         "student_id": "INTEGER",
     },
+    "group_students": {
+        "status_reason": "VARCHAR",
+    },
 }
 
 

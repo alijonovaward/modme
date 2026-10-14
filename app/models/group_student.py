@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 
 from app.db.session import Base
 
@@ -18,3 +18,4 @@ class GroupStudent(Base):
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(Enum(GroupStudentStatus), default=GroupStudentStatus.active, nullable=False)
+    status_reason = Column(String, nullable=True)

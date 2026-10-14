@@ -1,9 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getGroupDetail, listGroupLessons } from "../../api/endpoints";
 import { Badge, Card, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
-import type { GroupDetail, Lesson } from "../../types";
+import type { GroupDetail, GroupStudentStatus, Lesson } from "../../types";
 import { Layout } from "../../components/Layout";
+
+const ROSTER_STATUS_COLOR = {
+  active: "green",
+  frozen: "amber",
+  dropped: "red",
+} as const;
+
+const STATUS_TABS: { value: GroupStudentStatus | ""; label: string }[] = [
+  { value: "", label: "Hammasi" },
+  { value: "active", label: "Faol" },
+  { value: "frozen", label: "Muzlatilgan" },
+  { value: "dropped", label: "Arxiv" },
+];
 
 export function TeacherGroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -13,6 +26,7 @@ export function TeacherGroupDetailPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
 
   useEffect(() => {
     Promise.all([getGroupDetail(id), listGroupLessons(id)])
@@ -23,6 +37,12 @@ export function TeacherGroupDetailPage() {
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  const filteredStudents = useMemo(() => {
+    if (!group) return [];
+    if (!statusFilter) return group.students;
+    return group.students.filter((s) => s.status === statusFilter);
+  }, [group, statusFilter]);
 
   if (isLoading || !group) {
     return (
@@ -44,14 +64,30 @@ export function TeacherGroupDetailPage() {
       <ErrorMessage message={error} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="O'quvchilar">
+          <div className="mb-3 flex gap-1">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                  statusFilter === tab.value
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <Table headers={["F.I.O", "Holat"]}>
-            {group.students.map((s) => (
+            {filteredStudents.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.student_name}</td>
                 <td className="px-3 py-2">
-                  <Badge color={s.status === "active" ? "green" : s.status === "frozen" ? "amber" : "red"}>
-                    {s.status}
-                  </Badge>
+                  <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
+                  {s.status === "dropped" && s.status_reason && (
+                    <p className="mt-1 text-xs text-slate-500">Sababi: {s.status_reason}</p>
+                  )}
                 </td>
               </tr>
             ))}

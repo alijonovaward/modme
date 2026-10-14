@@ -170,10 +170,11 @@ export async function updateGroupStudentStatus(
   groupId: number,
   studentId: number,
   status: "active" | "frozen" | "dropped",
+  reason?: string,
 ) {
   const { data } = await apiClient.put(
     `/api/v1/groups/${groupId}/students/${studentId}`,
-    { status },
+    { status, reason },
   );
   return data;
 }

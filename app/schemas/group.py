@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 from app.models.group import GroupStatus
@@ -28,6 +30,7 @@ class GroupStudentCreate(BaseModel):
 
 class GroupStudentStatusUpdate(BaseModel):
     status: GroupStudentStatus
+    reason: Optional[str] = None
 
 
 class GroupStudentOut(BaseModel):
@@ -37,6 +40,7 @@ class GroupStudentOut(BaseModel):
     group_id: int
     student_id: int
     status: GroupStudentStatus
+    status_reason: Optional[str] = None
 
 
 class GroupListItemOut(BaseModel):
@@ -56,6 +60,7 @@ class GroupRosterItemOut(BaseModel):
     student_name: str
     student_phone: str
     status: GroupStudentStatus
+    status_reason: Optional[str] = None
 
 
 class GroupDetailOut(GroupListItemOut):
