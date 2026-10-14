@@ -124,7 +124,6 @@ export function GroupDetailPage() {
     try {
       await createLesson(id, lessonDate);
       setSuccess("Dars yaratildi");
-      setIsLessonModalOpen(false);
       await loadAll();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -152,17 +151,27 @@ export function GroupDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">{group.name}</h1>
-        <p className="text-sm text-slate-500">
-          {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">{group.name}</h1>
+          <p className="text-sm text-slate-500">
+            {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setLessonDate(new Date().toISOString().slice(0, 10));
+            setIsLessonModalOpen(true);
+          }}
+        >
+          Darslar ({lessons.length})
+        </Button>
       </div>
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div>
         <Card title="O'quvchilar ro'yxati">
           <div className="mb-4 flex gap-2">
             <Combobox
@@ -231,31 +240,6 @@ export function GroupDetailPage() {
             ))}
           </Table>
         </Card>
-
-        <Card
-          title="Darslar"
-          action={
-            <Button
-              onClick={() => {
-                setLessonDate(new Date().toISOString().slice(0, 10));
-                setIsLessonModalOpen(true);
-              }}
-            >
-              + Dars qo'shish
-            </Button>
-          }
-        >
-          <Table headers={["Sana", "Holat"]}>
-            {lessons.map((l) => (
-              <tr key={l.id}>
-                <td className="px-3 py-2 text-slate-800">{l.lesson_date}</td>
-                <td className="px-3 py-2">
-                  <Badge color={l.status === "completed" ? "green" : "slate"}>{l.status}</Badge>
-                </td>
-              </tr>
-            ))}
-          </Table>
-        </Card>
       </div>
 
       {dropTarget && (
@@ -278,15 +262,25 @@ export function GroupDetailPage() {
       )}
 
       {isLessonModalOpen && (
-        <Modal title="Yangi dars qo'shish" onClose={() => setIsLessonModalOpen(false)}>
+        <Modal title="Darslar" onClose={() => setIsLessonModalOpen(false)}>
           <div className="space-y-4">
-            <div>
-              <Label>Sana</Label>
-              <Input type="date" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Label>Yangi dars sanasi</Label>
+                <Input type="date" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} />
+              </div>
+              <Button onClick={handleCreateLesson}>Qo'shish</Button>
             </div>
-            <Button className="w-full" onClick={handleCreateLesson}>
-              Yaratish
-            </Button>
+            <Table headers={["Sana", "Holat"]}>
+              {lessons.map((l) => (
+                <tr key={l.id}>
+                  <td className="px-3 py-2 text-slate-800">{l.lesson_date}</td>
+                  <td className="px-3 py-2">
+                    <Badge color={l.status === "completed" ? "green" : "slate"}>{l.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </Table>
           </div>
         </Modal>
       )}
