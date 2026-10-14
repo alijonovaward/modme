@@ -33,6 +33,15 @@ class AttendanceOut(BaseModel):
     grade: Optional[int] = None
 
 
+class AttendanceDetailOut(BaseModel):
+    id: int
+    lesson_id: int
+    student_id: int
+    student_name: str
+    status: AttendanceStatus
+    grade: Optional[int] = None
+
+
 class StudentAttendanceHistoryItemOut(BaseModel):
     id: int
     lesson_id: int

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createLesson,
   deleteLesson,
+  getLessonAttendance,
   listAllLessons,
   listGroups,
   listStaffUsers,
@@ -21,7 +22,7 @@ import {
   SuccessMessage,
   Table,
 } from "../../components/ui";
-import type { GroupListItem, LessonListItem, User } from "../../types";
+import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
 interface Filters {
@@ -56,6 +57,10 @@ export function LessonsPage() {
   const [newGroupId, setNewGroupId] = useState("");
   const [newLessonDate, setNewLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [detailLesson, setDetailLesson] = useState<LessonListItem | null>(null);
+  const [detailAttendance, setDetailAttendance] = useState<AttendanceDetail[]>([]);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   const load = async (filters: Filters) => {
     setIsLoading(true);
@@ -133,6 +138,18 @@ export function LessonsPage() {
     }
   };
 
+  const openDetail = async (lesson: LessonListItem) => {
+    setDetailLesson(lesson);
+    setIsDetailLoading(true);
+    try {
+      setDetailAttendance(await getLessonAttendance(lesson.id));
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
   const activeCount = Object.values(appliedFilters).filter(Boolean).length;
 
   const summary = useMemo(() => {
@@ -191,11 +208,16 @@ export function LessonsPage() {
                 <td className="px-3 py-2 text-slate-600">{l.excused_count}</td>
                 <td className="px-3 py-2 text-rose-600">{l.unexcused_count}</td>
                 <td className="px-3 py-2">
-                  {l.status === "planned" && (
-                    <Button variant="danger" onClick={() => handleDeleteLesson(l)}>
-                      O'chirish
+                  <div className="flex gap-1">
+                    <Button variant="secondary" onClick={() => openDetail(l)}>
+                      Batafsil
                     </Button>
-                  )}
+                    {l.status === "planned" && (
+                      <Button variant="danger" onClick={() => handleDeleteLesson(l)}>
+                        O'chirish
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -299,6 +321,47 @@ export function LessonsPage() {
               {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
             </Button>
           </div>
+        </Modal>
+      )}
+
+      {detailLesson && (
+        <Modal
+          title={`${detailLesson.group_name} — ${detailLesson.lesson_date}`}
+          onClose={() => setDetailLesson(null)}
+        >
+          <p className="mb-4 text-sm text-slate-500">
+            {detailLesson.subject_name} · {detailLesson.teacher_name} ·{" "}
+            <Badge color={detailLesson.status === "completed" ? "green" : "slate"}>
+              {detailLesson.status === "completed" ? "O'tildi" : "Rejada"}
+            </Badge>
+          </p>
+          {isDetailLoading ? (
+            <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          ) : detailAttendance.length === 0 ? (
+            <p className="text-sm text-slate-500">Hali davomat olinmagan.</p>
+          ) : (
+            <Table headers={["O'quvchi", "Holat", "Baho"]}>
+              {detailAttendance.map((a) => (
+                <tr key={a.id}>
+                  <td className="px-3 py-2 font-medium text-slate-800">{a.student_name}</td>
+                  <td className="px-3 py-2">
+                    <Badge
+                      color={
+                        a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"
+                      }
+                    >
+                      {a.status === "present"
+                        ? "Keldi"
+                        : a.status === "excused"
+                          ? "Sababli"
+                          : "Sababsiz"}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-slate-600">{a.grade ?? "-"}</td>
+                </tr>
+              ))}
+            </Table>
+          )}
         </Modal>
       )}
     </Layout>

@@ -115,6 +115,15 @@ export interface Attendance {
   grade: number | null;
 }
 
+export interface AttendanceDetail {
+  id: number;
+  lesson_id: number;
+  student_id: number;
+  student_name: string;
+  status: AttendanceStatus;
+  grade: number | null;
+}
+
 export interface StatsOverview {
   total_deposits: number;
   total_deductions: number;

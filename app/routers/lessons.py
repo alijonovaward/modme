@@ -15,7 +15,7 @@ from app.models.subject import Subject
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
-from app.schemas.attendance import AttendanceCreate, AttendanceOut
+from app.schemas.attendance import AttendanceCreate, AttendanceDetailOut, AttendanceOut
 from app.schemas.lesson import LessonCreate, LessonListItemOut, LessonOut
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
@@ -122,7 +122,7 @@ def delete_lesson(
     db.commit()
 
 
-@router.get("/{lesson_id}/attendance", response_model=list[AttendanceOut])
+@router.get("/{lesson_id}/attendance", response_model=list[AttendanceDetailOut])
 def get_lesson_attendance(
     lesson_id: int,
     db: Session = Depends(get_db),
@@ -138,7 +138,23 @@ def get_lesson_attendance(
     if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
-    return db.query(Attendance).filter(Attendance.lesson_id == lesson.id).all()
+    rows = (
+        db.query(Attendance, User)
+        .join(User, User.id == Attendance.student_id)
+        .filter(Attendance.lesson_id == lesson.id)
+        .all()
+    )
+    return [
+        AttendanceDetailOut(
+            id=att.id,
+            lesson_id=att.lesson_id,
+            student_id=att.student_id,
+            student_name=student.full_name,
+            status=att.status,
+            grade=att.grade,
+        )
+        for att, student in rows
+    ]
 
 
 @router.post(

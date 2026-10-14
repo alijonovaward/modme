@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type {
   Attendance,
+  AttendanceDetail,
   AttendanceStatus,
   GroupDetail,
   GroupListItem,
@@ -209,8 +210,8 @@ export async function deleteLesson(lessonId: number): Promise<void> {
   await apiClient.delete(`/api/v1/lessons/${lessonId}`);
 }
 
-export async function getLessonAttendance(lessonId: number): Promise<Attendance[]> {
-  const { data } = await apiClient.get<Attendance[]>(
+export async function getLessonAttendance(lessonId: number): Promise<AttendanceDetail[]> {
+  const { data } = await apiClient.get<AttendanceDetail[]>(
     `/api/v1/lessons/${lessonId}/attendance`,
   );
   return data;
