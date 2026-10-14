@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listGroups, listStaffUsers, listTransactions } from "../../api/endpoints";
+import { listGroups, listStaffUsers, listStudents, listTransactions } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
 import { Badge, Button, Card, Combobox, ErrorMessage, extractErrorMessage, Input, Label, Select, Table } from "../../components/ui";
 import type { GroupListItem, TransactionListItem, User } from "../../types";
@@ -12,9 +12,11 @@ export function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
   const [admins, setAdmins] = useState<User[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [students, setStudents] = useState<User[]>([]);
 
   const [adminFilter, setAdminFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
+  const [studentFilter, setStudentFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -28,6 +30,7 @@ export function TransactionsPage() {
       const data = await listTransactions({
         created_by_id: adminFilter ? Number(adminFilter) : undefined,
         group_id: groupFilter ? Number(groupFilter) : undefined,
+        student_id: studentFilter ? Number(studentFilter) : undefined,
         type: typeFilter ? (typeFilter as "deposit" | "deduction") : undefined,
         date_from: dateFrom ? `${dateFrom}T00:00:00` : undefined,
         date_to: dateTo ? `${dateTo}T23:59:59` : undefined,
@@ -43,6 +46,7 @@ export function TransactionsPage() {
   useEffect(() => {
     load();
     listGroups().then(setGroups).catch(() => undefined);
+    listStudents().then(setStudents).catch(() => undefined);
     if (isSuperadmin) {
       listStaffUsers().then(setAdmins).catch(() => undefined);
     }
@@ -75,6 +79,19 @@ export function TransactionsPage() {
               <option value="deposit">To'ldirish</option>
               <option value="deduction">Yechim</option>
             </Select>
+          </div>
+          <div>
+            <Label>O'quvchi</Label>
+            <Combobox
+              className="w-48"
+              value={studentFilter}
+              onChange={setStudentFilter}
+              placeholder="Barcha o'quvchilar"
+              options={[
+                { value: "", label: "Barcha o'quvchilar" },
+                ...students.map((s) => ({ value: String(s.id), label: s.full_name })),
+              ]}
+            />
           </div>
           <div>
             <Label>Guruh</Label>
