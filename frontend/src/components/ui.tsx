@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 export function Card({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) {
@@ -43,6 +44,94 @@ export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSe
       className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none ${className}`}
       {...props}
     />
+  );
+}
+
+export interface ComboboxOption {
+  value: string;
+  label: string;
+}
+
+export function Combobox({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = "",
+}: {
+  options: ComboboxOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedLabel = useMemo(
+    () => options.find((o) => o.value === value)?.label ?? "",
+    [options, value],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery(selectedLabel);
+    }
+  }, [selectedLabel, isOpen]);
+
+  const filteredOptions = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term || term === selectedLabel.toLowerCase()) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(term));
+  }, [options, query, selectedLabel]);
+
+  const handleSelect = (option: ComboboxOption) => {
+    onChange(option.value);
+    setQuery(option.label);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      <input
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+        placeholder={placeholder ?? "Qidirish..."}
+        value={query}
+        onFocus={(e) => {
+          setIsOpen(true);
+          e.target.select();
+        }}
+        onBlur={() => setTimeout(() => setIsOpen(false), 120)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setIsOpen(true);
+        }}
+      />
+      {isOpen && (
+        <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          {filteredOptions.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-slate-400">Topilmadi</p>
+          ) : (
+            filteredOptions.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(o);
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
+                  o.value === value ? "bg-indigo-50 text-indigo-700" : "text-slate-700"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

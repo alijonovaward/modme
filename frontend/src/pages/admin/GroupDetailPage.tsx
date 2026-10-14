@@ -8,7 +8,7 @@ import {
   listStudents,
   updateGroupStudentStatus,
 } from "../../api/endpoints";
-import { Badge, Button, Card, ErrorMessage, extractErrorMessage, Input, Select, SuccessMessage, Table } from "../../components/ui";
+import { Badge, Button, Card, Combobox, ErrorMessage, extractErrorMessage, Input, SuccessMessage, Table } from "../../components/ui";
 import type { GroupDetail, GroupStudentStatus, Lesson, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -117,14 +117,13 @@ export function GroupDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="O'quvchilar ro'yxati">
           <div className="mb-4 flex gap-2">
-            <Select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}>
-              <option value="">O'quvchi tanlang</option>
-              {addableStudents.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.full_name}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              className="flex-1"
+              value={selectedStudentId}
+              onChange={setSelectedStudentId}
+              placeholder="O'quvchi qidirish..."
+              options={addableStudents.map((s) => ({ value: String(s.id), label: s.full_name }))}
+            />
             <Button onClick={handleAddStudent}>Qo'shish</Button>
           </div>
           <Table headers={["F.I.O", "Telefon", "Holat", ""]}>

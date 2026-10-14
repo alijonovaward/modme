@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listGroups, listTransactions } from "../../api/endpoints";
-import { Badge, Card, ErrorMessage, extractErrorMessage, Select, Table } from "../../components/ui";
+import { Badge, Card, Combobox, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
 import type { GroupListItem, TransactionListItem } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -34,21 +34,19 @@ export function TeacherTransactionsPage() {
       <Card
         title="O'quvchilardan yechilgan pullar"
         action={
-          <Select
+          <Combobox
             className="w-56"
             value={groupFilter}
-            onChange={(e) => {
-              setGroupFilter(e.target.value);
-              load(e.target.value || undefined);
+            onChange={(value) => {
+              setGroupFilter(value);
+              load(value || undefined);
             }}
-          >
-            <option value="">Barcha guruhlar</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </Select>
+            placeholder="Barcha guruhlar"
+            options={[
+              { value: "", label: "Barcha guruhlar" },
+              ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+            ]}
+          />
         }
       >
         <ErrorMessage message={error} />

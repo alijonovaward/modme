@@ -5,12 +5,12 @@ import {
   Badge,
   Button,
   Card,
+  Combobox,
   ErrorMessage,
   extractErrorMessage,
   Input,
   Label,
   Modal,
-  Select,
   Table,
 } from "../../components/ui";
 import type { GroupListItem, Subject, User } from "../../types";
@@ -82,6 +82,10 @@ export function GroupsPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!subjectId || !teacherId) {
+      setError("Fan va o'qituvchini tanlang");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createGroup({
@@ -158,25 +162,24 @@ export function GroupsPage() {
             </div>
             <div>
               <Label>Fan</Label>
-              <Select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required>
-                <option value="">Tanlang</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                value={subjectId}
+                onChange={setSubjectId}
+                placeholder="Fan qidirish..."
+                options={subjects.map((s) => ({ value: String(s.id), label: s.name }))}
+              />
             </div>
             <div>
               <Label>O'qituvchi</Label>
-              <Select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required>
-                <option value="">Tanlang</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.full_name} ({t.teacher_percentage}%)
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                value={teacherId}
+                onChange={setTeacherId}
+                placeholder="O'qituvchi qidirish..."
+                options={teachers.map((t) => ({
+                  value: String(t.id),
+                  label: `${t.full_name} (${t.teacher_percentage}%)`,
+                }))}
+              />
             </div>
             <div>
               <Label>1 dars narxi</Label>

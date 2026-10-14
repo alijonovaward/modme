@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listGroups, listStaffUsers, listTransactions } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
-import { Badge, Button, Card, ErrorMessage, extractErrorMessage, Input, Label, Select, Table } from "../../components/ui";
+import { Badge, Button, Card, Combobox, ErrorMessage, extractErrorMessage, Input, Label, Select, Table } from "../../components/ui";
 import type { GroupListItem, TransactionListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -78,28 +78,32 @@ export function TransactionsPage() {
           </div>
           <div>
             <Label>Guruh</Label>
-            <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-48">
-              <option value="">Barcha guruhlar</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              className="w-48"
+              value={groupFilter}
+              onChange={setGroupFilter}
+              placeholder="Barcha guruhlar"
+              options={[
+                { value: "", label: "Barcha guruhlar" },
+                ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+              ]}
+            />
           </div>
           {isSuperadmin && (
             <div>
               <Label>Kim tomonidan</Label>
-              <Select value={adminFilter} onChange={(e) => setAdminFilter(e.target.value)} className="w-48">
-                <option value="">Barcha xodimlar</option>
-                {admins
-                  .filter((a) => a.role === "admin" || a.role === "superadmin")
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.full_name}
-                    </option>
-                  ))}
-              </Select>
+              <Combobox
+                className="w-48"
+                value={adminFilter}
+                onChange={setAdminFilter}
+                placeholder="Barcha xodimlar"
+                options={[
+                  { value: "", label: "Barcha xodimlar" },
+                  ...admins
+                    .filter((a) => a.role === "admin" || a.role === "superadmin")
+                    .map((a) => ({ value: String(a.id), label: a.full_name })),
+                ]}
+              />
             </div>
           )}
           <Button onClick={load}>Filtrlash</Button>
