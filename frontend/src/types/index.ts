@@ -91,6 +91,20 @@ export interface Lesson {
   status: LessonStatus;
 }
 
+export interface LessonListItem {
+  id: number;
+  group_id: number;
+  group_name: string;
+  subject_name: string;
+  teacher_id: number;
+  teacher_name: string;
+  lesson_date: string;
+  status: LessonStatus;
+  present_count: number;
+  excused_count: number;
+  unexcused_count: number;
+}
+
 export type AttendanceStatus = "present" | "excused" | "unexcused";
 
 export interface Attendance {

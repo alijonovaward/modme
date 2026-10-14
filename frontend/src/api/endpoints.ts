@@ -5,6 +5,8 @@ import type {
   GroupDetail,
   GroupListItem,
   Lesson,
+  LessonListItem,
+  LessonStatus,
   StatsOverview,
   StudentAttendanceHistoryItem,
   Subject,
@@ -181,6 +183,17 @@ export async function updateGroupStudentStatus(
 
 export async function listGroupLessons(groupId: number): Promise<Lesson[]> {
   const { data } = await apiClient.get<Lesson[]>(`/api/v1/groups/${groupId}/lessons`);
+  return data;
+}
+
+export async function listAllLessons(params?: {
+  group_id?: number;
+  teacher_id?: number;
+  date_from?: string;
+  date_to?: string;
+  status?: LessonStatus;
+}): Promise<LessonListItem[]> {
+  const { data } = await apiClient.get<LessonListItem[]>("/api/v1/lessons", { params });
   return data;
 }
 

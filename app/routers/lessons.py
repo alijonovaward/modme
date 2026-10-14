@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -7,13 +11,75 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
+from app.models.subject import Subject
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
 from app.schemas.attendance import AttendanceCreate, AttendanceOut
-from app.schemas.lesson import LessonCreate, LessonOut
+from app.schemas.lesson import LessonCreate, LessonListItemOut, LessonOut
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
+
+
+@router.get("", response_model=list[LessonListItemOut])
+def list_all_lessons(
+    group_id: Optional[int] = Query(default=None),
+    teacher_id: Optional[int] = Query(default=None),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    query = (
+        db.query(Lesson, Group, Subject)
+        .join(Group, Group.id == Lesson.group_id)
+        .join(Subject, Subject.id == Group.subject_id)
+    )
+    if group_id is not None:
+        query = query.filter(Lesson.group_id == group_id)
+    if teacher_id is not None:
+        query = query.filter(Group.teacher_id == teacher_id)
+    if date_from is not None:
+        query = query.filter(Lesson.lesson_date >= date_from)
+    if date_to is not None:
+        query = query.filter(Lesson.lesson_date <= date_to)
+    if lesson_status is not None:
+        query = query.filter(Lesson.status == lesson_status)
+
+    rows = query.order_by(Lesson.lesson_date.desc()).all()
+    lesson_ids = [lesson.id for lesson, _, _ in rows]
+
+    counts: dict[int, dict[AttendanceStatus, int]] = {}
+    if lesson_ids:
+        count_rows = (
+            db.query(Attendance.lesson_id, Attendance.status, func.count(Attendance.id))
+            .filter(Attendance.lesson_id.in_(lesson_ids))
+            .group_by(Attendance.lesson_id, Attendance.status)
+            .all()
+        )
+        for lesson_id, att_status, count in count_rows:
+            counts.setdefault(lesson_id, {})[att_status] = count
+
+    teacher_ids = {group.teacher_id for _, group, _ in rows}
+    teachers = {u.id: u.full_name for u in db.query(User).filter(User.id.in_(teacher_ids))} if teacher_ids else {}
+
+    return [
+        LessonListItemOut(
+            id=lesson.id,
+            group_id=group.id,
+            group_name=group.name,
+            subject_name=subject.name,
+            teacher_id=group.teacher_id,
+            teacher_name=teachers.get(group.teacher_id, ""),
+            lesson_date=lesson.lesson_date,
+            status=lesson.status,
+            present_count=counts.get(lesson.id, {}).get(AttendanceStatus.present, 0),
+            excused_count=counts.get(lesson.id, {}).get(AttendanceStatus.excused, 0),
+            unexcused_count=counts.get(lesson.id, {}).get(AttendanceStatus.unexcused, 0),
+        )
+        for lesson, group, subject in rows
+    ]
 
 
 @router.post("", response_model=LessonOut, status_code=status.HTTP_201_CREATED)
