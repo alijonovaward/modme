@@ -53,6 +53,7 @@ export function GroupDetailPage() {
   const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
   const [dropTarget, setDropTarget] = useState<GroupRosterItem | null>(null);
   const [dropReason, setDropReason] = useState("");
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -123,6 +124,7 @@ export function GroupDetailPage() {
     try {
       await createLesson(id, lessonDate);
       setSuccess("Dars yaratildi");
+      setIsLessonModalOpen(false);
       await loadAll();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -230,11 +232,19 @@ export function GroupDetailPage() {
           </Table>
         </Card>
 
-        <Card title="Darslar">
-          <div className="mb-4 flex gap-2">
-            <Input type="date" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} />
-            <Button onClick={handleCreateLesson}>Dars yaratish</Button>
-          </div>
+        <Card
+          title="Darslar"
+          action={
+            <Button
+              onClick={() => {
+                setLessonDate(new Date().toISOString().slice(0, 10));
+                setIsLessonModalOpen(true);
+              }}
+            >
+              + Dars qo'shish
+            </Button>
+          }
+        >
           <Table headers={["Sana", "Holat"]}>
             {lessons.map((l) => (
               <tr key={l.id}>
@@ -262,6 +272,20 @@ export function GroupDetailPage() {
             </div>
             <Button className="w-full" variant="danger" disabled={!dropReason.trim()} onClick={handleConfirmDrop}>
               Chiqarish
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {isLessonModalOpen && (
+        <Modal title="Yangi dars qo'shish" onClose={() => setIsLessonModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Sana</Label>
+              <Input type="date" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} />
+            </div>
+            <Button className="w-full" onClick={handleCreateLesson}>
+              Yaratish
             </Button>
           </div>
         </Modal>
