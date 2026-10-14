@@ -8,6 +8,7 @@ import { StudentsPage } from "./pages/admin/StudentsPage";
 import { SubjectsPage } from "./pages/admin/SubjectsPage";
 import { GroupsPage } from "./pages/admin/GroupsPage";
 import { GroupDetailPage } from "./pages/admin/GroupDetailPage";
+import { TransactionsPage } from "./pages/admin/TransactionsPage";
 import { MyGroupsPage } from "./pages/teacher/MyGroupsPage";
 import { TeacherGroupDetailPage } from "./pages/teacher/GroupDetailPage";
 import { AttendancePage } from "./pages/teacher/AttendancePage";
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
                 <GroupDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/transactions"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <TransactionsPage />
               </ProtectedRoute>
             }
           />

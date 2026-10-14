@@ -78,6 +78,7 @@ def deposit_to_student(
         amount=payload.amount,
         type=TransactionType.deposit,
         comment=payload.comment,
+        created_by_id=current_user.id,
     )
     student.balance += payload.amount
     db.add(transaction)

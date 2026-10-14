@@ -21,6 +21,18 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface TransactionListItem {
+  id: number;
+  student_id: number;
+  student_name: string;
+  amount: number;
+  type: TransactionType;
+  comment: string | null;
+  created_at: string;
+  created_by_id: number | null;
+  created_by_name: string | null;
+}
+
 export type TeacherTransactionType = "lesson_earning" | "payout";
 
 export interface TeacherTransaction {

@@ -19,4 +19,5 @@ class Transaction(Base):
     amount = Column(Float, nullable=False)
     type = Column(Enum(TransactionType), nullable=False)
     comment = Column(String, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

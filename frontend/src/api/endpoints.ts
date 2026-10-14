@@ -9,6 +9,7 @@ import type {
   Subject,
   TeacherTransaction,
   Transaction,
+  TransactionListItem,
   User,
   UserRole,
 } from "../types";
@@ -97,6 +98,19 @@ export async function getStudentAttendanceHistory(
   const { data } = await apiClient.get<StudentAttendanceHistoryItem[]>(
     `/api/v1/students/${studentId}/attendance`,
   );
+  return data;
+}
+
+export async function listTransactions(params?: {
+  student_id?: number;
+  created_by_id?: number;
+  type?: "deposit" | "deduction";
+  date_from?: string;
+  date_to?: string;
+}): Promise<TransactionListItem[]> {
+  const { data } = await apiClient.get<TransactionListItem[]>("/api/v1/transactions", {
+    params,
+  });
   return data;
 }
 
