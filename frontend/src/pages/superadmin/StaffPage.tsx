@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { createStaffUser, listStaffUsers } from "../../api/endpoints";
-import { Button, Card, ErrorMessage, extractErrorMessage, Input, Label, Select, SuccessMessage, Table, Badge } from "../../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorMessage,
+  extractErrorMessage,
+  Input,
+  Label,
+  Modal,
+  Select,
+  SuccessMessage,
+  Table,
+} from "../../components/ui";
 import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -17,6 +29,7 @@ export function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -55,6 +68,15 @@ export function StaffPage() {
     });
   }, [staff, search, roleFilter]);
 
+  const resetForm = () => {
+    setFullName("");
+    setPhone("");
+    setPassword("");
+    setRole("teacher");
+    setPercentage("40");
+    setError(null);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -69,9 +91,8 @@ export function StaffPage() {
         teacher_percentage: role === "teacher" ? Number(percentage) : undefined,
       });
       setSuccess("Xodim muvaffaqiyatli yaratildi");
-      setFullName("");
-      setPhone("");
-      setPassword("");
+      setIsModalOpen(false);
+      resetForm();
       await loadStaff();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -82,8 +103,73 @@ export function StaffPage() {
 
   return (
     <Layout>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card title="Yangi xodim qo'shish">
+      <Card
+        title="Xodimlar ro'yxati"
+        action={
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+          >
+            + Yangi xodim
+          </Button>
+        }
+      >
+        <SuccessMessage message={success} />
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Input
+            placeholder="F.I.O yoki telefon raqam bo'yicha qidirish"
+            className="flex-1 min-w-[260px]"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Select
+            className="w-48"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
+          >
+            <option value="">Barcha rollar</option>
+            <option value="superadmin">Bosh Admin</option>
+            <option value="admin">Administrator</option>
+            <option value="teacher">O'qituvchi</option>
+          </Select>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+        ) : (
+          <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
+            {filteredStaff.map((s) => (
+              <tr key={s.id}>
+                <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
+                <td className="px-3 py-2 text-slate-600">{s.phone}</td>
+                <td className="px-3 py-2">
+                  <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
+                    {ROLE_LABEL[s.role] ?? s.role}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-slate-600">
+                  {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
+                </td>
+                <td className="px-3 py-2 text-slate-600">
+                  {s.balance.toLocaleString("uz-UZ")} so'm
+                </td>
+                <td className="px-3 py-2">
+                  <Link
+                    to={`/superadmin/staff/${s.id}`}
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    Batafsil
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
+
+      {isModalOpen && (
+        <Modal title="Yangi xodim qo'shish" onClose={() => setIsModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>F.I.O</Label>
@@ -128,67 +214,12 @@ export function StaffPage() {
               </div>
             )}
             <ErrorMessage message={error} />
-            <SuccessMessage message={success} />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
             </Button>
           </form>
-        </Card>
-
-        <div className="lg:col-span-2">
-          <Card title="Xodimlar ro'yxati">
-            <div className="mb-4 flex flex-wrap gap-3">
-              <Input
-                placeholder="F.I.O yoki telefon raqam bo'yicha qidirish"
-                className="flex-1 min-w-[220px]"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <Select
-                className="w-48"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
-              >
-                <option value="">Barcha rollar</option>
-                <option value="superadmin">Bosh Admin</option>
-                <option value="admin">Administrator</option>
-                <option value="teacher">O'qituvchi</option>
-              </Select>
-            </div>
-            {isLoading ? (
-              <p className="text-sm text-slate-500">Yuklanmoqda...</p>
-            ) : (
-              <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
-                {filteredStaff.map((s) => (
-                  <tr key={s.id}>
-                    <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
-                    <td className="px-3 py-2 text-slate-600">{s.phone}</td>
-                    <td className="px-3 py-2">
-                      <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
-                        {ROLE_LABEL[s.role] ?? s.role}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-slate-600">
-                      {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600">
-                      {s.balance.toLocaleString("uz-UZ")} so'm
-                    </td>
-                    <td className="px-3 py-2">
-                      <Link
-                        to={`/superadmin/staff/${s.id}`}
-                        className="text-sm text-indigo-600 hover:underline"
-                      >
-                        Batafsil
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-          </Card>
-        </div>
-      </div>
+        </Modal>
+      )}
     </Layout>
   );
 }
