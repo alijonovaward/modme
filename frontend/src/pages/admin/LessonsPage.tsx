@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  createLesson,
+  deleteLesson,
   listAllLessons,
   listGroups,
   listStaffUsers,
@@ -16,6 +18,7 @@ import {
   Modal,
   Select,
   StatTile,
+  SuccessMessage,
   Table,
 } from "../../components/ui";
 import type { GroupListItem, LessonListItem, User } from "../../types";
@@ -42,11 +45,17 @@ export function LessonsPage() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newGroupId, setNewGroupId] = useState("");
+  const [newLessonDate, setNewLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = async (filters: Filters) => {
     setIsLoading(true);
@@ -91,6 +100,39 @@ export function LessonsPage() {
     load(EMPTY_FILTERS);
   };
 
+  const handleCreateLesson = async () => {
+    if (!newGroupId) return;
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await createLesson(Number(newGroupId), newLessonDate);
+      setSuccess("Dars qo'shildi");
+      setIsCreateModalOpen(false);
+      setNewGroupId("");
+      await load(appliedFilters);
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteLesson = async (lesson: LessonListItem) => {
+    if (!window.confirm(`${lesson.lesson_date} (${lesson.group_name}) darsini o'chirishni tasdiqlaysizmi?`)) {
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteLesson(lesson.id);
+      setSuccess("Dars o'chirildi");
+      await load(appliedFilters);
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
   const activeCount = Object.values(appliedFilters).filter(Boolean).length;
 
   const summary = useMemo(() => {
@@ -104,12 +146,25 @@ export function LessonsPage() {
       <Card
         title="Darslar"
         action={
-          <Button onClick={openModal}>
-            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setNewGroupId("");
+                setNewLessonDate(new Date().toISOString().slice(0, 10));
+                setIsCreateModalOpen(true);
+              }}
+            >
+              + Dars qo'shish
+            </Button>
+            <Button onClick={openModal}>
+              Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            </Button>
+          </div>
         }
       >
         <ErrorMessage message={error} />
+        <SuccessMessage message={success} />
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile label="Jami darslar" value={String(summary.total)} color="indigo" />
@@ -120,7 +175,7 @@ export function LessonsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz"]}>
+          <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
             {lessons.map((l) => (
               <tr key={l.id}>
                 <td className="px-3 py-2 text-slate-600">{l.lesson_date}</td>
@@ -135,6 +190,13 @@ export function LessonsPage() {
                 <td className="px-3 py-2 text-slate-800">{l.present_count}</td>
                 <td className="px-3 py-2 text-slate-600">{l.excused_count}</td>
                 <td className="px-3 py-2 text-rose-600">{l.unexcused_count}</td>
+                <td className="px-3 py-2">
+                  {l.status === "planned" && (
+                    <Button variant="danger" onClick={() => handleDeleteLesson(l)}>
+                      O'chirish
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
           </Table>
@@ -205,6 +267,37 @@ export function LessonsPage() {
                 Tozalash
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {isCreateModalOpen && (
+        <Modal title="Yangi dars qo'shish" onClose={() => setIsCreateModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={newGroupId}
+                onChange={setNewGroupId}
+                placeholder="Guruh qidirish..."
+                options={groups.map((g) => ({ value: String(g.id), label: g.name }))}
+              />
+            </div>
+            <div>
+              <Label>Sana</Label>
+              <Input
+                type="date"
+                value={newLessonDate}
+                onChange={(e) => setNewLessonDate(e.target.value)}
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!newGroupId || isSubmitting}
+              onClick={handleCreateLesson}
+            >
+              {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
+            </Button>
           </div>
         </Modal>
       )}

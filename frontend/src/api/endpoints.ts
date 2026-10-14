@@ -205,6 +205,10 @@ export async function createLesson(groupId: number, lessonDate: string): Promise
   return data;
 }
 
+export async function deleteLesson(lessonId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/lessons/${lessonId}`);
+}
+
 export async function getLessonAttendance(lessonId: number): Promise<Attendance[]> {
   const { data } = await apiClient.get<Attendance[]>(
     `/api/v1/lessons/${lessonId}/attendance`,

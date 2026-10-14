@@ -99,6 +99,29 @@ def create_lesson(
     return lesson
 
 
+@router.delete("/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lesson(
+    lesson_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Dars topilmadi")
+
+    has_attendance = (
+        db.query(Attendance).filter(Attendance.lesson_id == lesson_id).first() is not None
+    )
+    if lesson.status != LessonStatus.planned or has_attendance:
+        raise HTTPException(
+            status_code=400,
+            detail="Davomat olingan darsni o'chirib bo'lmaydi",
+        )
+
+    db.delete(lesson)
+    db.commit()
+
+
 @router.get("/{lesson_id}/attendance", response_model=list[AttendanceOut])
 def get_lesson_attendance(
     lesson_id: int,
