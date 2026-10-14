@@ -175,13 +175,14 @@ export function StatTile({
 }: {
   label: string;
   value: string;
-  color: "green" | "red" | "amber" | "indigo";
+  color: "green" | "red" | "amber" | "indigo" | "slate";
 }) {
   const styles = {
     green: "bg-emerald-50 text-emerald-700",
     red: "bg-rose-50 text-rose-700",
     amber: "bg-amber-50 text-amber-700",
     indigo: "bg-indigo-50 text-indigo-700",
+    slate: "bg-slate-50 text-slate-700",
   }[color];
   return (
     <div className={`rounded-xl border border-slate-200 p-5 ${styles}`}>

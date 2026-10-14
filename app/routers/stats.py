@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_roles
 from app.db.session import get_db
 from app.models.group import Group
+from app.models.group_student import GroupStudent
 from app.models.lesson import Lesson
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
@@ -77,9 +78,33 @@ def get_stats_overview(
         _sum(tt_base.filter(TeacherTransaction.type == TeacherTransactionType.payout))
     )
 
+    # Current balance is a snapshot, not a dated event, so date filters don't
+    # apply to it - only the student/group/teacher scope narrows it.
+    balance_query = db.query(func.sum(User.balance)).filter(User.role == UserRole.student)
+    if student_id is not None:
+        balance_query = balance_query.filter(User.id == student_id)
+    elif group_id is not None:
+        roster_ids = (
+            db.query(GroupStudent.student_id)
+            .filter(GroupStudent.group_id == group_id)
+            .distinct()
+        )
+        balance_query = balance_query.filter(User.id.in_(roster_ids))
+    elif teacher_id is not None:
+        roster_ids = (
+            db.query(GroupStudent.student_id)
+            .join(Group, Group.id == GroupStudent.group_id)
+            .filter(Group.teacher_id == teacher_id)
+            .distinct()
+        )
+        balance_query = balance_query.filter(User.id.in_(roster_ids))
+
+    total_student_balance = _sum(balance_query)
+
     return StatsOverviewOut(
         total_deposits=total_deposits,
         total_deductions=total_deductions,
         total_teacher_earnings=total_teacher_earnings,
         total_teacher_payouts=total_teacher_payouts,
+        total_student_balance=total_student_balance,
     )

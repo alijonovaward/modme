@@ -117,7 +117,7 @@ export function StatsPage() {
         {isLoading || !stats ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatTile
               label="Jami kiritilgan pul"
               value={formatSom(stats.total_deposits)}
@@ -137,6 +137,11 @@ export function StatsPage() {
               label="O'qituvchilarga berilgan pul"
               value={formatSom(stats.total_teacher_payouts)}
               color="amber"
+            />
+            <StatTile
+              label="O'quvchilar balansi (hali ishlatilmagan)"
+              value={formatSom(stats.total_student_balance)}
+              color="slate"
             />
           </div>
         )}
