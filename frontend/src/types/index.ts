@@ -31,6 +31,9 @@ export interface TransactionListItem {
   created_at: string;
   created_by_id: number | null;
   created_by_name: string | null;
+  group_id: number | null;
+  group_name: string | null;
+  lesson_date: string | null;
 }
 
 export type TeacherTransactionType = "lesson_earning" | "payout";
@@ -40,7 +43,10 @@ export interface TeacherTransaction {
   teacher_id: number;
   amount: number;
   type: TeacherTransactionType;
+  comment: string | null;
   created_at: string;
+  group_name: string | null;
+  lesson_date: string | null;
 }
 
 export interface Subject {

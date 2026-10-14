@@ -6,14 +6,31 @@ from app.models.user import User, UserRole
 from app.core.security import hash_password
 
 
+REQUIRED_COLUMNS = {
+    "transactions": {
+        "created_by_id": "INTEGER",
+        "lesson_id": "INTEGER",
+    },
+    "teacher_transactions": {
+        "comment": "VARCHAR",
+    },
+}
+
+
 def _run_migrations() -> None:
     inspector = inspect(engine)
-    if "transactions" not in inspector.get_table_names():
-        return
-    columns = {col["name"] for col in inspector.get_columns("transactions")}
-    if "created_by_id" not in columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE transactions ADD COLUMN created_by_id INTEGER"))
+    existing_tables = set(inspector.get_table_names())
+
+    for table_name, required_columns in REQUIRED_COLUMNS.items():
+        if table_name not in existing_tables:
+            continue
+        existing_columns = {col["name"] for col in inspector.get_columns(table_name)}
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                    )
 
 
 def init_db() -> None:

@@ -1,0 +1,79 @@
+import { useEffect, useState } from "react";
+import { listGroups, listTransactions } from "../../api/endpoints";
+import { Badge, Card, ErrorMessage, extractErrorMessage, Select, Table } from "../../components/ui";
+import type { GroupListItem, TransactionListItem } from "../../types";
+import { Layout } from "../../components/Layout";
+
+export function TeacherTransactionsPage() {
+  const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [groupFilter, setGroupFilter] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const load = async (groupId?: string) => {
+    setIsLoading(true);
+    try {
+      const data = await listTransactions(groupId ? { group_id: Number(groupId) } : undefined);
+      setTransactions(data);
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    listGroups().then(setGroups).catch(() => undefined);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Layout>
+      <Card
+        title="O'quvchilardan yechilgan pullar"
+        action={
+          <Select
+            className="w-56"
+            value={groupFilter}
+            onChange={(e) => {
+              setGroupFilter(e.target.value);
+              load(e.target.value || undefined);
+            }}
+          >
+            <option value="">Barcha guruhlar</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </Select>
+        }
+      >
+        <ErrorMessage message={error} />
+        <p className="mb-4 text-sm text-slate-500">
+          Davomat olganingizda guruh o'quvchilaridan yechilgan pullar tarixi.
+        </p>
+        {isLoading ? (
+          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+        ) : (
+          <Table headers={["Sana", "O'quvchi", "Guruh", "Summa"]}>
+            {transactions.map((t) => (
+              <tr key={t.id}>
+                <td className="px-3 py-2 text-slate-600">
+                  {new Date(t.created_at).toLocaleString("uz-UZ")}
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-800">{t.student_name}</td>
+                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2">
+                  <Badge color="red">{t.amount.toLocaleString("uz-UZ")} so'm</Badge>
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
+    </Layout>
+  );
+}

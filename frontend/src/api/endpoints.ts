@@ -104,6 +104,7 @@ export async function getStudentAttendanceHistory(
 export async function listTransactions(params?: {
   student_id?: number;
   created_by_id?: number;
+  group_id?: number;
   type?: "deposit" | "deduction";
   date_from?: string;
   date_to?: string;
@@ -210,5 +211,17 @@ export async function getTeacherFinance(params?: {
   const { data } = await apiClient.get<TeacherTransaction[]>("/api/v1/teachers/finance", {
     params,
   });
+  return data;
+}
+
+export async function payoutTeacher(
+  teacherId: number,
+  amount: number,
+  comment?: string,
+): Promise<TeacherTransaction> {
+  const { data } = await apiClient.post<TeacherTransaction>(
+    `/api/v1/teachers/${teacherId}/payout`,
+    { amount, comment },
+  );
   return data;
 }

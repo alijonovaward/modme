@@ -60,20 +60,22 @@ export function FinancePage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <Table headers={["Sana", "Turi", "Summa"]}>
+          <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
             {transactions.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
                 <td className="px-3 py-2">
-                  <Badge color={t.type === "lesson_earning" ? "green" : "amber"}>
-                    {t.type === "lesson_earning" ? "Dars daromadi" : "To'lov"}
+                  <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
+                    {t.type === "lesson_earning" ? "Dars daromadi" : "Admin yechgan"}
                   </Badge>
                 </td>
+                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
                 <td className="px-3 py-2 font-medium text-slate-800">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
+                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>

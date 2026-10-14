@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { createStaffUser, listStaffUsers } from "../../api/endpoints";
+import { createStaffUser, listStaffUsers, payoutTeacher } from "../../api/endpoints";
 import { Button, Card, ErrorMessage, extractErrorMessage, Input, Label, Select, SuccessMessage, Table, Badge } from "../../components/ui";
 import type { User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -22,6 +22,7 @@ export function StaffPage() {
   const [role, setRole] = useState<"admin" | "teacher">("teacher");
   const [percentage, setPercentage] = useState("40");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [payoutAmounts, setPayoutAmounts] = useState<Record<number, string>>({});
 
   const loadStaff = async () => {
     setIsLoading(true);
@@ -61,6 +62,22 @@ export function StaffPage() {
       setError(extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePayout = async (teacherId: number) => {
+    const amountStr = payoutAmounts[teacherId];
+    const amount = Number(amountStr);
+    if (!amount || amount <= 0) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await payoutTeacher(teacherId, amount, "Admin tomonidan pul berildi");
+      setSuccess("Pul o'qituvchi balansidan yechildi");
+      setPayoutAmounts((prev) => ({ ...prev, [teacherId]: "" }));
+      await loadStaff();
+    } catch (err) {
+      setError(extractErrorMessage(err));
     }
   };
 
@@ -124,7 +141,7 @@ export function StaffPage() {
             {isLoading ? (
               <p className="text-sm text-slate-500">Yuklanmoqda...</p>
             ) : (
-              <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans"]}>
+              <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", "Pul berish"]}>
                 {staff.map((s) => (
                   <tr key={s.id}>
                     <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
@@ -139,6 +156,24 @@ export function StaffPage() {
                     </td>
                     <td className="px-3 py-2 text-slate-600">
                       {s.balance.toLocaleString("uz-UZ")} so'm
+                    </td>
+                    <td className="px-3 py-2">
+                      {s.role === "teacher" && (
+                        <div className="flex gap-1">
+                          <Input
+                            type="number"
+                            placeholder="Summa"
+                            className="w-28"
+                            value={payoutAmounts[s.id] ?? ""}
+                            onChange={(e) =>
+                              setPayoutAmounts((prev) => ({ ...prev, [s.id]: e.target.value }))
+                            }
+                          />
+                          <Button variant="secondary" onClick={() => handlePayout(s.id)}>
+                            Berish
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
