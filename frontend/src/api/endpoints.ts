@@ -119,6 +119,9 @@ export async function listTransactions(params?: {
 export async function getStatsOverview(params?: {
   date_from?: string;
   date_to?: string;
+  group_id?: number;
+  teacher_id?: number;
+  student_id?: number;
 }): Promise<StatsOverview> {
   const { data } = await apiClient.get<StatsOverview>("/api/v1/stats/overview", { params });
   return data;

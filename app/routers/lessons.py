@@ -133,6 +133,7 @@ def mark_attendance(
                 TeacherTransaction(
                     teacher_id=current_user.id,
                     lesson_id=lesson.id,
+                    student_id=item.student_id,
                     amount=teacher_share,
                     type=TeacherTransactionType.lesson_earning,
                 )

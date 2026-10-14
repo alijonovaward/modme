@@ -13,6 +13,7 @@ REQUIRED_COLUMNS = {
     },
     "teacher_transactions": {
         "comment": "VARCHAR",
+        "student_id": "INTEGER",
     },
 }
 
