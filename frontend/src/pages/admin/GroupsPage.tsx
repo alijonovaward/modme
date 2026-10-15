@@ -37,6 +37,8 @@ export function GroupsPage() {
   const [lessonPrice, setLessonPrice] = useState("");
 
   const [search, setSearch] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [teacherFilter, setTeacherFilter] = useState("");
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -62,14 +64,17 @@ export function GroupsPage() {
 
   const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return groups;
-    return groups.filter(
-      (g) =>
+    return groups.filter((g) => {
+      const matchesSearch =
+        !term ||
         g.name.toLowerCase().includes(term) ||
         g.subject_name.toLowerCase().includes(term) ||
-        g.teacher_name.toLowerCase().includes(term),
-    );
-  }, [groups, search]);
+        g.teacher_name.toLowerCase().includes(term);
+      const matchesSubject = !subjectFilter || String(g.subject_id) === subjectFilter;
+      const matchesTeacher = !teacherFilter || String(g.teacher_id) === teacherFilter;
+      return matchesSearch && matchesSubject && matchesTeacher;
+    });
+  }, [groups, search, subjectFilter, teacherFilter]);
 
   const resetForm = () => {
     setName("");
@@ -119,12 +124,32 @@ export function GroupsPage() {
           </Button>
         }
       >
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-3">
           <Input
             placeholder="Guruh, fan yoki o'qituvchi nomi bo'yicha qidirish"
-            className="max-w-md"
+            className="max-w-md flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+          />
+          <Combobox
+            className="w-56"
+            value={subjectFilter}
+            onChange={setSubjectFilter}
+            placeholder="Barcha fanlar"
+            options={[
+              { value: "", label: "Barcha fanlar" },
+              ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+            ]}
+          />
+          <Combobox
+            className="w-56"
+            value={teacherFilter}
+            onChange={setTeacherFilter}
+            placeholder="Barcha o'qituvchilar"
+            options={[
+              { value: "", label: "Barcha o'qituvchilar" },
+              ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+            ]}
           />
         </div>
         {isLoading ? (
