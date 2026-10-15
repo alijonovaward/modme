@@ -7,3 +7,4 @@ class StatsOverviewOut(BaseModel):
     total_teacher_earnings: float
     total_teacher_payouts: float
     total_student_balance: float
+    total_center_revenue: float

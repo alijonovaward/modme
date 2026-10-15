@@ -175,17 +175,18 @@ export function StatTile({
 }: {
   label: string;
   value: string;
-  color: "green" | "red" | "amber" | "indigo" | "slate";
+  color: "green" | "red" | "amber" | "indigo" | "slate" | "violet";
 }) {
   const styles = {
-    green: "bg-emerald-50 text-emerald-700",
-    red: "bg-rose-50 text-rose-700",
-    amber: "bg-amber-50 text-amber-700",
-    indigo: "bg-indigo-50 text-indigo-700",
-    slate: "bg-slate-50 text-slate-700",
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    red: "bg-rose-50 text-rose-700 border-rose-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    slate: "bg-slate-50 text-slate-700 border-slate-200",
+    violet: "bg-violet-50 text-violet-700 border-violet-200",
   }[color];
   return (
-    <div className={`rounded-xl border border-slate-200 p-5 ${styles}`}>
+    <div className={`rounded-xl border p-5 ${styles}`}>
       <p className="text-sm font-medium opacity-80">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>

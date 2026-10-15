@@ -117,32 +117,41 @@ export function StatsPage() {
         {isLoading || !stats ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatTile
-              label="Jami kiritilgan pul"
-              value={formatSom(stats.total_deposits)}
-              color="green"
-            />
-            <StatTile
-              label="Darslar uchun yechilgan pul"
-              value={formatSom(stats.total_deductions)}
-              color="red"
-            />
-            <StatTile
-              label="O'qituvchilarga tushum"
-              value={formatSom(stats.total_teacher_earnings)}
-              color="indigo"
-            />
-            <StatTile
-              label="O'qituvchilarga berilgan pul"
-              value={formatSom(stats.total_teacher_payouts)}
-              color="amber"
-            />
-            <StatTile
-              label="O'quvchilar balansi (hali ishlatilmagan)"
-              value={formatSom(stats.total_student_balance)}
-              color="slate"
-            />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <StatTile
+                label="Jami kiritilgan pul"
+                value={formatSom(stats.total_deposits)}
+                color="green"
+              />
+              <StatTile
+                label="Darslar uchun yechilgan pul"
+                value={formatSom(stats.total_deductions)}
+                color="red"
+              />
+              <StatTile
+                label="Markazga qolgan pul"
+                value={formatSom(stats.total_center_revenue)}
+                color="violet"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <StatTile
+                label="O'qituvchilarga tushum"
+                value={formatSom(stats.total_teacher_earnings)}
+                color="indigo"
+              />
+              <StatTile
+                label="O'qituvchilarga berilgan pul"
+                value={formatSom(stats.total_teacher_payouts)}
+                color="amber"
+              />
+              <StatTile
+                label="O'quvchilar balansi (hali ishlatilmagan)"
+                value={formatSom(stats.total_student_balance)}
+                color="slate"
+              />
+            </div>
           </div>
         )}
       </Card>

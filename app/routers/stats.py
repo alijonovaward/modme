@@ -101,10 +101,13 @@ def get_stats_overview(
 
     total_student_balance = _sum(balance_query)
 
+    total_center_revenue = total_deductions - total_teacher_earnings
+
     return StatsOverviewOut(
         total_deposits=total_deposits,
         total_deductions=total_deductions,
         total_teacher_earnings=total_teacher_earnings,
         total_teacher_payouts=total_teacher_payouts,
         total_student_balance=total_student_balance,
+        total_center_revenue=total_center_revenue,
     )

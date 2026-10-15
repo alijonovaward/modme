@@ -130,6 +130,7 @@ export interface StatsOverview {
   total_teacher_earnings: number;
   total_teacher_payouts: number;
   total_student_balance: number;
+  total_center_revenue: number;
 }
 
 export interface StudentAttendanceHistoryItem {
