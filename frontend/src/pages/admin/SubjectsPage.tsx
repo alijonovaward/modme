@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { createSubject, listSubjects } from "../../api/endpoints";
+import { createSubject, deleteSubject, listSubjects, updateSubject } from "../../api/endpoints";
 import {
   Button,
   Card,
@@ -20,6 +20,7 @@ export function SubjectsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Subject | null>(null);
   const [name, setName] = useState("");
   const [search, setSearch] = useState("");
 
@@ -44,12 +45,30 @@ export function SubjectsPage() {
     return subjects.filter((s) => s.name.toLowerCase().includes(term));
   }, [subjects, search]);
 
+  const openCreateModal = () => {
+    setEditTarget(null);
+    setName("");
+    setError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (subject: Subject) => {
+    setEditTarget(subject);
+    setName(subject.name);
+    setError(null);
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
-      await createSubject(name);
+      if (editTarget) {
+        await updateSubject(editTarget.id, name);
+      } else {
+        await createSubject(name);
+      }
       setName("");
       setIsModalOpen(false);
       await loadSubjects();
@@ -60,22 +79,24 @@ export function SubjectsPage() {
     }
   };
 
+  const handleDelete = async (subject: Subject) => {
+    if (!window.confirm(`"${subject.name}" fanini o'chirishni tasdiqlaysizmi?`)) return;
+    setError(null);
+    try {
+      await deleteSubject(subject.id);
+      await loadSubjects();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
   return (
     <Layout>
       <Card
         title="Fanlar ro'yxati"
-        action={
-          <Button
-            onClick={() => {
-              setName("");
-              setError(null);
-              setIsModalOpen(true);
-            }}
-          >
-            + Yangi fan
-          </Button>
-        }
+        action={<Button onClick={openCreateModal}>+ Yangi fan</Button>}
       >
+        <ErrorMessage message={error} />
         <div className="mb-4">
           <Input
             placeholder="Fan nomi bo'yicha qidirish"
@@ -87,10 +108,20 @@ export function SubjectsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
-          <Table headers={["Fan nomi"]}>
+          <Table headers={["Fan nomi", ""]}>
             {filteredSubjects.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.name}</td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-1">
+                    <Button variant="secondary" onClick={() => openEditModal(s)}>
+                      Tahrirlash
+                    </Button>
+                    <Button variant="danger" onClick={() => handleDelete(s)}>
+                      O'chirish
+                    </Button>
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>
@@ -98,7 +129,10 @@ export function SubjectsPage() {
       </Card>
 
       {isModalOpen && (
-        <Modal title="Yangi fan qo'shish" onClose={() => setIsModalOpen(false)}>
+        <Modal
+          title={editTarget ? "Fan nomini tahrirlash" : "Yangi fan qo'shish"}
+          onClose={() => setIsModalOpen(false)}
+        >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Fan nomi</Label>
@@ -106,7 +140,7 @@ export function SubjectsPage() {
             </div>
             <ErrorMessage message={error} />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Saqlanmoqda..." : "Qo'shish"}
+              {isSubmitting ? "Saqlanmoqda..." : editTarget ? "Saqlash" : "Qo'shish"}
             </Button>
           </form>
         </Modal>

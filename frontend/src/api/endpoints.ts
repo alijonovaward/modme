@@ -141,6 +141,15 @@ export async function createSubject(name: string): Promise<Subject> {
   return data;
 }
 
+export async function updateSubject(subjectId: number, name: string): Promise<Subject> {
+  const { data } = await apiClient.put<Subject>(`/api/v1/subjects/${subjectId}`, { name });
+  return data;
+}
+
+export async function deleteSubject(subjectId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/subjects/${subjectId}`);
+}
+
 export async function listGroups(teacherId?: number): Promise<GroupListItem[]> {
   const { data } = await apiClient.get<GroupListItem[]>("/api/v1/groups", {
     params: teacherId ? { teacher_id: teacherId } : undefined,
