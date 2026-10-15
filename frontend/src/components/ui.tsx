@@ -145,8 +145,11 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-slate-500">
-            {headers.map((h) => (
-              <th key={h} className="px-3 py-2 font-medium">
+            {headers.map((h, i) => (
+              <th
+                key={i}
+                className={`px-3 py-2 font-medium ${h === "" ? "w-px whitespace-nowrap" : ""}`}
+              >
                 {h}
               </th>
             ))}
