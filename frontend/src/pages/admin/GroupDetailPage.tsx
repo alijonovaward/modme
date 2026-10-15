@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
-  createLesson,
   getGroupDetail,
-  listGroupLessons,
   listStudents,
   updateGroupStudentStatus,
 } from "../../api/endpoints";
@@ -21,7 +19,7 @@ import {
   SuccessMessage,
   Table,
 } from "../../components/ui";
-import type { GroupDetail, GroupRosterItem, GroupStudentStatus, Lesson, User } from "../../types";
+import type { GroupDetail, GroupRosterItem, GroupStudentStatus, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
 const ROSTER_STATUS_COLOR = {
@@ -42,10 +40,8 @@ export function GroupDetailPage() {
   const id = Number(groupId);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [allStudents, setAllStudents] = useState<User[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [lessonDate, setLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,18 +49,15 @@ export function GroupDetailPage() {
   const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
   const [dropTarget, setDropTarget] = useState<GroupRosterItem | null>(null);
   const [dropReason, setDropReason] = useState("");
-  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
 
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [groupData, lessonsData, studentsData] = await Promise.all([
+      const [groupData, studentsData] = await Promise.all([
         getGroupDetail(id),
-        listGroupLessons(id),
         listStudents(),
       ]);
       setGroup(groupData);
-      setLessons(lessonsData);
       setAllStudents(studentsData);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -118,18 +111,6 @@ export function GroupDetailPage() {
     }
   };
 
-  const handleCreateLesson = async () => {
-    setError(null);
-    setSuccess(null);
-    try {
-      await createLesson(id, lessonDate);
-      setSuccess("Dars yaratildi");
-      await loadAll();
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    }
-  };
-
   const filteredStudents = useMemo(() => {
     if (!group) return [];
     if (!statusFilter) return group.students;
@@ -151,21 +132,11 @@ export function GroupDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">{group.name}</h1>
-          <p className="text-sm text-slate-500">
-            {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setLessonDate(new Date().toISOString().slice(0, 10));
-            setIsLessonModalOpen(true);
-          }}
-        >
-          Darslar ({lessons.length})
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-slate-900">{group.name}</h1>
+        <p className="text-sm text-slate-500">
+          {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
+        </p>
       </div>
 
       <ErrorMessage message={error} />
@@ -257,30 +228,6 @@ export function GroupDetailPage() {
             <Button className="w-full" variant="danger" disabled={!dropReason.trim()} onClick={handleConfirmDrop}>
               Chiqarish
             </Button>
-          </div>
-        </Modal>
-      )}
-
-      {isLessonModalOpen && (
-        <Modal title="Darslar" onClose={() => setIsLessonModalOpen(false)}>
-          <div className="space-y-4">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Label>Yangi dars sanasi</Label>
-                <Input type="date" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} />
-              </div>
-              <Button onClick={handleCreateLesson}>Qo'shish</Button>
-            </div>
-            <Table headers={["Sana", "Holat"]}>
-              {lessons.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-3 py-2 text-slate-800">{l.lesson_date}</td>
-                  <td className="px-3 py-2">
-                    <Badge color={l.status === "completed" ? "green" : "slate"}>{l.status}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </Table>
           </div>
         </Modal>
       )}
