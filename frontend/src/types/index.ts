@@ -49,6 +49,23 @@ export interface TeacherTransaction {
   lesson_date: string | null;
 }
 
+export interface TeacherTransactionGlobalListItem {
+  id: number;
+  teacher_id: number;
+  teacher_name: string;
+  student_id: number | null;
+  student_name: string | null;
+  amount: number;
+  type: TeacherTransactionType;
+  comment: string | null;
+  created_at: string;
+  group_id: number | null;
+  group_name: string | null;
+  lesson_date: string | null;
+  created_by_id: number | null;
+  created_by_name: string | null;
+}
+
 export interface Subject {
   id: number;
   name: string;

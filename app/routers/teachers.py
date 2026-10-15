@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
 from app.db.session import get_db
@@ -10,7 +10,11 @@ from app.models.group import Group
 from app.models.lesson import Lesson
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.user import User, UserRole
-from app.schemas.transaction import TeacherPayoutCreate, TeacherTransactionListItemOut
+from app.schemas.transaction import (
+    TeacherPayoutCreate,
+    TeacherTransactionGlobalListItemOut,
+    TeacherTransactionListItemOut,
+)
 
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
 
@@ -79,6 +83,69 @@ def get_teacher_finance_by_id(
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
 
 
+@router.get("/transactions", response_model=list[TeacherTransactionGlobalListItemOut])
+def list_all_teacher_transactions(
+    teacher_id: Optional[int] = Query(default=None),
+    created_by_id: Optional[int] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TeacherTransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    TeacherUser = aliased(User)
+    StudentUser = aliased(User)
+    ActorUser = aliased(User)
+
+    query = (
+        db.query(TeacherTransaction, TeacherUser, StudentUser, ActorUser, Lesson, Group)
+        .join(TeacherUser, TeacherUser.id == TeacherTransaction.teacher_id)
+        .outerjoin(StudentUser, StudentUser.id == TeacherTransaction.student_id)
+        .outerjoin(ActorUser, ActorUser.id == TeacherTransaction.created_by_id)
+        .outerjoin(Lesson, Lesson.id == TeacherTransaction.lesson_id)
+        .outerjoin(Group, Group.id == Lesson.group_id)
+    )
+
+    if current_user.role == UserRole.admin:
+        query = query.filter(TeacherTransaction.created_by_id == current_user.id)
+    elif created_by_id is not None:
+        query = query.filter(TeacherTransaction.created_by_id == created_by_id)
+
+    if teacher_id is not None:
+        query = query.filter(TeacherTransaction.teacher_id == teacher_id)
+    if group_id is not None:
+        query = query.filter(Group.id == group_id)
+    if type is not None:
+        query = query.filter(TeacherTransaction.type == type)
+    if date_from is not None:
+        query = query.filter(TeacherTransaction.created_at >= date_from)
+    if date_to is not None:
+        query = query.filter(TeacherTransaction.created_at <= date_to)
+
+    rows = query.order_by(TeacherTransaction.created_at.desc()).all()
+
+    return [
+        TeacherTransactionGlobalListItemOut(
+            id=tt.id,
+            teacher_id=tt.teacher_id,
+            teacher_name=teacher.full_name,
+            student_id=tt.student_id,
+            student_name=student.full_name if student else None,
+            amount=tt.amount,
+            type=tt.type,
+            comment=tt.comment,
+            created_at=tt.created_at,
+            group_id=group.id if group else None,
+            group_name=group.name if group else None,
+            lesson_date=lesson.lesson_date if lesson else None,
+            created_by_id=tt.created_by_id,
+            created_by_name=actor.full_name if actor else None,
+        )
+        for tt, teacher, student, actor, lesson, group in rows
+    ]
+
+
 @router.post(
     "/{teacher_id}/payout",
     response_model=TeacherTransactionListItemOut,
@@ -105,6 +172,7 @@ def create_teacher_payout(
         amount=-payload.amount,
         type=TeacherTransactionType.payout,
         comment=payload.comment,
+        created_by_id=current_user.id,
     )
     db.add(payout)
     db.commit()

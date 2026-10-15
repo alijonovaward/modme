@@ -12,6 +12,7 @@ import type {
   StudentAttendanceHistoryItem,
   Subject,
   TeacherTransaction,
+  TeacherTransactionGlobalListItem,
   Transaction,
   TransactionListItem,
   User,
@@ -255,6 +256,21 @@ export async function getTeacherFinanceById(
 ): Promise<TeacherTransaction[]> {
   const { data } = await apiClient.get<TeacherTransaction[]>(
     `/api/v1/teachers/${teacherId}/finance`,
+    { params },
+  );
+  return data;
+}
+
+export async function listAllTeacherTransactions(params?: {
+  teacher_id?: number;
+  created_by_id?: number;
+  group_id?: number;
+  type?: "lesson_earning" | "payout";
+  date_from?: string;
+  date_to?: string;
+}): Promise<TeacherTransactionGlobalListItem[]> {
+  const { data } = await apiClient.get<TeacherTransactionGlobalListItem[]>(
+    "/api/v1/teachers/transactions",
     { params },
   );
   return data;

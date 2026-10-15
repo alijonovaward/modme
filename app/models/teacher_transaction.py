@@ -18,6 +18,7 @@ class TeacherTransaction(Base):
     teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=True)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     amount = Column(Float, nullable=False)
     type = Column(Enum(TeacherTransactionType), nullable=False)
     comment = Column(String, nullable=True)

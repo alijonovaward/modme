@@ -14,6 +14,7 @@ REQUIRED_COLUMNS = {
     "teacher_transactions": {
         "comment": "VARCHAR",
         "student_id": "INTEGER",
+        "created_by_id": "INTEGER",
     },
     "group_students": {
         "status_reason": "VARCHAR",

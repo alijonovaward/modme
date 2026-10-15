@@ -52,3 +52,20 @@ class TeacherTransactionListItemOut(BaseModel):
     created_at: datetime
     group_name: Optional[str] = None
     lesson_date: Optional[date] = None
+
+
+class TeacherTransactionGlobalListItemOut(BaseModel):
+    id: int
+    teacher_id: int
+    teacher_name: str
+    student_id: Optional[int] = None
+    student_name: Optional[str] = None
+    amount: float
+    type: TeacherTransactionType
+    comment: Optional[str] = None
+    created_at: datetime
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
+    lesson_date: Optional[date] = None
+    created_by_id: Optional[int] = None
+    created_by_name: Optional[str] = None
