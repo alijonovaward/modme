@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { createStudent, listStudents } from "../../api/endpoints";
 import {
+  Badge,
   Button,
   Card,
   ErrorMessage,
@@ -28,6 +29,7 @@ export function StudentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [debtorsOnly, setDebtorsOnly] = useState(false);
 
   const loadStudents = async () => {
     setIsLoading(true);
@@ -44,14 +46,19 @@ export function StudentsPage() {
     loadStudents();
   }, []);
 
+  const debtorCount = useMemo(() => students.filter((s) => s.balance < 0).length, [students]);
+
   const filteredStudents = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return students;
-    return students.filter(
-      (s) =>
-        s.full_name.toLowerCase().includes(term) || s.phone.toLowerCase().includes(term),
-    );
-  }, [students, search]);
+    return students.filter((s) => {
+      const matchesSearch =
+        !term ||
+        s.full_name.toLowerCase().includes(term) ||
+        s.phone.toLowerCase().includes(term);
+      const matchesDebtor = !debtorsOnly || s.balance < 0;
+      return matchesSearch && matchesDebtor;
+    });
+  }, [students, search, debtorsOnly]);
 
   const resetForm = () => {
     setFullName("");
@@ -94,13 +101,24 @@ export function StudentsPage() {
         }
       >
         <SuccessMessage message={success} />
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
             placeholder="F.I.O yoki telefon raqam bo'yicha qidirish"
-            className="max-w-md"
+            className="max-w-md flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button
+            onClick={() => setDebtorsOnly((prev) => !prev)}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium ${
+              debtorsOnly ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Qarzdorlar
+            {debtorCount > 0 && (
+              <Badge color={debtorsOnly ? "slate" : "red"}>{debtorCount}</Badge>
+            )}
+          </button>
         </div>
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
@@ -110,7 +128,7 @@ export function StudentsPage() {
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
                 <td className="px-3 py-2 text-slate-600">{s.phone}</td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className={`px-3 py-2 ${s.balance < 0 ? "font-medium text-rose-600" : "text-slate-600"}`}>
                   {s.balance.toLocaleString("uz-UZ")} so'm
                 </td>
                 <td className="px-3 py-2">
