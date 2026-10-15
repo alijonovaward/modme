@@ -226,7 +226,10 @@ def mark_attendance(
                     student_id=student.id,
                     amount=-group.lesson_price,
                     type=TransactionType.deduction,
-                    comment=f"Dars uchun yechim (lesson_id={lesson.id})",
+                    comment=(
+                        f"Dars uchun yechim ({group.name}, {lesson.lesson_date}, "
+                        f"o'qituvchi: {current_user.full_name})"
+                    ),
                     created_by_id=current_user.id,
                     lesson_id=lesson.id,
                 )
