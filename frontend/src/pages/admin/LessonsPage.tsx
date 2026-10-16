@@ -26,6 +26,7 @@ import {
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { toLocalISODate } from "../../utils/date";
 
 interface Filters {
   dateFrom: string;
@@ -57,7 +58,7 @@ export function LessonsPage() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newGroupId, setNewGroupId] = useState("");
-  const [newLessonDate, setNewLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newLessonDate, setNewLessonDate] = useState(() => toLocalISODate(new Date()));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [detailLesson, setDetailLesson] = useState<LessonListItem | null>(null);
@@ -172,7 +173,7 @@ export function LessonsPage() {
               variant="secondary"
               onClick={() => {
                 setNewGroupId("");
-                setNewLessonDate(new Date().toISOString().slice(0, 10));
+                setNewLessonDate(toLocalISODate(new Date()));
                 setIsCreateModalOpen(true);
               }}
             >

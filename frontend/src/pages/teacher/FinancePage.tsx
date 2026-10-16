@@ -19,6 +19,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
+import { toLocalISODate } from "../../utils/date";
 
 interface Filters {
   dateFrom: string;
@@ -27,15 +28,11 @@ interface Filters {
   groupId: string;
 }
 
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 function currentMonthRange(): { dateFrom: string; dateTo: string } {
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { dateFrom: toISODate(firstDay), dateTo: toISODate(lastDay) };
+  return { dateFrom: toLocalISODate(firstDay), dateTo: toLocalISODate(lastDay) };
 }
 
 const DEFAULT_FILTERS: Filters = {
