@@ -19,6 +19,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, LessonListItem } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 
 interface Filters {
   dateFrom: string;
@@ -27,9 +28,8 @@ interface Filters {
   status: string;
 }
 
-const EMPTY_FILTERS: Filters = {
-  dateFrom: "",
-  dateTo: "",
+const DEFAULT_FILTERS: Filters = {
+  ...currentMonthRange(),
   groupId: "",
   status: "",
 };
@@ -41,8 +41,8 @@ export function AttendanceHubPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const load = async (filters: Filters) => {
     setIsLoading(true);
@@ -79,13 +79,13 @@ export function AttendanceHubPage() {
   };
 
   const clearFilters = () => {
-    setDraft(EMPTY_FILTERS);
-    setAppliedFilters(EMPTY_FILTERS);
+    setDraft(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(EMPTY_FILTERS);
+    load(DEFAULT_FILTERS);
   };
 
-  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
+  const activeCount = [appliedFilters.groupId, appliedFilters.status].filter(Boolean).length;
 
   const summary = useMemo(() => {
     const completed = lessons.filter((l) => l.status === "completed").length;
@@ -106,6 +106,11 @@ export function AttendanceHubPage() {
         }
       >
         <ErrorMessage message={error} />
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
+          </p>
+        )}
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile label="Jami darslar" value={String(summary.total)} color="indigo" />

@@ -18,10 +18,18 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, StatsOverview, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 
 function formatSom(amount: number): string {
   return `${amount.toLocaleString("uz-UZ")} so'm`;
 }
+
+const DEFAULT_FILTERS = {
+  ...currentMonthRange(),
+  groupId: "",
+  teacherId: "",
+  studentId: "",
+};
 
 export function StatsPage() {
   const [stats, setStats] = useState<StatsOverview | null>(null);
@@ -33,19 +41,13 @@ export function StatsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(DEFAULT_FILTERS.dateFrom);
+  const [dateTo, setDateTo] = useState(DEFAULT_FILTERS.dateTo);
   const [groupId, setGroupId] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [studentId, setStudentId] = useState("");
 
-  const [appliedFilters, setAppliedFilters] = useState({
-    dateFrom: "",
-    dateTo: "",
-    groupId: "",
-    teacherId: "",
-    studentId: "",
-  });
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
 
   const load = async (filters: typeof appliedFilters) => {
     setIsLoading(true);
@@ -90,18 +92,19 @@ export function StatsPage() {
   };
 
   const clearFilters = () => {
-    const next = { dateFrom: "", dateTo: "", groupId: "", teacherId: "", studentId: "" };
-    setDateFrom("");
-    setDateTo("");
+    setDateFrom(DEFAULT_FILTERS.dateFrom);
+    setDateTo(DEFAULT_FILTERS.dateTo);
     setGroupId("");
     setTeacherId("");
     setStudentId("");
-    setAppliedFilters(next);
+    setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(next);
+    load(DEFAULT_FILTERS);
   };
 
-  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
+  const activeCount = [appliedFilters.groupId, appliedFilters.teacherId, appliedFilters.studentId].filter(
+    Boolean,
+  ).length;
 
   return (
     <Layout>
@@ -114,6 +117,11 @@ export function StatsPage() {
         }
       >
         <ErrorMessage message={error} />
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
+          </p>
+        )}
         {isLoading || !stats ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (

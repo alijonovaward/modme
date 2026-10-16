@@ -30,6 +30,7 @@ import type {
   User,
 } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 
 interface StudentFilters {
   dateFrom: string;
@@ -49,18 +50,16 @@ interface TeacherFilters {
   adminId: string;
 }
 
-const EMPTY_STUDENT_FILTERS: StudentFilters = {
-  dateFrom: "",
-  dateTo: "",
+const DEFAULT_STUDENT_FILTERS: StudentFilters = {
+  ...currentMonthRange(),
   type: "",
   studentId: "",
   groupId: "",
   adminId: "",
 };
 
-const EMPTY_TEACHER_FILTERS: TeacherFilters = {
-  dateFrom: "",
-  dateTo: "",
+const DEFAULT_TEACHER_FILTERS: TeacherFilters = {
+  ...currentMonthRange(),
   type: "",
   teacherId: "",
   groupId: "",
@@ -85,10 +84,10 @@ export function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [studentDraft, setStudentDraft] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
-  const [studentFilters, setStudentFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
-  const [teacherDraft, setTeacherDraft] = useState<TeacherFilters>(EMPTY_TEACHER_FILTERS);
-  const [teacherFilters, setTeacherFilters] = useState<TeacherFilters>(EMPTY_TEACHER_FILTERS);
+  const [studentDraft, setStudentDraft] = useState<StudentFilters>(DEFAULT_STUDENT_FILTERS);
+  const [studentFilters, setStudentFilters] = useState<StudentFilters>(DEFAULT_STUDENT_FILTERS);
+  const [teacherDraft, setTeacherDraft] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
+  const [teacherFilters, setTeacherFilters] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
 
   const loadStudentTransactions = async (filters: StudentFilters) => {
     setIsLoading(true);
@@ -170,19 +169,24 @@ export function TransactionsPage() {
   const clearFilters = () => {
     setIsModalOpen(false);
     if (tab === "student") {
-      setStudentDraft(EMPTY_STUDENT_FILTERS);
-      setStudentFilters(EMPTY_STUDENT_FILTERS);
-      loadStudentTransactions(EMPTY_STUDENT_FILTERS);
+      setStudentDraft(DEFAULT_STUDENT_FILTERS);
+      setStudentFilters(DEFAULT_STUDENT_FILTERS);
+      loadStudentTransactions(DEFAULT_STUDENT_FILTERS);
     } else {
-      setTeacherDraft(EMPTY_TEACHER_FILTERS);
-      setTeacherFilters(EMPTY_TEACHER_FILTERS);
-      loadTeacherTransactions(EMPTY_TEACHER_FILTERS);
+      setTeacherDraft(DEFAULT_TEACHER_FILTERS);
+      setTeacherFilters(DEFAULT_TEACHER_FILTERS);
+      loadTeacherTransactions(DEFAULT_TEACHER_FILTERS);
     }
   };
 
-  const activeCount = Object.values(tab === "student" ? studentFilters : teacherFilters).filter(
-    Boolean,
-  ).length;
+  const activeCount =
+    tab === "student"
+      ? [studentFilters.type, studentFilters.studentId, studentFilters.groupId, studentFilters.adminId].filter(
+          Boolean,
+        ).length
+      : [teacherFilters.type, teacherFilters.teacherId, teacherFilters.groupId, teacherFilters.adminId].filter(
+          Boolean,
+        ).length;
 
   const totalDeposits = transactions
     .filter((t) => t.type === "deposit")
@@ -211,6 +215,13 @@ export function TransactionsPage() {
         }
       >
         <ErrorMessage message={error} />
+        {((tab === "student" && (studentFilters.dateFrom || studentFilters.dateTo)) ||
+          (tab === "teacher" && (teacherFilters.dateFrom || teacherFilters.dateTo))) && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {(tab === "student" ? studentFilters.dateFrom : teacherFilters.dateFrom) || "..."} —{" "}
+            {(tab === "student" ? studentFilters.dateTo : teacherFilters.dateTo) || "..."}
+          </p>
+        )}
         {!isSuperadmin && (
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             Faqat o'zingiz amalga oshirgan tranzaksiyalar ko'rsatilmoqda.

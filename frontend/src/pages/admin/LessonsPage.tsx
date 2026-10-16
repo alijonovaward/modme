@@ -26,7 +26,7 @@ import {
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
-import { toLocalISODate } from "../../utils/date";
+import { currentMonthRange, toLocalISODate } from "../../utils/date";
 
 interface Filters {
   dateFrom: string;
@@ -36,9 +36,8 @@ interface Filters {
   status: string;
 }
 
-const EMPTY_FILTERS: Filters = {
-  dateFrom: "",
-  dateTo: "",
+const DEFAULT_FILTERS: Filters = {
+  ...currentMonthRange(),
   groupId: "",
   teacherId: "",
   status: "",
@@ -53,8 +52,8 @@ export function LessonsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newGroupId, setNewGroupId] = useState("");
@@ -102,10 +101,10 @@ export function LessonsPage() {
   };
 
   const clearFilters = () => {
-    setDraft(EMPTY_FILTERS);
-    setAppliedFilters(EMPTY_FILTERS);
+    setDraft(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(EMPTY_FILTERS);
+    load(DEFAULT_FILTERS);
   };
 
   const handleCreateLesson = async () => {
@@ -153,7 +152,9 @@ export function LessonsPage() {
     }
   };
 
-  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
+  const activeCount = [appliedFilters.groupId, appliedFilters.teacherId, appliedFilters.status].filter(
+    Boolean,
+  ).length;
 
   const summary = useMemo(() => {
     const completed = lessons.filter((l) => l.status === "completed").length;
@@ -187,6 +188,11 @@ export function LessonsPage() {
       >
         <ErrorMessage message={error} />
         <SuccessMessage message={success} />
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
+          </p>
+        )}
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile label="Jami darslar" value={String(summary.total)} color="indigo" />

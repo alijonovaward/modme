@@ -19,20 +19,13 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
-import { toLocalISODate } from "../../utils/date";
+import { currentMonthRange } from "../../utils/date";
 
 interface Filters {
   dateFrom: string;
   dateTo: string;
   type: string;
   groupId: string;
-}
-
-function currentMonthRange(): { dateFrom: string; dateTo: string } {
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { dateFrom: toLocalISODate(firstDay), dateTo: toLocalISODate(lastDay) };
 }
 
 const DEFAULT_FILTERS: Filters = {

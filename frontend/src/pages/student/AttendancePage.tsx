@@ -19,6 +19,7 @@ import {
 } from "../../components/ui";
 import type { StudentAttendanceHistoryItem } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 
 const ATTENDANCE_LABEL: Record<string, string> = {
   present: "Keldi",
@@ -33,9 +34,8 @@ interface Filters {
   groupId: string;
 }
 
-const EMPTY_FILTERS: Filters = {
-  dateFrom: "",
-  dateTo: "",
+const DEFAULT_FILTERS: Filters = {
+  ...currentMonthRange(),
   status: "",
   groupId: "",
 };
@@ -47,8 +47,8 @@ export function StudentAttendancePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const load = async (filters: Filters) => {
     if (!user) return;
@@ -95,13 +95,13 @@ export function StudentAttendancePage() {
   };
 
   const clearFilters = () => {
-    setDraft(EMPTY_FILTERS);
-    setAppliedFilters(EMPTY_FILTERS);
+    setDraft(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(EMPTY_FILTERS);
+    load(DEFAULT_FILTERS);
   };
 
-  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
+  const activeCount = [appliedFilters.status, appliedFilters.groupId].filter(Boolean).length;
 
   const summary = useMemo(() => {
     const present = attendance.filter((a) => a.status === "present").length;
@@ -123,6 +123,11 @@ export function StudentAttendancePage() {
         }
       >
         <ErrorMessage message={error} />
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
+          </p>
+        )}
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile label="Keldi" value={String(summary.present)} color="green" />
           <StatTile label="Sababli" value={String(summary.excused)} color="indigo" />
