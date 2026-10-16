@@ -45,6 +45,7 @@ export interface TeacherTransaction {
   type: TeacherTransactionType;
   comment: string | null;
   created_at: string;
+  student_name: string | null;
   group_name: string | null;
   lesson_date: string | null;
 }

@@ -130,7 +130,7 @@ export function FinancePage() {
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
+          <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
             {pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
@@ -141,6 +141,7 @@ export function FinancePage() {
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Admin yechgan"}
                   </Badge>
                 </td>
+                <td className="px-3 py-2 text-slate-600">{t.student_name ?? "-"}</td>
                 <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
                 <td className="px-3 py-2 font-medium text-slate-800">
                   {t.amount.toLocaleString("uz-UZ")} so'm

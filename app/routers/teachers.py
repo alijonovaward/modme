@@ -26,10 +26,13 @@ def _query_teacher_finance(
     date_to: Optional[datetime],
     group_id: Optional[int],
 ) -> list[TeacherTransactionListItemOut]:
+    StudentUser = aliased(User)
+
     query = (
-        db.query(TeacherTransaction, Lesson, Group)
+        db.query(TeacherTransaction, Lesson, Group, StudentUser)
         .outerjoin(Lesson, Lesson.id == TeacherTransaction.lesson_id)
         .outerjoin(Group, Group.id == Lesson.group_id)
+        .outerjoin(StudentUser, StudentUser.id == TeacherTransaction.student_id)
         .filter(TeacherTransaction.teacher_id == teacher_id)
     )
 
@@ -50,10 +53,11 @@ def _query_teacher_finance(
             type=tt.type,
             comment=tt.comment,
             created_at=tt.created_at,
+            student_name=student.full_name if student else None,
             group_name=group.name if group else None,
             lesson_date=lesson.lesson_date if lesson else None,
         )
-        for tt, lesson, group in rows
+        for tt, lesson, group, student in rows
     ]
 
 

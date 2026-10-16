@@ -17,7 +17,6 @@ import { MyGroupsPage } from "./pages/teacher/MyGroupsPage";
 import { TeacherGroupDetailPage } from "./pages/teacher/GroupDetailPage";
 import { AttendancePage } from "./pages/teacher/AttendancePage";
 import { FinancePage } from "./pages/teacher/FinancePage";
-import { TeacherTransactionsPage } from "./pages/teacher/TransactionsPage";
 import { StudentDashboard } from "./pages/student/StudentDashboard";
 
 function App() {
@@ -139,14 +138,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["teacher"]}>
                 <FinancePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/teacher/transactions"
-            element={
-              <ProtectedRoute allowedRoles={["teacher"]}>
-                <TeacherTransactionsPage />
               </ProtectedRoute>
             }
           />
