@@ -5,7 +5,7 @@ const HOME_BY_ROLE: Record<string, string> = {
   superadmin: "/superadmin/staff",
   admin: "/admin/students",
   teacher: "/teacher/groups",
-  student: "/student",
+  student: "/student/transactions",
 };
 
 export function HomePage() {

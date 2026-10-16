@@ -19,7 +19,6 @@ import { TeacherGroupDetailPage } from "./pages/teacher/GroupDetailPage";
 import { AttendancePage } from "./pages/teacher/AttendancePage";
 import { AttendanceHubPage } from "./pages/teacher/AttendanceHubPage";
 import { FinancePage } from "./pages/teacher/FinancePage";
-import { StudentDashboard } from "./pages/student/StudentDashboard";
 import { StudentTransactionsPage } from "./pages/student/TransactionsPage";
 import { StudentAttendancePage } from "./pages/student/AttendancePage";
 
@@ -155,14 +154,6 @@ function App() {
             }
           />
 
-          <Route
-            path="/student"
-            element={
-              <ProtectedRoute allowedRoles={["student"]}>
-                <StudentDashboard />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="/student/transactions"
             element={

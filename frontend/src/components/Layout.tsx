@@ -31,7 +31,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { to: "/teacher/finance", label: "Moliyam" },
   ],
   student: [
-    { to: "/student", label: "Kabinetim" },
     { to: "/student/transactions", label: "Tranzaksiyalar" },
     { to: "/student/attendance", label: "Davomat" },
   ],
