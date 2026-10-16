@@ -105,9 +105,9 @@ export function FinancePage() {
 
   return (
     <Layout>
-      <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6">
-        <p className="text-sm text-emerald-700">Yechib olish mumkin bo'lgan pul (joriy balans)</p>
-        <p className="text-2xl font-semibold text-emerald-800">
+      <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950/40">
+        <p className="text-sm text-emerald-700 dark:text-emerald-400">Yechib olish mumkin bo'lgan pul (joriy balans)</p>
+        <p className="text-2xl font-semibold text-emerald-800 dark:text-emerald-300">
           {(user?.balance ?? 0).toLocaleString("uz-UZ")} so'm
         </p>
       </div>
@@ -122,7 +122,7 @@ export function FinancePage() {
       >
         <ErrorMessage message={error} />
         {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
           </p>
         )}
@@ -139,13 +139,13 @@ export function FinancePage() {
           />
         </div>
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
           <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
             {pageItems.map((t) => (
               <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
                 <td className="px-3 py-2">
@@ -153,12 +153,12 @@ export function FinancePage() {
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Admin yechgan"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-600">{t.student_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
-                <td className="px-3 py-2 font-medium text-slate-800">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.student_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>

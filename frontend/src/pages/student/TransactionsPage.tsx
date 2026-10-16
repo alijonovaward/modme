@@ -128,13 +128,13 @@ export function StudentTransactionsPage() {
           />
         </div>
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
           <Table headers={["Sana", "Turi", "Guruh", "O'qituvchi", "Summa", "Izoh"]}>
             {pageItems.map((t) => (
               <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
                 <td className="px-3 py-2">
@@ -142,12 +142,12 @@ export function StudentTransactionsPage() {
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-600">{t.teacher_name ?? "-"}</td>
-                <td className="px-3 py-2 font-medium text-slate-800">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.teacher_name ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>

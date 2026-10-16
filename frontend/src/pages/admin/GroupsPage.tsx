@@ -157,16 +157,16 @@ export function GroupsPage() {
           />
         </div>
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
           <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Holat", ""]}>
             {pageItems.map((g) => (
               <tr key={g.id}>
-                <td className="px-3 py-2 font-medium text-slate-800">{g.name}</td>
-                <td className="px-3 py-2 text-slate-600">{g.subject_name}</td>
-                <td className="px-3 py-2 text-slate-600">{g.teacher_name}</td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {g.lesson_price.toLocaleString("uz-UZ")} so'm
                 </td>
                 <td className="px-3 py-2">

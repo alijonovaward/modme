@@ -54,7 +54,7 @@ export function TeacherGroupDetailPage() {
     return (
       <Layout>
         <ErrorMessage message={error} />
-        <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
       </Layout>
     );
   }
@@ -62,8 +62,8 @@ export function TeacherGroupDetailPage() {
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">{group.name}</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {group.subject_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
         </p>
       </div>
@@ -77,7 +77,7 @@ export function TeacherGroupDetailPage() {
               className={`rounded-lg px-3 py-1 text-xs font-medium ${
                 statusFilter === tab.value
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
               }`}
             >
               {tab.label}
@@ -87,11 +87,11 @@ export function TeacherGroupDetailPage() {
         <Table headers={["F.I.O", "Holat"]}>
           {studentPagination.pageItems.map((s) => (
             <tr key={s.id}>
-              <td className="px-3 py-2 font-medium text-slate-800">{s.student_name}</td>
+              <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
               <td className="px-3 py-2">
                 <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
                 {s.status === "dropped" && s.status_reason && (
-                  <p className="mt-1 text-xs text-slate-500">Sababi: {s.status_reason}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sababi: {s.status_reason}</p>
                 )}
               </td>
             </tr>

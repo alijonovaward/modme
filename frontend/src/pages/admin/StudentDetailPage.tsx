@@ -127,7 +127,7 @@ export function StudentDetailPage() {
     return (
       <Layout>
         <ErrorMessage message={error} />
-        <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
       </Layout>
     );
   }
@@ -135,9 +135,9 @@ export function StudentDetailPage() {
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">{student.full_name}</h1>
-        <p className="text-sm text-slate-500">{student.phone}</p>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.full_name}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Balans: <span className="font-semibold">{student.balance.toLocaleString("uz-UZ")} so'm</span>
         </p>
       </div>
@@ -202,7 +202,7 @@ export function StudentDetailPage() {
           <Table headers={["Sana", "Turi", "Guruh", "O'qituvchi", "Summa", "Izoh"]}>
             {transactionsPageItems.map((t) => (
               <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
                 <td className="px-3 py-2">
@@ -210,12 +210,12 @@ export function StudentDetailPage() {
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-600">{t.teacher_name ?? "-"}</td>
-                <td className="px-3 py-2 font-medium text-slate-800">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.teacher_name ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>
@@ -233,15 +233,15 @@ export function StudentDetailPage() {
           <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"]}>
             {attendancePageItems.map((a) => (
               <tr key={a.id}>
-                <td className="px-3 py-2 text-slate-600">{a.lesson_date}</td>
-                <td className="px-3 py-2 text-slate-600">{a.group_name}</td>
-                <td className="px-3 py-2 text-slate-600">{a.teacher_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.group_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.teacher_name}</td>
                 <td className="px-3 py-2">
                   <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
                     {ATTENDANCE_LABEL[a.status]}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800">{a.grade ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{a.grade ?? "-"}</td>
               </tr>
             ))}
           </Table>

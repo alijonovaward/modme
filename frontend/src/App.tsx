@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { ThemeProvider } from "./theme/ThemeContext";
 import { LoginPage } from "./pages/Login";
 import { HomePage } from "./pages/Home";
 import { StaffPage } from "./pages/superadmin/StaffPage";
@@ -24,6 +25,7 @@ import { StudentAttendancePage } from "./pages/student/AttendancePage";
 
 function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
@@ -180,6 +182,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

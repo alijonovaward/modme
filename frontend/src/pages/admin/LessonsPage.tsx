@@ -195,23 +195,23 @@ export function LessonsPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
             {pageItems.map((l) => (
               <tr key={l.id}>
-                <td className="px-3 py-2 text-slate-600">{l.lesson_date}</td>
-                <td className="px-3 py-2 font-medium text-slate-800">{l.group_name}</td>
-                <td className="px-3 py-2 text-slate-600">{l.subject_name}</td>
-                <td className="px-3 py-2 text-slate-600">{l.teacher_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
                 <td className="px-3 py-2">
                   <Badge color={l.status === "completed" ? "green" : "slate"}>
                     {l.status === "completed" ? "O'tildi" : "Rejada"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800">{l.present_count}</td>
-                <td className="px-3 py-2 text-slate-600">{l.excused_count}</td>
+                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{l.present_count}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
                 <td className="px-3 py-2 text-rose-600">{l.unexcused_count}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
@@ -337,21 +337,21 @@ export function LessonsPage() {
           title={`${detailLesson.group_name} — ${detailLesson.lesson_date}`}
           onClose={() => setDetailLesson(null)}
         >
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             {detailLesson.subject_name} · {detailLesson.teacher_name} ·{" "}
             <Badge color={detailLesson.status === "completed" ? "green" : "slate"}>
               {detailLesson.status === "completed" ? "O'tildi" : "Rejada"}
             </Badge>
           </p>
           {isDetailLoading ? (
-            <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
           ) : detailAttendance.length === 0 ? (
-            <p className="text-sm text-slate-500">Hali davomat olinmagan.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Hali davomat olinmagan.</p>
           ) : (
             <Table headers={["O'quvchi", "Holat", "Baho"]}>
               {detailAttendance.map((a) => (
                 <tr key={a.id}>
-                  <td className="px-3 py-2 font-medium text-slate-800">{a.student_name}</td>
+                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{a.student_name}</td>
                   <td className="px-3 py-2">
                     <Badge
                       color={
@@ -365,7 +365,7 @@ export function LessonsPage() {
                           : "Sababsiz"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-slate-600">{a.grade ?? "-"}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.grade ?? "-"}</td>
                 </tr>
               ))}
             </Table>

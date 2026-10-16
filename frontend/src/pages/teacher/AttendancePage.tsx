@@ -82,7 +82,7 @@ export function AttendancePage() {
     return (
       <Layout>
         <ErrorMessage message={error} />
-        <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
       </Layout>
     );
   }
@@ -92,7 +92,7 @@ export function AttendancePage() {
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">{group.name} — Davomat</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name} — Davomat</h1>
         {isReadOnly && (
           <p className="text-sm text-amber-600">
             Ushbu dars uchun davomat allaqachon qilingan, faqat ko'rish mumkin.
@@ -107,7 +107,7 @@ export function AttendancePage() {
             const row = rows[s.student_id];
             return (
               <tr key={s.student_id}>
-                <td className="px-3 py-2 font-medium text-slate-800">
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
                   {s.student_name}
                   {s.status === "frozen" && (
                     <span className="ml-2 text-xs text-amber-600">(muzlatilgan)</span>

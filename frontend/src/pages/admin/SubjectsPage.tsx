@@ -110,13 +110,13 @@ export function SubjectsPage() {
           />
         </div>
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
           <Table headers={["Fan nomi", ""]}>
             {pageItems.map((s) => (
               <tr key={s.id}>
-                <td className="px-3 py-2 font-medium text-slate-800">{s.name}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.name}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <Button variant="secondary" onClick={() => openEditModal(s)}>

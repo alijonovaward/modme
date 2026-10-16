@@ -212,7 +212,7 @@ export function TransactionsPage() {
       >
         <ErrorMessage message={error} />
         {!isSuperadmin && (
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             Faqat o'zingiz amalga oshirgan tranzaksiyalar ko'rsatilmoqda.
           </p>
         )}
@@ -221,7 +221,7 @@ export function TransactionsPage() {
           <button
             onClick={() => switchTab("student")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === "student" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              tab === "student" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             }`}
           >
             O'quvchilar
@@ -229,7 +229,7 @@ export function TransactionsPage() {
           <button
             onClick={() => switchTab("teacher")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === "teacher" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              tab === "teacher" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             }`}
           >
             O'qituvchilar
@@ -266,27 +266,27 @@ export function TransactionsPage() {
         )}
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : tab === "student" ? (
           <>
           <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
             {studentPagination.pageItems.map((t) => (
               <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800">{t.student_name}</td>
-                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
                 <td className="px-3 py-2">
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800">
+                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-600">{t.created_by_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.created_by_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>
@@ -302,22 +302,22 @@ export function TransactionsPage() {
           <Table headers={["Sana", "O'qituvchi", "O'quvchi", "Guruh", "Turi", "Summa", "Kim bergan", "Izoh"]}>
             {teacherPagination.pageItems.map((t) => (
               <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800">{t.teacher_name}</td>
-                <td className="px-3 py-2 text-slate-600">{t.student_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.student_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
                 <td className="px-3 py-2">
                   <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800">
+                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-600">{t.created_by_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.created_by_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>
