@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { getStudentAttendanceHistory, getStudentTransactions } from "../../api/endpoints";
-import { Badge, Card, ErrorMessage, extractErrorMessage, StatTile, Table } from "../../components/ui";
+import {
+  Badge,
+  Card,
+  ErrorMessage,
+  extractErrorMessage,
+  Pagination,
+  StatTile,
+  Table,
+  usePagination,
+} from "../../components/ui";
 import type { StudentAttendanceHistoryItem, Transaction } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -28,6 +37,9 @@ export function StudentDashboard() {
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
   }, [user]);
+
+  const transactionsPagination = usePagination(transactions);
+  const attendancePagination = usePagination(attendance);
 
   if (!user) return null;
 
@@ -67,7 +79,7 @@ export function StudentDashboard() {
                 />
               </div>
               <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
-              {transactions.map((t) => (
+              {transactionsPagination.pageItems.map((t) => (
                 <tr key={t.id}>
                   <td className="px-3 py-2 text-slate-600">
                     {new Date(t.created_at).toLocaleDateString("uz-UZ")}
@@ -84,6 +96,12 @@ export function StudentDashboard() {
                 </tr>
               ))}
               </Table>
+              <Pagination
+                page={transactionsPagination.page}
+                pageCount={transactionsPagination.pageCount}
+                total={transactionsPagination.total}
+                onPageChange={transactionsPagination.setPage}
+              />
             </>
           )}
         </Card>
@@ -92,20 +110,28 @@ export function StudentDashboard() {
           {isLoading ? (
             <p className="text-sm text-slate-500">Yuklanmoqda...</p>
           ) : (
-            <Table headers={["Sana", "Guruh", "Holat", "Baho"]}>
-              {attendance.map((a) => (
-                <tr key={a.id}>
-                  <td className="px-3 py-2 text-slate-600">{a.lesson_date}</td>
-                  <td className="px-3 py-2 text-slate-600">{a.group_name}</td>
-                  <td className="px-3 py-2">
-                    <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
-                      {ATTENDANCE_LABEL[a.status]}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2 font-medium text-slate-800">{a.grade ?? "-"}</td>
-                </tr>
-              ))}
-            </Table>
+            <>
+              <Table headers={["Sana", "Guruh", "Holat", "Baho"]}>
+                {attendancePagination.pageItems.map((a) => (
+                  <tr key={a.id}>
+                    <td className="px-3 py-2 text-slate-600">{a.lesson_date}</td>
+                    <td className="px-3 py-2 text-slate-600">{a.group_name}</td>
+                    <td className="px-3 py-2">
+                      <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
+                        {ATTENDANCE_LABEL[a.status]}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 font-medium text-slate-800">{a.grade ?? "-"}</td>
+                  </tr>
+                ))}
+              </Table>
+              <Pagination
+                page={attendancePagination.page}
+                pageCount={attendancePagination.pageCount}
+                total={attendancePagination.total}
+                onPageChange={attendancePagination.setPage}
+              />
+            </>
           )}
         </Card>
       </div>

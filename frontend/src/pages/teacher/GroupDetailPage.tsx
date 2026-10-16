@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getGroupDetail, listGroupLessons } from "../../api/endpoints";
-import { Badge, Card, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
+import {
+  Badge,
+  Card,
+  ErrorMessage,
+  extractErrorMessage,
+  Pagination,
+  Table,
+  usePagination,
+} from "../../components/ui";
 import type { GroupDetail, GroupStudentStatus, Lesson } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -44,6 +52,9 @@ export function TeacherGroupDetailPage() {
     return group.students.filter((s) => s.status === statusFilter);
   }, [group, statusFilter]);
 
+  const studentPagination = usePagination(filteredStudents);
+  const lessonPagination = usePagination(lessons);
+
   if (isLoading || !group) {
     return (
       <Layout>
@@ -80,7 +91,7 @@ export function TeacherGroupDetailPage() {
             ))}
           </div>
           <Table headers={["F.I.O", "Holat"]}>
-            {filteredStudents.map((s) => (
+            {studentPagination.pageItems.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.student_name}</td>
                 <td className="px-3 py-2">
@@ -92,10 +103,16 @@ export function TeacherGroupDetailPage() {
               </tr>
             ))}
           </Table>
+          <Pagination
+            page={studentPagination.page}
+            pageCount={studentPagination.pageCount}
+            total={studentPagination.total}
+            onPageChange={studentPagination.setPage}
+          />
         </Card>
         <Card title="Darslar">
           <Table headers={["Sana", "Holat", ""]}>
-            {lessons.map((l) => (
+            {lessonPagination.pageItems.map((l) => (
               <tr key={l.id}>
                 <td className="px-3 py-2 text-slate-800">{l.lesson_date}</td>
                 <td className="px-3 py-2">
@@ -112,6 +129,12 @@ export function TeacherGroupDetailPage() {
               </tr>
             ))}
           </Table>
+          <Pagination
+            page={lessonPagination.page}
+            pageCount={lessonPagination.pageCount}
+            total={lessonPagination.total}
+            onPageChange={lessonPagination.setPage}
+          />
         </Card>
       </div>
     </Layout>

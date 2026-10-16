@@ -11,9 +11,11 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Select,
   StatTile,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { GroupListItem, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -92,6 +94,7 @@ export function FinancePage() {
   const totalPayouts = Math.abs(
     transactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
+  const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
 
   return (
     <Layout>
@@ -126,8 +129,9 @@ export function FinancePage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
-            {transactions.map((t) => (
+            {pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -145,6 +149,8 @@ export function FinancePage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

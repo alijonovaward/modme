@@ -161,6 +161,59 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
   );
 }
 
+const PAGE_SIZE = 10;
+
+export function usePagination<T>(items: T[]) {
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageItems = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [items.length]);
+
+  return { page: safePage, setPage, pageCount, pageItems, total: items.length };
+}
+
+export function Pagination({
+  page,
+  pageCount,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  pageCount: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (total === 0) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      <span>Jami: {total}</span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Oldingi
+        </Button>
+        <span>
+          {page} / {pageCount}
+        </span>
+        <Button
+          variant="secondary"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Keyingi
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function Badge({ children, color = "slate" }: { children: ReactNode; color?: "slate" | "green" | "red" | "amber" }) {
   const styles = {
     slate: "bg-slate-100 text-slate-700",

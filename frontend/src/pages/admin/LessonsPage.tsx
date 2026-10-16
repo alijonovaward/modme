@@ -17,10 +17,12 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Select,
   StatTile,
   SuccessMessage,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -158,6 +160,8 @@ export function LessonsPage() {
     return { total: lessons.length, completed, planned };
   }, [lessons]);
 
+  const { page, setPage, pageCount, pageItems, total: pageTotal } = usePagination(lessons);
+
   return (
     <Layout>
       <Card
@@ -192,8 +196,9 @@ export function LessonsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
-            {lessons.map((l) => (
+            {pageItems.map((l) => (
               <tr key={l.id}>
                 <td className="px-3 py-2 text-slate-600">{l.lesson_date}</td>
                 <td className="px-3 py-2 font-medium text-slate-800">{l.group_name}</td>
@@ -222,6 +227,8 @@ export function LessonsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={pageTotal} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

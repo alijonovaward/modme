@@ -10,9 +10,11 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Select,
   SuccessMessage,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -67,6 +69,8 @@ export function StaffPage() {
       return matchesRole && matchesSearch;
     });
   }, [staff, search, roleFilter]);
+
+  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStaff);
 
   const resetForm = () => {
     setFullName("");
@@ -138,8 +142,9 @@ export function StaffPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
-            {filteredStaff.map((s) => (
+            {pageItems.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
                 <td className="px-3 py-2 text-slate-600">{s.phone}</td>
@@ -165,6 +170,8 @@ export function StaffPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

@@ -11,7 +11,9 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { GroupListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -75,6 +77,8 @@ export function GroupsPage() {
       return matchesSearch && matchesSubject && matchesTeacher;
     });
   }, [groups, search, subjectFilter, teacherFilter]);
+
+  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredGroups);
 
   const resetForm = () => {
     setName("");
@@ -155,8 +159,9 @@ export function GroupsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Holat", ""]}>
-            {filteredGroups.map((g) => (
+            {pageItems.map((g) => (
               <tr key={g.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{g.name}</td>
                 <td className="px-3 py-2 text-slate-600">{g.subject_name}</td>
@@ -175,6 +180,8 @@ export function GroupsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

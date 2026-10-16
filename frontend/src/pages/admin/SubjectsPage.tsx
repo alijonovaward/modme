@@ -8,7 +8,9 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { Subject } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -44,6 +46,8 @@ export function SubjectsPage() {
     if (!term) return subjects;
     return subjects.filter((s) => s.name.toLowerCase().includes(term));
   }, [subjects, search]);
+
+  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredSubjects);
 
   const openCreateModal = () => {
     setEditTarget(null);
@@ -108,8 +112,9 @@ export function SubjectsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["Fan nomi", ""]}>
-            {filteredSubjects.map((s) => (
+            {pageItems.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.name}</td>
                 <td className="px-3 py-2">
@@ -125,6 +130,8 @@ export function SubjectsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

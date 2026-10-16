@@ -17,9 +17,11 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   Select,
   StatTile,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type {
   GroupListItem,
@@ -195,6 +197,9 @@ export function TransactionsPage() {
     teacherTransactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
 
+  const studentPagination = usePagination(transactions);
+  const teacherPagination = usePagination(teacherTransactions);
+
   return (
     <Layout>
       <Card
@@ -263,8 +268,9 @@ export function TransactionsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : tab === "student" ? (
+          <>
           <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
-            {transactions.map((t) => (
+            {studentPagination.pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -284,9 +290,17 @@ export function TransactionsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination
+            page={studentPagination.page}
+            pageCount={studentPagination.pageCount}
+            total={studentPagination.total}
+            onPageChange={studentPagination.setPage}
+          />
+          </>
         ) : (
+          <>
           <Table headers={["Sana", "O'qituvchi", "O'quvchi", "Guruh", "Turi", "Summa", "Kim bergan", "Izoh"]}>
-            {teacherTransactions.map((t) => (
+            {teacherPagination.pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -307,6 +321,13 @@ export function TransactionsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination
+            page={teacherPagination.page}
+            pageCount={teacherPagination.pageCount}
+            total={teacherPagination.total}
+            onPageChange={teacherPagination.setPage}
+          />
+          </>
         )}
       </Card>
 

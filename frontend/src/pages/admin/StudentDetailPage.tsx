@@ -14,9 +14,11 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  Pagination,
   StatTile,
   SuccessMessage,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { Transaction, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -97,6 +99,8 @@ export function StudentDetailPage() {
     transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
   );
 
+  const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
+
   if (isLoading || !student) {
     return (
       <Layout>
@@ -174,7 +178,7 @@ export function StudentDetailPage() {
             />
           </div>
           <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
-            {transactions.map((t) => (
+            {pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -191,6 +195,7 @@ export function StudentDetailPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
         </Card>
       </div>
     </Layout>

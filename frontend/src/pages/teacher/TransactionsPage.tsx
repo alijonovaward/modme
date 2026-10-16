@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { listGroups, listTransactions } from "../../api/endpoints";
-import { Badge, Card, Combobox, ErrorMessage, extractErrorMessage, StatTile, Table } from "../../components/ui";
+import {
+  Badge,
+  Card,
+  Combobox,
+  ErrorMessage,
+  extractErrorMessage,
+  Pagination,
+  StatTile,
+  Table,
+  usePagination,
+} from "../../components/ui";
 import type { GroupListItem, TransactionListItem } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -30,6 +40,7 @@ export function TeacherTransactionsPage() {
   }, []);
 
   const totalDeducted = Math.abs(transactions.reduce((sum, t) => sum + t.amount, 0));
+  const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
 
   return (
     <Layout>
@@ -67,8 +78,9 @@ export function TeacherTransactionsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["Sana", "O'quvchi", "Guruh", "Summa"]}>
-            {transactions.map((t) => (
+            {pageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -81,6 +93,8 @@ export function TeacherTransactionsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
     </Layout>

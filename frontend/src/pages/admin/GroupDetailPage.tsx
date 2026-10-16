@@ -16,8 +16,10 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   SuccessMessage,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { GroupDetail, GroupRosterItem, GroupStudentStatus, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -117,6 +119,8 @@ export function GroupDetailPage() {
     return group.students.filter((s) => s.status === statusFilter);
   }, [group, statusFilter]);
 
+  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
+
   if (isLoading || !group) {
     return (
       <Layout>
@@ -172,7 +176,7 @@ export function GroupDetailPage() {
           </div>
 
           <Table headers={["F.I.O", "Telefon", "Holat", ""]}>
-            {filteredStudents.map((s) => (
+            {pageItems.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.student_name}</td>
                 <td className="px-3 py-2 text-slate-600">{s.student_phone}</td>
@@ -210,6 +214,7 @@ export function GroupDetailPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
         </Card>
       </div>
 

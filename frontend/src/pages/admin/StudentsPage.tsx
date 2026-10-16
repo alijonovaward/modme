@@ -10,8 +10,10 @@ import {
   Input,
   Label,
   Modal,
+  Pagination,
   SuccessMessage,
   Table,
+  usePagination,
 } from "../../components/ui";
 import type { User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -59,6 +61,8 @@ export function StudentsPage() {
       return matchesSearch && matchesDebtor;
     });
   }, [students, search, debtorsOnly]);
+
+  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
 
   const resetForm = () => {
     setFullName("");
@@ -123,8 +127,9 @@ export function StudentsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
+          <>
           <Table headers={["F.I.O", "Telefon", "Balans", ""]}>
-            {filteredStudents.map((s) => (
+            {pageItems.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{s.full_name}</td>
                 <td className="px-3 py-2 text-slate-600">{s.phone}</td>
@@ -142,6 +147,8 @@ export function StudentsPage() {
               </tr>
             ))}
           </Table>
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          </>
         )}
       </Card>
 
