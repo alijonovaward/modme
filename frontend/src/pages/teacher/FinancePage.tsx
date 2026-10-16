@@ -11,6 +11,7 @@ import {
   Label,
   Modal,
   Select,
+  StatTile,
   Table,
 } from "../../components/ui";
 import type { GroupListItem, TeacherTransaction } from "../../types";
@@ -83,7 +84,12 @@ export function FinancePage() {
   };
 
   const activeCount = Object.values(appliedFilters).filter(Boolean).length;
-  const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalEarnings = transactions
+    .filter((t) => t.type === "lesson_earning")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalPayouts = Math.abs(
+    transactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
+  );
 
   return (
     <Layout>
@@ -96,9 +102,18 @@ export function FinancePage() {
         }
       >
         <ErrorMessage message={error} />
-        <p className="mb-4 text-sm text-slate-600">
-          Jami: <span className="font-semibold text-emerald-700">{total.toLocaleString("uz-UZ")} so'm</span>
-        </p>
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile
+            label="Jami kirim (dars daromadi)"
+            value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
+            color="green"
+          />
+          <StatTile
+            label="Jami yechilgan (admin bergan)"
+            value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
+            color="red"
+          />
+        </div>
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
