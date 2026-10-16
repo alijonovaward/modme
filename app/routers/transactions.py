@@ -39,8 +39,12 @@ def list_transactions(
         .outerjoin(Group, Group.id == Lesson.group_id)
     )
 
-    if current_user.role in (UserRole.admin, UserRole.teacher):
+    if current_user.role == UserRole.admin:
         query = query.filter(Transaction.created_by_id == current_user.id)
+    elif current_user.role == UserRole.teacher:
+        # A teacher sees deductions tied to their own groups, regardless of
+        # who/what triggered them - group ownership, not personal authorship.
+        query = query.filter(Group.teacher_id == current_user.id)
     elif created_by_id is not None:
         query = query.filter(Transaction.created_by_id == created_by_id)
 
