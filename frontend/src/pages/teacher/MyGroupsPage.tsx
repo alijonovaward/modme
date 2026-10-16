@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { listGroups } from "../../api/endpoints";
-import { Badge, Card, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
+import { Badge, Card, ErrorMessage, extractErrorMessage, Input, Table } from "../../components/ui";
 import type { GroupListItem } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -9,6 +9,7 @@ export function MyGroupsPage() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     listGroups()
@@ -17,15 +18,32 @@ export function MyGroupsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const filteredGroups = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return groups;
+    return groups.filter(
+      (g) =>
+        g.name.toLowerCase().includes(term) || g.subject_name.toLowerCase().includes(term),
+    );
+  }, [groups, search]);
+
   return (
     <Layout>
       <Card title="Mening guruhlarim">
         <ErrorMessage message={error} />
+        <div className="mb-4">
+          <Input
+            placeholder="Guruh yoki fan nomi bo'yicha qidirish"
+            className="max-w-md"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (
           <Table headers={["Nomi", "Fan", "Dars narxi", "Holat", ""]}>
-            {groups.map((g) => (
+            {filteredGroups.map((g) => (
               <tr key={g.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{g.name}</td>
                 <td className="px-3 py-2 text-slate-600">{g.subject_name}</td>
