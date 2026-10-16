@@ -16,6 +16,7 @@ import { TransactionsPage } from "./pages/admin/TransactionsPage";
 import { MyGroupsPage } from "./pages/teacher/MyGroupsPage";
 import { TeacherGroupDetailPage } from "./pages/teacher/GroupDetailPage";
 import { AttendancePage } from "./pages/teacher/AttendancePage";
+import { AttendanceHubPage } from "./pages/teacher/AttendanceHubPage";
 import { FinancePage } from "./pages/teacher/FinancePage";
 import { StudentDashboard } from "./pages/student/StudentDashboard";
 
@@ -130,6 +131,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["teacher"]}>
                 <AttendancePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/attendance"
+            element={
+              <ProtectedRoute allowedRoles={["teacher"]}>
+                <AttendanceHubPage />
               </ProtectedRoute>
             }
           />

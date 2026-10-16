@@ -26,6 +26,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
   ],
   teacher: [
     { to: "/teacher/groups", label: "Guruhlarim" },
+    { to: "/teacher/attendance", label: "Davomat" },
     { to: "/teacher/finance", label: "Moliyam" },
   ],
   student: [{ to: "/student", label: "Kabinetim" }],

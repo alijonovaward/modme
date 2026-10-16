@@ -27,9 +27,19 @@ interface Filters {
   groupId: string;
 }
 
-const EMPTY_FILTERS: Filters = {
-  dateFrom: "",
-  dateTo: "",
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function currentMonthRange(): { dateFrom: string; dateTo: string } {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { dateFrom: toISODate(firstDay), dateTo: toISODate(lastDay) };
+}
+
+const DEFAULT_FILTERS: Filters = {
+  ...currentMonthRange(),
   type: "",
   groupId: "",
 };
@@ -42,8 +52,8 @@ export function FinancePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const load = async (filters: Filters) => {
     setIsLoading(true);
@@ -81,13 +91,13 @@ export function FinancePage() {
   };
 
   const clearFilters = () => {
-    setDraft(EMPTY_FILTERS);
-    setAppliedFilters(EMPTY_FILTERS);
+    setDraft(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(EMPTY_FILTERS);
+    load(DEFAULT_FILTERS);
   };
 
-  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
+  const extraFilterCount = [appliedFilters.type, appliedFilters.groupId].filter(Boolean).length;
   const totalEarnings = transactions
     .filter((t) => t.type === "lesson_earning")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -109,11 +119,16 @@ export function FinancePage() {
         title="Moliyam"
         action={
           <Button onClick={openModal}>
-            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            Filterlar{extraFilterCount > 0 ? ` (${extraFilterCount})` : ""}
           </Button>
         }
       >
         <ErrorMessage message={error} />
+        {(appliedFilters.dateFrom || appliedFilters.dateTo) && (
+          <p className="mb-4 text-sm text-slate-500">
+            Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
+          </p>
+        )}
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatTile
             label="Jami kirim (dars daromadi)"

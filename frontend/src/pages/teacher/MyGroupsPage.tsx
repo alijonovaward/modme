@@ -67,7 +67,7 @@ export function MyGroupsPage() {
                 </td>
                 <td className="px-3 py-2">
                   <Link to={`/teacher/groups/${g.id}`} className="text-sm text-indigo-600 hover:underline">
-                    Davomat olish
+                    Batafsil
                   </Link>
                 </td>
               </tr>

@@ -29,17 +29,21 @@ def list_all_lessons(
     date_to: Optional[date] = Query(default=None),
     lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
 ):
     query = (
         db.query(Lesson, Group, Subject)
         .join(Group, Group.id == Lesson.group_id)
         .join(Subject, Subject.id == Group.subject_id)
     )
+    if current_user.role == UserRole.teacher:
+        query = query.filter(Group.teacher_id == current_user.id)
+    elif teacher_id is not None:
+        query = query.filter(Group.teacher_id == teacher_id)
     if group_id is not None:
         query = query.filter(Lesson.group_id == group_id)
-    if teacher_id is not None:
-        query = query.filter(Group.teacher_id == teacher_id)
     if date_from is not None:
         query = query.filter(Lesson.lesson_date >= date_from)
     if date_to is not None:
