@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { getTeacherFinance, listGroups } from "../../api/endpoints";
 import {
   Badge,
@@ -32,6 +33,7 @@ const EMPTY_FILTERS: Filters = {
 };
 
 export function FinancePage() {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<TeacherTransaction[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,13 @@ export function FinancePage() {
 
   return (
     <Layout>
+      <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6">
+        <p className="text-sm text-emerald-700">Yechib olish mumkin bo'lgan pul (joriy balans)</p>
+        <p className="text-2xl font-semibold text-emerald-800">
+          {(user?.balance ?? 0).toLocaleString("uz-UZ")} so'm
+        </p>
+      </div>
+
       <Card
         title="Moliyam"
         action={
