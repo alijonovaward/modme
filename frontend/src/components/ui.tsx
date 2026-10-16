@@ -3,9 +3,9 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAt
 
 export function Card({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-950">
       {(title || action) && (
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           {title && <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>}
           {action}
         </div>
@@ -273,7 +273,7 @@ export function StatTile({
     violet: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900",
   }[color];
   return (
-    <div className={`rounded-xl border p-5 ${styles}`}>
+    <div className={`rounded-xl border p-4 sm:p-5 ${styles}`}>
       <p className="text-sm font-medium opacity-80">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
@@ -291,7 +291,7 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 dark:bg-slate-950/70">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg dark:bg-slate-900">
+      <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-lg sm:p-6 dark:bg-slate-900">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           <button

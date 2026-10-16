@@ -55,14 +55,14 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-6 sm:py-4">
           <div>
             <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">O'quv Markazi CRM</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {user.full_name} · {ROLE_LABEL[user.role]}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
             {(user.role === "teacher" || user.role === "student") && (
               <div className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
                 Balans: {user.balance.toLocaleString("uz-UZ")} so'm
@@ -91,14 +91,14 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 px-6">
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`rounded-t-lg px-4 py-2 text-sm font-medium ${
+                className={`shrink-0 whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-medium ${
                   isActive
                     ? "border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400"
                     : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
@@ -110,7 +110,7 @@ export function Layout({ children }: { children: ReactNode }) {
           })}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }
