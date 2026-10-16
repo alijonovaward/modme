@@ -188,28 +188,57 @@ export function Pagination({
   onPageChange: (page: number) => void;
 }) {
   if (total === 0) return null;
+
+  const pageNumbers = (() => {
+    if (pageCount <= 7) {
+      return Array.from({ length: pageCount }, (_, i) => i + 1);
+    }
+    const nums = new Set([1, pageCount, page - 1, page, page + 1]);
+    return Array.from(nums)
+      .filter((n) => n >= 1 && n <= pageCount)
+      .sort((a, b) => a - b);
+  })();
+
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-      <span>Jami: {total}</span>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
+    <div className="mt-6 flex flex-col items-center gap-2 border-t border-slate-100 pt-4">
+      <div className="flex items-center gap-1">
+        <button
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
+          aria-label="Oldingi sahifa"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
         >
-          Oldingi
-        </Button>
-        <span>
-          {page} / {pageCount}
-        </span>
-        <Button
-          variant="secondary"
+          ‹
+        </button>
+        {pageNumbers.map((n, i) => {
+          const prev = pageNumbers[i - 1];
+          const showGap = prev !== undefined && n - prev > 1;
+          return (
+            <span key={n} className="flex items-center">
+              {showGap && <span className="px-1 text-slate-300">…</span>}
+              <button
+                onClick={() => onPageChange(n)}
+                className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium ${
+                  n === page
+                    ? "bg-indigo-600 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {n}
+              </button>
+            </span>
+          );
+        })}
+        <button
           disabled={page >= pageCount}
           onClick={() => onPageChange(page + 1)}
+          aria-label="Keyingi sahifa"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
         >
-          Keyingi
-        </Button>
+          ›
+        </button>
       </div>
+      <span className="text-xs text-slate-400">Jami: {total} ta</span>
     </div>
   );
 }
