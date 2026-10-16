@@ -18,6 +18,7 @@ import {
   Label,
   Modal,
   Select,
+  StatTile,
   Table,
 } from "../../components/ui";
 import type {
@@ -181,6 +182,19 @@ export function TransactionsPage() {
     Boolean,
   ).length;
 
+  const totalDeposits = transactions
+    .filter((t) => t.type === "deposit")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalDeductions = Math.abs(
+    transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
+  );
+  const totalEarnings = teacherTransactions
+    .filter((t) => t.type === "lesson_earning")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalPayouts = Math.abs(
+    teacherTransactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
+  );
+
   return (
     <Layout>
       <Card
@@ -216,6 +230,35 @@ export function TransactionsPage() {
             O'qituvchilar
           </button>
         </div>
+
+        {!isLoading && tab === "student" && (
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatTile
+              label="Jami to'ldirilgan"
+              value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
+              color="green"
+            />
+            <StatTile
+              label="Jami yechilgan"
+              value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
+              color="red"
+            />
+          </div>
+        )}
+        {!isLoading && tab === "teacher" && (
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatTile
+              label="Jami dars daromadi"
+              value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
+              color="green"
+            />
+            <StatTile
+              label="Jami pul berilgan"
+              value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
+              color="red"
+            />
+          </div>
+        )}
 
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>

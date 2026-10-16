@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listGroups, listTransactions } from "../../api/endpoints";
-import { Badge, Card, Combobox, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
+import { Badge, Card, Combobox, ErrorMessage, extractErrorMessage, StatTile, Table } from "../../components/ui";
 import type { GroupListItem, TransactionListItem } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -29,6 +29,8 @@ export function TeacherTransactionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const totalDeducted = Math.abs(transactions.reduce((sum, t) => sum + t.amount, 0));
+
   return (
     <Layout>
       <Card
@@ -53,6 +55,15 @@ export function TeacherTransactionsPage() {
         <p className="mb-4 text-sm text-slate-500">
           Davomat olganingizda guruh o'quvchilaridan yechilgan pullar tarixi.
         </p>
+        {!isLoading && (
+          <div className="mb-4 max-w-xs">
+            <StatTile
+              label="Jami yechilgan"
+              value={`${totalDeducted.toLocaleString("uz-UZ")} so'm`}
+              color="red"
+            />
+          </div>
+        )}
         {isLoading ? (
           <p className="text-sm text-slate-500">Yuklanmoqda...</p>
         ) : (

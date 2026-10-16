@@ -14,6 +14,7 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  StatTile,
   SuccessMessage,
   Table,
 } from "../../components/ui";
@@ -98,6 +99,13 @@ export function StaffDetailPage() {
     }
   };
 
+  const totalEarnings = finance
+    .filter((t) => t.type === "lesson_earning")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalPayouts = Math.abs(
+    finance.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
+  );
+
   if (isLoading || !staffMember) {
     return (
       <Layout>
@@ -177,6 +185,18 @@ export function StaffDetailPage() {
       {staffMember.role === "teacher" && (
         <div className="mt-6">
           <Card title="Moliya tarixi">
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatTile
+                label="Jami dars daromadi"
+                value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
+                color="green"
+              />
+              <StatTile
+                label="Jami pul berilgan"
+                value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
+                color="red"
+              />
+            </div>
             <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
               {finance.map((t) => (
                 <tr key={t.id}>

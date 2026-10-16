@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { getStudentAttendanceHistory, getStudentTransactions } from "../../api/endpoints";
-import { Badge, Card, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
+import { Badge, Card, ErrorMessage, extractErrorMessage, StatTile, Table } from "../../components/ui";
 import type { StudentAttendanceHistoryItem, Transaction } from "../../types";
 import { Layout } from "../../components/Layout";
 
@@ -31,6 +31,13 @@ export function StudentDashboard() {
 
   if (!user) return null;
 
+  const totalDeposits = transactions
+    .filter((t) => t.type === "deposit")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalDeductions = Math.abs(
+    transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
+  );
+
   return (
     <Layout>
       <ErrorMessage message={error} />
@@ -46,7 +53,20 @@ export function StudentDashboard() {
           {isLoading ? (
             <p className="text-sm text-slate-500">Yuklanmoqda...</p>
           ) : (
-            <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
+            <>
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <StatTile
+                  label="Jami to'ldirilgan"
+                  value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
+                  color="green"
+                />
+                <StatTile
+                  label="Jami yechilgan"
+                  value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
+                  color="red"
+                />
+              </div>
+              <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
               {transactions.map((t) => (
                 <tr key={t.id}>
                   <td className="px-3 py-2 text-slate-600">
@@ -63,7 +83,8 @@ export function StudentDashboard() {
                   <td className="px-3 py-2 text-slate-500">{t.comment ?? "-"}</td>
                 </tr>
               ))}
-            </Table>
+              </Table>
+            </>
           )}
         </Card>
 

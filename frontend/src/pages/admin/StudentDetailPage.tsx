@@ -14,6 +14,7 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  StatTile,
   SuccessMessage,
   Table,
 } from "../../components/ui";
@@ -89,6 +90,13 @@ export function StudentDetailPage() {
     }
   };
 
+  const totalDeposits = transactions
+    .filter((t) => t.type === "deposit")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalDeductions = Math.abs(
+    transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
+  );
+
   if (isLoading || !student) {
     return (
       <Layout>
@@ -153,6 +161,18 @@ export function StudentDetailPage() {
 
       <div className="mt-6">
         <Card title="To'lovlar va yechimlar tarixi">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatTile
+              label="Jami to'ldirilgan"
+              value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
+              color="green"
+            />
+            <StatTile
+              label="Jami yechilgan"
+              value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
+              color="red"
+            />
+          </div>
           <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
             {transactions.map((t) => (
               <tr key={t.id}>
