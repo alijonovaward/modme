@@ -1,21 +1,56 @@
 import { useEffect, useState } from "react";
 import { getTeacherFinance, listGroups } from "../../api/endpoints";
-import { Badge, Card, Combobox, ErrorMessage, extractErrorMessage, Table } from "../../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Combobox,
+  ErrorMessage,
+  extractErrorMessage,
+  Input,
+  Label,
+  Modal,
+  Select,
+  Table,
+} from "../../components/ui";
 import type { GroupListItem, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
+
+interface Filters {
+  dateFrom: string;
+  dateTo: string;
+  type: string;
+  groupId: string;
+}
+
+const EMPTY_FILTERS: Filters = {
+  dateFrom: "",
+  dateTo: "",
+  type: "",
+  groupId: "",
+};
 
 export function FinancePage() {
   const [transactions, setTransactions] = useState<TeacherTransaction[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
-  const [groupFilter, setGroupFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const load = async (groupId?: string) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+
+  const load = async (filters: Filters) => {
     setIsLoading(true);
     try {
-      const data = await getTeacherFinance(groupId ? { group_id: Number(groupId) } : undefined);
-      setTransactions(data);
+      const data = await getTeacherFinance({
+        group_id: filters.groupId ? Number(filters.groupId) : undefined,
+        date_from: filters.dateFrom ? `${filters.dateFrom}T00:00:00` : undefined,
+        date_to: filters.dateTo ? `${filters.dateTo}T23:59:59` : undefined,
+      });
+      setTransactions(
+        filters.type ? data.filter((t) => t.type === filters.type) : data,
+      );
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -25,10 +60,29 @@ export function FinancePage() {
 
   useEffect(() => {
     listGroups().then(setGroups).catch(() => undefined);
-    load();
+    load(appliedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const openModal = () => {
+    setDraft(appliedFilters);
+    setIsModalOpen(true);
+  };
+
+  const applyFilters = () => {
+    setAppliedFilters(draft);
+    setIsModalOpen(false);
+    load(draft);
+  };
+
+  const clearFilters = () => {
+    setDraft(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+    setIsModalOpen(false);
+    load(EMPTY_FILTERS);
+  };
+
+  const activeCount = Object.values(appliedFilters).filter(Boolean).length;
   const total = transactions.reduce((sum, t) => sum + t.amount, 0);
 
   return (
@@ -36,19 +90,9 @@ export function FinancePage() {
       <Card
         title="Moliyam"
         action={
-          <Combobox
-            className="w-56"
-            value={groupFilter}
-            onChange={(value) => {
-              setGroupFilter(value);
-              load(value || undefined);
-            }}
-            placeholder="Barcha guruhlar"
-            options={[
-              { value: "", label: "Barcha guruhlar" },
-              ...groups.map((g) => ({ value: String(g.id), label: g.name })),
-            ]}
-          />
+          <Button onClick={openModal}>
+            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+          </Button>
         }
       >
         <ErrorMessage message={error} />
@@ -79,6 +123,62 @@ export function FinancePage() {
           </Table>
         )}
       </Card>
+
+      {isModalOpen && (
+        <Modal title="Filterlar" onClose={() => setIsModalOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Dan</Label>
+                <Input
+                  type="date"
+                  value={draft.dateFrom}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, dateFrom: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Gacha</Label>
+                <Input
+                  type="date"
+                  value={draft.dateTo}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, dateTo: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Turi</Label>
+              <Select
+                value={draft.type}
+                onChange={(e) => setDraft((prev) => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="">Barchasi</option>
+                <option value="lesson_earning">Dars daromadi</option>
+                <option value="payout">Admin yechgan</option>
+              </Select>
+            </div>
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={draft.groupId}
+                onChange={(value) => setDraft((prev) => ({ ...prev, groupId: value }))}
+                placeholder="Barcha guruhlar"
+                options={[
+                  { value: "", label: "Barcha guruhlar" },
+                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                ]}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={applyFilters}>
+                Qo'llash
+              </Button>
+              <Button variant="secondary" onClick={clearFilters}>
+                Tozalash
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Layout>
   );
 }
