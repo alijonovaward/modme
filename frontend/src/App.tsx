@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ThemeProvider } from "./theme/ThemeContext";
@@ -154,6 +154,7 @@ function App() {
             }
           />
 
+          <Route path="/student" element={<Navigate to="/student/attendance" replace />} />
           <Route
             path="/student/transactions"
             element={
