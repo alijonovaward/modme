@@ -157,6 +157,19 @@ export interface StudentAttendanceHistoryItem {
   lesson_date: string;
   group_id: number;
   group_name: string;
+  teacher_name: string;
   status: AttendanceStatus;
   grade: number | null;
+}
+
+export interface StudentTransactionListItem {
+  id: number;
+  amount: number;
+  type: TransactionType;
+  comment: string | null;
+  created_at: string;
+  group_id: number | null;
+  group_name: string | null;
+  teacher_name: string | null;
+  lesson_date: string | null;
 }

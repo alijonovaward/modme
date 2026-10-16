@@ -19,6 +19,8 @@ import { AttendancePage } from "./pages/teacher/AttendancePage";
 import { AttendanceHubPage } from "./pages/teacher/AttendanceHubPage";
 import { FinancePage } from "./pages/teacher/FinancePage";
 import { StudentDashboard } from "./pages/student/StudentDashboard";
+import { StudentTransactionsPage } from "./pages/student/TransactionsPage";
+import { StudentAttendancePage } from "./pages/student/AttendancePage";
 
 function App() {
   return (
@@ -156,6 +158,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["student"]}>
                 <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/transactions"
+            element={
+              <ProtectedRoute allowedRoles={["student"]}>
+                <StudentTransactionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/attendance"
+            element={
+              <ProtectedRoute allowedRoles={["student"]}>
+                <StudentAttendancePage />
               </ProtectedRoute>
             }
           />

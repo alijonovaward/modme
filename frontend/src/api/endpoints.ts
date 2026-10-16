@@ -10,6 +10,7 @@ import type {
   LessonStatus,
   StatsOverview,
   StudentAttendanceHistoryItem,
+  StudentTransactionListItem,
   Subject,
   TeacherTransaction,
   TeacherTransactionGlobalListItem,
@@ -90,18 +91,34 @@ export async function depositToStudent(
   return data;
 }
 
-export async function getStudentTransactions(studentId: number): Promise<Transaction[]> {
-  const { data } = await apiClient.get<Transaction[]>(
+export async function getStudentTransactions(
+  studentId: number,
+  params?: {
+    group_id?: number;
+    type?: "deposit" | "deduction";
+    date_from?: string;
+    date_to?: string;
+  },
+): Promise<StudentTransactionListItem[]> {
+  const { data } = await apiClient.get<StudentTransactionListItem[]>(
     `/api/v1/students/${studentId}/transactions`,
+    { params },
   );
   return data;
 }
 
 export async function getStudentAttendanceHistory(
   studentId: number,
+  params?: {
+    group_id?: number;
+    status?: AttendanceStatus;
+    date_from?: string;
+    date_to?: string;
+  },
 ): Promise<StudentAttendanceHistoryItem[]> {
   const { data } = await apiClient.get<StudentAttendanceHistoryItem[]>(
     `/api/v1/students/${studentId}/attendance`,
+    { params },
   );
   return data;
 }

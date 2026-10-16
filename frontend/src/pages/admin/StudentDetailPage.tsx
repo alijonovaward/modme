@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
   depositToStudent,
+  getStudentAttendanceHistory,
   getStudentTransactions,
   listStudents,
   updateUserPassword,
@@ -20,15 +21,22 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import type { Transaction, User } from "../../types";
+import type { StudentAttendanceHistoryItem, StudentTransactionListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
+
+const ATTENDANCE_LABEL: Record<string, string> = {
+  present: "Keldi",
+  excused: "Sababli",
+  unexcused: "Sababsiz",
+};
 
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>();
   const id = Number(studentId);
 
   const [student, setStudent] = useState<User | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<StudentTransactionListItem[]>([]);
+  const [attendance, setAttendance] = useState<StudentAttendanceHistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +52,7 @@ export function StudentDetailPage() {
       const students = await listStudents();
       setStudent(students.find((s) => s.id === id) ?? null);
       setTransactions(await getStudentTransactions(id));
+      setAttendance(await getStudentAttendanceHistory(id));
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -99,7 +108,20 @@ export function StudentDetailPage() {
     transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
   );
 
-  const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
+  const {
+    page: transactionsPage,
+    setPage: setTransactionsPage,
+    pageCount: transactionsPageCount,
+    pageItems: transactionsPageItems,
+    total: transactionsTotal,
+  } = usePagination(transactions);
+  const {
+    page: attendancePage,
+    setPage: setAttendancePage,
+    pageCount: attendancePageCount,
+    pageItems: attendancePageItems,
+    total: attendanceTotal,
+  } = usePagination(attendance);
 
   if (isLoading || !student) {
     return (
@@ -177,8 +199,8 @@ export function StudentDetailPage() {
               color="red"
             />
           </div>
-          <Table headers={["Sana", "Turi", "Summa", "Izoh"]}>
-            {pageItems.map((t) => (
+          <Table headers={["Sana", "Turi", "Guruh", "O'qituvchi", "Summa", "Izoh"]}>
+            {transactionsPageItems.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -188,6 +210,8 @@ export function StudentDetailPage() {
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
+                <td className="px-3 py-2 text-slate-600">{t.group_name ?? "-"}</td>
+                <td className="px-3 py-2 text-slate-600">{t.teacher_name ?? "-"}</td>
                 <td className="px-3 py-2 font-medium text-slate-800">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
@@ -195,7 +219,38 @@ export function StudentDetailPage() {
               </tr>
             ))}
           </Table>
-          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          <Pagination
+            page={transactionsPage}
+            pageCount={transactionsPageCount}
+            total={transactionsTotal}
+            onPageChange={setTransactionsPage}
+          />
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card title="Davomat va baholar tarixi">
+          <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"]}>
+            {attendancePageItems.map((a) => (
+              <tr key={a.id}>
+                <td className="px-3 py-2 text-slate-600">{a.lesson_date}</td>
+                <td className="px-3 py-2 text-slate-600">{a.group_name}</td>
+                <td className="px-3 py-2 text-slate-600">{a.teacher_name}</td>
+                <td className="px-3 py-2">
+                  <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
+                    {ATTENDANCE_LABEL[a.status]}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-800">{a.grade ?? "-"}</td>
+              </tr>
+            ))}
+          </Table>
+          <Pagination
+            page={attendancePage}
+            pageCount={attendancePageCount}
+            total={attendanceTotal}
+            onPageChange={setAttendancePage}
+          />
         </Card>
       </div>
     </Layout>

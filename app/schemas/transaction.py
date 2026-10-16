@@ -38,6 +38,18 @@ class TransactionListItemOut(BaseModel):
     lesson_date: Optional[date] = None
 
 
+class StudentTransactionListItemOut(BaseModel):
+    id: int
+    amount: float
+    type: TransactionType
+    comment: Optional[str] = None
+    created_at: datetime
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
+    teacher_name: Optional[str] = None
+    lesson_date: Optional[date] = None
+
+
 class TeacherPayoutCreate(BaseModel):
     amount: float
     comment: Optional[str] = None

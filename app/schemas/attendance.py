@@ -48,5 +48,6 @@ class StudentAttendanceHistoryItemOut(BaseModel):
     lesson_date: date
     group_id: int
     group_name: str
+    teacher_name: str
     status: AttendanceStatus
     grade: Optional[int] = None
