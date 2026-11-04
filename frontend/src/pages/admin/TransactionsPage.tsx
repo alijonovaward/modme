@@ -17,11 +17,11 @@ import {
   Input,
   Label,
   Modal,
+  PAGE_SIZE,
   Pagination,
   Select,
   StatTile,
   Table,
-  usePagination,
 } from "../../components/ui";
 import type {
   GroupListItem,
@@ -89,7 +89,16 @@ export function TransactionsPage() {
   const [teacherDraft, setTeacherDraft] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
   const [teacherFilters, setTeacherFilters] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
 
-  const loadStudentTransactions = async (filters: StudentFilters) => {
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentTotal, setStudentTotal] = useState(0);
+  const [studentSums, setStudentSums] = useState({ deposits: 0, deductions: 0 });
+
+  const [teacherPage, setTeacherPage] = useState(1);
+  const [teacherTotal, setTeacherTotal] = useState(0);
+  const [teacherSums, setTeacherSums] = useState({ earnings: 0, payouts: 0 });
+  const [hasLoadedTeacherTab, setHasLoadedTeacherTab] = useState(false);
+
+  const loadStudentTransactions = async (filters: StudentFilters, pageArg: number) => {
     setIsLoading(true);
     try {
       const data = await listTransactions({
@@ -99,8 +108,13 @@ export function TransactionsPage() {
         type: filters.type ? (filters.type as "deposit" | "deduction") : undefined,
         date_from: filters.dateFrom ? `${filters.dateFrom}T00:00:00` : undefined,
         date_to: filters.dateTo ? `${filters.dateTo}T23:59:59` : undefined,
+        page: pageArg,
+        page_size: PAGE_SIZE,
       });
-      setTransactions(data);
+      setTransactions(data.items);
+      setStudentTotal(data.total);
+      setStudentSums({ deposits: data.total_deposits, deductions: data.total_deductions });
+      setStudentPage(data.page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -108,7 +122,7 @@ export function TransactionsPage() {
     }
   };
 
-  const loadTeacherTransactions = async (filters: TeacherFilters) => {
+  const loadTeacherTransactions = async (filters: TeacherFilters, pageArg: number) => {
     setIsLoading(true);
     try {
       const data = await listAllTeacherTransactions({
@@ -118,8 +132,13 @@ export function TransactionsPage() {
         type: filters.type ? (filters.type as "lesson_earning" | "payout") : undefined,
         date_from: filters.dateFrom ? `${filters.dateFrom}T00:00:00` : undefined,
         date_to: filters.dateTo ? `${filters.dateTo}T23:59:59` : undefined,
+        page: pageArg,
+        page_size: PAGE_SIZE,
       });
-      setTeacherTransactions(data);
+      setTeacherTransactions(data.items);
+      setTeacherTotal(data.total);
+      setTeacherSums({ earnings: data.total_earnings, payouts: data.total_payouts });
+      setTeacherPage(data.page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -128,7 +147,7 @@ export function TransactionsPage() {
   };
 
   useEffect(() => {
-    loadStudentTransactions(studentFilters);
+    loadStudentTransactions(studentFilters, 1);
     listGroups().then(setGroups).catch(() => undefined);
     listStudents().then(setStudents).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
@@ -141,8 +160,9 @@ export function TransactionsPage() {
   const switchTab = (next: "student" | "teacher") => {
     setTab(next);
     setError(null);
-    if (next === "teacher" && teacherTransactions.length === 0) {
-      loadTeacherTransactions(teacherFilters);
+    if (next === "teacher" && !hasLoadedTeacherTab) {
+      setHasLoadedTeacherTab(true);
+      loadTeacherTransactions(teacherFilters, 1);
     }
   };
 
@@ -159,10 +179,10 @@ export function TransactionsPage() {
     setIsModalOpen(false);
     if (tab === "student") {
       setStudentFilters(studentDraft);
-      loadStudentTransactions(studentDraft);
+      loadStudentTransactions(studentDraft, 1);
     } else {
       setTeacherFilters(teacherDraft);
-      loadTeacherTransactions(teacherDraft);
+      loadTeacherTransactions(teacherDraft, 1);
     }
   };
 
@@ -171,11 +191,11 @@ export function TransactionsPage() {
     if (tab === "student") {
       setStudentDraft(DEFAULT_STUDENT_FILTERS);
       setStudentFilters(DEFAULT_STUDENT_FILTERS);
-      loadStudentTransactions(DEFAULT_STUDENT_FILTERS);
+      loadStudentTransactions(DEFAULT_STUDENT_FILTERS, 1);
     } else {
       setTeacherDraft(DEFAULT_TEACHER_FILTERS);
       setTeacherFilters(DEFAULT_TEACHER_FILTERS);
-      loadTeacherTransactions(DEFAULT_TEACHER_FILTERS);
+      loadTeacherTransactions(DEFAULT_TEACHER_FILTERS, 1);
     }
   };
 
@@ -188,21 +208,13 @@ export function TransactionsPage() {
           Boolean,
         ).length;
 
-  const totalDeposits = transactions
-    .filter((t) => t.type === "deposit")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalDeductions = Math.abs(
-    transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
-  );
-  const totalEarnings = teacherTransactions
-    .filter((t) => t.type === "lesson_earning")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalPayouts = Math.abs(
-    teacherTransactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
-  );
+  const totalDeposits = studentSums.deposits;
+  const totalDeductions = studentSums.deductions;
+  const totalEarnings = teacherSums.earnings;
+  const totalPayouts = teacherSums.payouts;
 
-  const studentPagination = usePagination(transactions);
-  const teacherPagination = usePagination(teacherTransactions);
+  const studentPageCount = Math.max(1, Math.ceil(studentTotal / PAGE_SIZE));
+  const teacherPageCount = Math.max(1, Math.ceil(teacherTotal / PAGE_SIZE));
 
   return (
     <Layout>
@@ -281,7 +293,7 @@ export function TransactionsPage() {
         ) : tab === "student" ? (
           <>
           <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
-            {studentPagination.pageItems.map((t) => (
+            {transactions.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -302,16 +314,16 @@ export function TransactionsPage() {
             ))}
           </Table>
           <Pagination
-            page={studentPagination.page}
-            pageCount={studentPagination.pageCount}
-            total={studentPagination.total}
-            onPageChange={studentPagination.setPage}
+            page={studentPage}
+            pageCount={studentPageCount}
+            total={studentTotal}
+            onPageChange={(next) => loadStudentTransactions(studentFilters, next)}
           />
           </>
         ) : (
           <>
           <Table headers={["Sana", "O'qituvchi", "O'quvchi", "Guruh", "Turi", "Summa", "Kim bergan", "Izoh"]}>
-            {teacherPagination.pageItems.map((t) => (
+            {teacherTransactions.map((t) => (
               <tr key={t.id}>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleString("uz-UZ")}
@@ -333,10 +345,10 @@ export function TransactionsPage() {
             ))}
           </Table>
           <Pagination
-            page={teacherPagination.page}
-            pageCount={teacherPagination.pageCount}
-            total={teacherPagination.total}
-            onPageChange={teacherPagination.setPage}
+            page={teacherPage}
+            pageCount={teacherPageCount}
+            total={teacherTotal}
+            onPageChange={(next) => loadTeacherTransactions(teacherFilters, next)}
           />
           </>
         )}

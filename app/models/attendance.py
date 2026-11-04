@@ -1,6 +1,7 @@
 import enum
 
-from sqlalchemy import Column, Integer, ForeignKey, Enum
+from sqlalchemy import Column, DateTime, Integer, ForeignKey, Enum
+from sqlalchemy.sql import func
 
 from app.db.session import Base
 
@@ -19,3 +20,4 @@ class Attendance(Base):
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(Enum(AttendanceStatus), nullable=False)
     grade = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

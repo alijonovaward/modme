@@ -19,6 +19,12 @@ REQUIRED_COLUMNS = {
     "group_students": {
         "status_reason": "VARCHAR",
     },
+    "attendances": {
+        "created_at": "DATETIME",
+    },
+    "users": {
+        "is_active": "BOOLEAN",
+    },
 }
 
 
@@ -36,6 +42,10 @@ def _run_migrations() -> None:
                     conn.execute(
                         text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
                     )
+
+    if "users" in existing_tables:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
 
 
 def init_db() -> None:

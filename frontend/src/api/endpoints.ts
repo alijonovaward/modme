@@ -6,16 +6,18 @@ import type {
   GroupDetail,
   GroupListItem,
   Lesson,
-  LessonListItem,
+  LessonListPage,
   LessonStatus,
+  StaffListPage,
   StatsOverview,
   StudentAttendanceHistoryItem,
+  StudentListPage,
   StudentTransactionListItem,
   Subject,
   TeacherTransaction,
-  TeacherTransactionGlobalListItem,
+  TeacherTransactionListPage,
   Transaction,
-  TransactionListItem,
+  TransactionListPage,
   User,
   UserRole,
 } from "../types";
@@ -38,9 +40,19 @@ export async function getMe(): Promise<User> {
 }
 
 export async function listStaffUsers(role?: UserRole): Promise<User[]> {
-  const { data } = await apiClient.get<User[]>("/api/v1/admin/users", {
-    params: role ? { role } : undefined,
+  const { data } = await apiClient.get<StaffListPage>("/api/v1/admin/users", {
+    params: { role, page_size: 500 },
   });
+  return data.items;
+}
+
+export async function listStaffUsersPage(params: {
+  role?: UserRole;
+  search?: string;
+  page: number;
+  page_size: number;
+}): Promise<StaffListPage> {
+  const { data } = await apiClient.get<StaffListPage>("/api/v1/admin/users", { params });
   return data;
 }
 
@@ -62,8 +74,35 @@ export async function updateUserPassword(userId: number, newPassword: string): P
   return data;
 }
 
+export async function updateStaffUser(
+  userId: number,
+  payload: { full_name: string; phone: string; teacher_percentage?: number | null },
+): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/admin/users/${userId}`, payload);
+  return data;
+}
+
+export async function updateStaffStatus(userId: number, isActive: boolean): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/admin/users/${userId}/status`, {
+    is_active: isActive,
+  });
+  return data;
+}
+
 export async function listStudents(): Promise<User[]> {
-  const { data } = await apiClient.get<User[]>("/api/v1/students");
+  const { data } = await apiClient.get<StudentListPage>("/api/v1/students", {
+    params: { page_size: 500 },
+  });
+  return data.items;
+}
+
+export async function listStudentsPage(params: {
+  search?: string;
+  debtors_only?: boolean;
+  page: number;
+  page_size: number;
+}): Promise<StudentListPage> {
+  const { data } = await apiClient.get<StudentListPage>("/api/v1/students", { params });
   return data;
 }
 
@@ -75,6 +114,21 @@ export async function createStudent(payload: {
   const { data } = await apiClient.post<User>("/api/v1/students", {
     ...payload,
     role: "student",
+  });
+  return data;
+}
+
+export async function updateStudent(
+  studentId: number,
+  payload: { full_name: string; phone: string },
+): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/students/${studentId}`, payload);
+  return data;
+}
+
+export async function updateStudentStatus(studentId: number, isActive: boolean): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/students/${studentId}/status`, {
+    is_active: isActive,
   });
   return data;
 }
@@ -130,8 +184,10 @@ export async function listTransactions(params?: {
   type?: "deposit" | "deduction";
   date_from?: string;
   date_to?: string;
-}): Promise<TransactionListItem[]> {
-  const { data } = await apiClient.get<TransactionListItem[]>("/api/v1/transactions", {
+  page?: number;
+  page_size?: number;
+}): Promise<TransactionListPage> {
+  const { data } = await apiClient.get<TransactionListPage>("/api/v1/transactions", {
     params,
   });
   return data;
@@ -189,9 +245,32 @@ export async function createGroup(payload: {
   return data;
 }
 
+export async function updateGroup(
+  groupId: number,
+  payload: {
+    name: string;
+    subject_id: number;
+    teacher_id: number;
+    lesson_price: number;
+  },
+): Promise<GroupListItem> {
+  const { data } = await apiClient.put<GroupListItem>(`/api/v1/groups/${groupId}`, payload);
+  return data;
+}
+
 export async function addStudentToGroup(groupId: number, studentId: number) {
   const { data } = await apiClient.post(`/api/v1/groups/${groupId}/students`, {
     student_id: studentId,
+  });
+  return data;
+}
+
+export async function updateGroupStatus(
+  groupId: number,
+  status: "active" | "frozen" | "archived",
+): Promise<GroupListItem> {
+  const { data } = await apiClient.put<GroupListItem>(`/api/v1/groups/${groupId}/status`, {
+    status,
   });
   return data;
 }
@@ -220,8 +299,10 @@ export async function listAllLessons(params?: {
   date_from?: string;
   date_to?: string;
   status?: LessonStatus;
-}): Promise<LessonListItem[]> {
-  const { data } = await apiClient.get<LessonListItem[]>("/api/v1/lessons", { params });
+  page?: number;
+  page_size?: number;
+}): Promise<LessonListPage> {
+  const { data } = await apiClient.get<LessonListPage>("/api/v1/lessons", { params });
   return data;
 }
 
@@ -261,6 +342,18 @@ export async function submitAttendance(
   return data;
 }
 
+export async function updateAttendance(
+  lessonId: number,
+  studentId: number,
+  payload: { status: AttendanceStatus; grade?: number | null },
+): Promise<Attendance> {
+  const { data } = await apiClient.put<Attendance>(
+    `/api/v1/lessons/${lessonId}/attendance/${studentId}`,
+    payload,
+  );
+  return data;
+}
+
 export async function getTeacherFinance(params?: {
   date_from?: string;
   date_to?: string;
@@ -294,8 +387,10 @@ export async function listAllTeacherTransactions(params?: {
   type?: "lesson_earning" | "payout";
   date_from?: string;
   date_to?: string;
-}): Promise<TeacherTransactionGlobalListItem[]> {
-  const { data } = await apiClient.get<TeacherTransactionGlobalListItem[]>(
+  page?: number;
+  page_size?: number;
+}): Promise<TeacherTransactionListPage> {
+  const { data } = await apiClient.get<TeacherTransactionListPage>(
     "/api/v1/teachers/transactions",
     { params },
   );

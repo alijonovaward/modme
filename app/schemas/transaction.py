@@ -82,3 +82,21 @@ class TeacherTransactionGlobalListItemOut(BaseModel):
     lesson_date: Optional[date] = None
     created_by_id: Optional[int] = None
     created_by_name: Optional[str] = None
+
+
+class TransactionListOut(BaseModel):
+    items: list[TransactionListItemOut]
+    total: int
+    page: int
+    page_size: int
+    total_deposits: float
+    total_deductions: float
+
+
+class TeacherTransactionListOut(BaseModel):
+    items: list[TeacherTransactionGlobalListItemOut]
+    total: int
+    page: int
+    page_size: int
+    total_earnings: float
+    total_payouts: float

@@ -1,3 +1,10 @@
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export type UserRole = "superadmin" | "admin" | "teacher" | "student";
 
 export interface User {
@@ -7,6 +14,7 @@ export interface User {
   role: UserRole;
   teacher_percentage: number | null;
   balance: number;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -160,6 +168,27 @@ export interface StudentAttendanceHistoryItem {
   teacher_name: string;
   status: AttendanceStatus;
   grade: number | null;
+}
+
+export interface StudentListPage extends Page<User> {
+  debtor_count: number;
+}
+
+export type StaffListPage = Page<User>;
+
+export interface LessonListPage extends Page<LessonListItem> {
+  completed_count: number;
+  planned_count: number;
+}
+
+export interface TransactionListPage extends Page<TransactionListItem> {
+  total_deposits: number;
+  total_deductions: number;
+}
+
+export interface TeacherTransactionListPage extends Page<TeacherTransactionGlobalListItem> {
+  total_earnings: number;
+  total_payouts: number;
 }
 
 export interface StudentTransactionListItem {

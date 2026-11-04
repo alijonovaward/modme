@@ -31,3 +31,12 @@ class LessonListItemOut(BaseModel):
     present_count: int
     excused_count: int
     unexcused_count: int
+
+
+class LessonListOut(BaseModel):
+    items: list[LessonListItemOut]
+    total: int
+    page: int
+    page_size: int
+    completed_count: int
+    planned_count: int

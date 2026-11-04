@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
@@ -14,6 +15,7 @@ from app.schemas.transaction import (
     TeacherPayoutCreate,
     TeacherTransactionGlobalListItemOut,
     TeacherTransactionListItemOut,
+    TeacherTransactionListOut,
 )
 
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
@@ -87,7 +89,7 @@ def get_teacher_finance_by_id(
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
 
 
-@router.get("/transactions", response_model=list[TeacherTransactionGlobalListItemOut])
+@router.get("/transactions", response_model=TeacherTransactionListOut)
 def list_all_teacher_transactions(
     teacher_id: Optional[int] = Query(default=None),
     created_by_id: Optional[int] = Query(default=None),
@@ -95,6 +97,8 @@ def list_all_teacher_transactions(
     type: Optional[TeacherTransactionType] = Query(default=None),
     date_from: Optional[datetime] = Query(default=None),
     date_to: Optional[datetime] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
@@ -111,9 +115,7 @@ def list_all_teacher_transactions(
         .outerjoin(Group, Group.id == Lesson.group_id)
     )
 
-    if current_user.role == UserRole.admin:
-        query = query.filter(TeacherTransaction.created_by_id == current_user.id)
-    elif created_by_id is not None:
+    if created_by_id is not None:
         query = query.filter(TeacherTransaction.created_by_id == created_by_id)
 
     if teacher_id is not None:
@@ -127,9 +129,28 @@ def list_all_teacher_transactions(
     if date_to is not None:
         query = query.filter(TeacherTransaction.created_at <= date_to)
 
-    rows = query.order_by(TeacherTransaction.created_at.desc()).all()
+    total = query.count()
+    total_earnings = (
+        query.filter(TeacherTransaction.type == TeacherTransactionType.lesson_earning)
+        .with_entities(func.sum(TeacherTransaction.amount))
+        .scalar()
+        or 0.0
+    )
+    total_payouts = abs(
+        query.filter(TeacherTransaction.type == TeacherTransactionType.payout)
+        .with_entities(func.sum(TeacherTransaction.amount))
+        .scalar()
+        or 0.0
+    )
 
-    return [
+    rows = (
+        query.order_by(TeacherTransaction.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    items = [
         TeacherTransactionGlobalListItemOut(
             id=tt.id,
             teacher_id=tt.teacher_id,
@@ -148,6 +169,14 @@ def list_all_teacher_transactions(
         )
         for tt, teacher, student, actor, lesson, group in rows
     ]
+    return TeacherTransactionListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_earnings=total_earnings,
+        total_payouts=total_payouts,
+    )
 
 
 @router.post(

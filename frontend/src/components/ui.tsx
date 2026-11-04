@@ -163,7 +163,7 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
   );
 }
 
-const PAGE_SIZE = 10;
+export const PAGE_SIZE = 10;
 
 export function usePagination<T>(items: T[]) {
   const [page, setPage] = useState(1);

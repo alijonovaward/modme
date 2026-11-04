@@ -207,10 +207,12 @@ export function GroupsPage() {
                 value={teacherId}
                 onChange={setTeacherId}
                 placeholder="O'qituvchi qidirish..."
-                options={teachers.map((t) => ({
-                  value: String(t.id),
-                  label: `${t.full_name} (${t.teacher_percentage}%)`,
-                }))}
+                options={teachers
+                  .filter((t) => t.is_active)
+                  .map((t) => ({
+                    value: String(t.id),
+                    label: `${t.full_name} (${t.teacher_percentage}%)`,
+                  }))}
               />
             </div>
             <div>

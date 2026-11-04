@@ -19,6 +19,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Telefon raqam yoki parol noto'g'ri",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hisobingiz bloklangan, administratorga murojaat qiling",
+        )
     access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
     return Token(access_token=access_token)
 

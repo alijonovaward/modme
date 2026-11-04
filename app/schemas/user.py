@@ -23,11 +23,42 @@ class UserOut(BaseModel):
     role: UserRole
     teacher_percentage: Optional[float] = None
     balance: float
+    is_active: bool
     created_at: datetime
 
 
 class PasswordUpdate(BaseModel):
     new_password: str
+
+
+class StudentUpdate(BaseModel):
+    full_name: str
+    phone: str
+
+
+class StaffUpdate(BaseModel):
+    full_name: str
+    phone: str
+    teacher_percentage: Optional[float] = None
+
+
+class ActiveStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class StudentListOut(BaseModel):
+    items: list[UserOut]
+    total: int
+    page: int
+    page_size: int
+    debtor_count: int
+
+
+class StaffListOut(BaseModel):
+    items: list[UserOut]
+    total: int
+    page: int
+    page_size: int
 
 
 class LoginRequest(BaseModel):

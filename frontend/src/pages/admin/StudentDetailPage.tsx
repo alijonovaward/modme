@@ -5,6 +5,8 @@ import {
   getStudentAttendanceHistory,
   getStudentTransactions,
   listStudents,
+  updateStudent,
+  updateStudentStatus,
   updateUserPassword,
 } from "../../api/endpoints";
 import {
@@ -44,13 +46,20 @@ export function StudentDetailPage() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositComment, setDepositComment] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [editFullName, setEditFullName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
     try {
       const students = await listStudents();
-      setStudent(students.find((s) => s.id === id) ?? null);
+      const found = students.find((s) => s.id === id) ?? null;
+      setStudent(found);
+      if (found) {
+        setEditFullName(found.full_name);
+        setEditPhone(found.phone);
+      }
       setTransactions(await getStudentTransactions(id));
       setAttendance(await getStudentAttendanceHistory(id));
     } catch (err) {
@@ -82,6 +91,35 @@ export function StudentDetailPage() {
       setError(extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await updateStudent(id, { full_name: editFullName, phone: editPhone });
+      setSuccess("Ma'lumotlar saqlandi");
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    if (!student) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateStudentStatus(id, !student.is_active);
+      setSuccess(student.is_active ? "O'quvchi bloklandi" : "O'quvchi faollashtirildi");
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
     }
   };
 
@@ -134,18 +172,42 @@ export function StudentDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.full_name}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Balans: <span className="font-semibold">{student.balance.toLocaleString("uz-UZ")} so'm</span>
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.full_name}</h1>
+            {!student.is_active && <Badge color="red">Bloklangan</Badge>}
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Balans: <span className="font-semibold">{student.balance.toLocaleString("uz-UZ")} so'm</span>
+          </p>
+        </div>
+        <Button variant={student.is_active ? "danger" : "secondary"} onClick={handleToggleActive}>
+          {student.is_active ? "Bloklash" : "Faollashtirish"}
+        </Button>
       </div>
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card title="Ma'lumotlarni tahrirlash">
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label>F.I.O</Label>
+              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Telefon</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
+            </div>
+            <Button type="submit" disabled={isSubmitting}>
+              Saqlash
+            </Button>
+          </form>
+        </Card>
+
         <Card title="Balansni to'ldirish">
           <form onSubmit={handleDeposit} className="space-y-4">
             <div>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { createStaffUser, listStaffUsers } from "../../api/endpoints";
+import { createStaffUser, listStaffUsersPage } from "../../api/endpoints";
 import {
   Badge,
   Button,
@@ -10,11 +10,11 @@ import {
   Input,
   Label,
   Modal,
+  PAGE_SIZE,
   Pagination,
   Select,
   SuccessMessage,
   Table,
-  usePagination,
 } from "../../components/ui";
 import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -40,13 +40,29 @@ export function StaffPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
 
-  const loadStaff = async () => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const load = async (pageArg: number, searchArg: string, roleArg: UserRole | "") => {
     setIsLoading(true);
     try {
-      const data = await listStaffUsers();
-      setStaff(data);
+      const data = await listStaffUsersPage({
+        search: searchArg || undefined,
+        role: roleArg || undefined,
+        page: pageArg,
+        page_size: PAGE_SIZE,
+      });
+      setStaff(data.items);
+      setTotal(data.total);
+      setPage(data.page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -55,22 +71,11 @@ export function StaffPage() {
   };
 
   useEffect(() => {
-    loadStaff();
-  }, []);
+    load(1, debouncedSearch, roleFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, roleFilter]);
 
-  const filteredStaff = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return staff.filter((s) => {
-      const matchesRole = !roleFilter || s.role === roleFilter;
-      const matchesSearch =
-        !term ||
-        s.full_name.toLowerCase().includes(term) ||
-        s.phone.toLowerCase().includes(term);
-      return matchesRole && matchesSearch;
-    });
-  }, [staff, search, roleFilter]);
-
-  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStaff);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const resetForm = () => {
     setFullName("");
@@ -97,7 +102,7 @@ export function StaffPage() {
       setSuccess("Xodim muvaffaqiyatli yaratildi");
       setIsModalOpen(false);
       resetForm();
-      await loadStaff();
+      await load(page, debouncedSearch, roleFilter);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -144,7 +149,7 @@ export function StaffPage() {
         ) : (
           <>
           <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
-            {pageItems.map((s) => (
+            {staff.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.phone}</td>
@@ -152,6 +157,11 @@ export function StaffPage() {
                   <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
                     {ROLE_LABEL[s.role] ?? s.role}
                   </Badge>
+                  {!s.is_active && (
+                    <span className="ml-1">
+                      <Badge color="red">Bloklangan</Badge>
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
@@ -170,7 +180,12 @@ export function StaffPage() {
               </tr>
             ))}
           </Table>
-          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            onPageChange={(next) => load(next, debouncedSearch, roleFilter)}
+          />
           </>
         )}
       </Card>

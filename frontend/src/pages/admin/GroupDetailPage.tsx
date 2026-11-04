@@ -3,7 +3,11 @@ import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
   getGroupDetail,
+  listStaffUsers,
   listStudents,
+  listSubjects,
+  updateGroup,
+  updateGroupStatus,
   updateGroupStudentStatus,
 } from "../../api/endpoints";
 import {
@@ -21,7 +25,7 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import type { GroupDetail, GroupRosterItem, GroupStudentStatus, User } from "../../types";
+import type { GroupDetail, GroupRosterItem, GroupStatus, GroupStudentStatus, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
 const ROSTER_STATUS_COLOR = {
@@ -29,6 +33,18 @@ const ROSTER_STATUS_COLOR = {
   frozen: "amber",
   dropped: "red",
 } as const;
+
+const GROUP_STATUS_COLOR = {
+  active: "green",
+  frozen: "amber",
+  archived: "red",
+} as const;
+
+const GROUP_STATUS_LABEL: Record<GroupStatus, string> = {
+  active: "Faol",
+  frozen: "Muzlatilgan",
+  archived: "Arxivlangan",
+};
 
 const STATUS_TABS: { value: GroupStudentStatus | ""; label: string }[] = [
   { value: "", label: "Hammasi" },
@@ -43,6 +59,8 @@ export function GroupDetailPage() {
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [allStudents, setAllStudents] = useState<User[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [teachers, setTeachers] = useState<User[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -52,15 +70,25 @@ export function GroupDetailPage() {
   const [dropTarget, setDropTarget] = useState<GroupRosterItem | null>(null);
   const [dropReason, setDropReason] = useState("");
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editSubjectId, setEditSubjectId] = useState("");
+  const [editTeacherId, setEditTeacherId] = useState("");
+  const [editLessonPrice, setEditLessonPrice] = useState("");
+
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [groupData, studentsData] = await Promise.all([
+      const [groupData, studentsData, subjectsData, teachersData] = await Promise.all([
         getGroupDetail(id),
         listStudents(),
+        listSubjects(),
+        listStaffUsers("teacher"),
       ]);
       setGroup(groupData);
       setAllStudents(studentsData);
+      setSubjects(subjectsData);
+      setTeachers(teachersData);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -81,6 +109,49 @@ export function GroupDetailPage() {
       await addStudentToGroup(id, Number(selectedStudentId));
       setSuccess("O'quvchi guruhga qo'shildi");
       setSelectedStudentId("");
+      await loadAll();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleGroupStatusChange = async (status: GroupStatus) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateGroupStatus(id, status);
+      setSuccess("Guruh holati o'zgartirildi");
+      await loadAll();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const openEditModal = () => {
+    if (!group) return;
+    setEditName(group.name);
+    setEditSubjectId(String(group.subject_id));
+    setEditTeacherId(String(group.teacher_id));
+    setEditLessonPrice(String(group.lesson_price));
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editSubjectId || !editTeacherId) {
+      setError("Fan va o'qituvchini tanlang");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateGroup(id, {
+        name: editName,
+        subject_id: Number(editSubjectId),
+        teacher_id: Number(editTeacherId),
+        lesson_price: Number(editLessonPrice),
+      });
+      setSuccess("Guruh ma'lumotlari saqlandi");
+      setIsEditModalOpen(false);
       await loadAll();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -132,15 +203,40 @@ export function GroupDetailPage() {
   const activeRosterStudentIds = new Set(
     group.students.filter((s) => s.status !== "dropped").map((s) => s.student_id),
   );
-  const addableStudents = allStudents.filter((s) => !activeRosterStudentIds.has(s.id));
+  const addableStudents = allStudents.filter((s) => !activeRosterStudentIds.has(s.id) && s.is_active);
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name}</h1>
+            <Badge color={GROUP_STATUS_COLOR[group.status]}>{GROUP_STATUS_LABEL[group.status]}</Badge>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="secondary" onClick={openEditModal}>
+            Tahrirlash
+          </Button>
+          {group.status !== "active" && (
+            <Button variant="secondary" onClick={() => handleGroupStatusChange("active")}>
+              Faollashtirish
+            </Button>
+          )}
+          {group.status !== "frozen" && (
+            <Button variant="secondary" onClick={() => handleGroupStatusChange("frozen")}>
+              Muzlatish
+            </Button>
+          )}
+          {group.status !== "archived" && (
+            <Button variant="danger" onClick={() => handleGroupStatusChange("archived")}>
+              Arxivlash
+            </Button>
+          )}
+        </div>
       </div>
 
       <ErrorMessage message={error} />
@@ -232,6 +328,52 @@ export function GroupDetailPage() {
             </div>
             <Button className="w-full" variant="danger" disabled={!dropReason.trim()} onClick={handleConfirmDrop}>
               Chiqarish
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {isEditModalOpen && (
+        <Modal title="Guruh ma'lumotlarini tahrirlash" onClose={() => setIsEditModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Guruh nomi</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={editSubjectId}
+                onChange={setEditSubjectId}
+                placeholder="Fan qidirish..."
+                options={subjects.map((s) => ({ value: String(s.id), label: s.name }))}
+              />
+            </div>
+            <div>
+              <Label>O'qituvchi</Label>
+              <Combobox
+                value={editTeacherId}
+                onChange={setEditTeacherId}
+                placeholder="O'qituvchi qidirish..."
+                options={teachers
+                  .filter((t) => t.is_active || String(t.id) === editTeacherId)
+                  .map((t) => ({
+                    value: String(t.id),
+                    label: `${t.full_name} (${t.teacher_percentage}%)`,
+                  }))}
+              />
+            </div>
+            <div>
+              <Label>1 dars narxi</Label>
+              <Input
+                type="number"
+                value={editLessonPrice}
+                onChange={(e) => setEditLessonPrice(e.target.value)}
+                required
+              />
+            </div>
+            <Button className="w-full" onClick={handleEditSubmit}>
+              Saqlash
             </Button>
           </div>
         </Modal>

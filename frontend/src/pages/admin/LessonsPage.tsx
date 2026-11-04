@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createLesson,
   deleteLesson,
@@ -17,12 +17,12 @@ import {
   Input,
   Label,
   Modal,
+  PAGE_SIZE,
   Pagination,
   Select,
   StatTile,
   SuccessMessage,
   Table,
-  usePagination,
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -64,7 +64,11 @@ export function LessonsPage() {
   const [detailAttendance, setDetailAttendance] = useState<AttendanceDetail[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-  const load = async (filters: Filters) => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ completed: 0, planned: 0 });
+
+  const load = async (filters: Filters, pageArg: number) => {
     setIsLoading(true);
     try {
       const data = await listAllLessons({
@@ -73,8 +77,13 @@ export function LessonsPage() {
         date_from: filters.dateFrom || undefined,
         date_to: filters.dateTo || undefined,
         status: filters.status ? (filters.status as "planned" | "completed") : undefined,
+        page: pageArg,
+        page_size: PAGE_SIZE,
       });
-      setLessons(data);
+      setLessons(data.items);
+      setTotal(data.total);
+      setSummary({ completed: data.completed_count, planned: data.planned_count });
+      setPage(data.page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -83,7 +92,7 @@ export function LessonsPage() {
   };
 
   useEffect(() => {
-    load(appliedFilters);
+    load(appliedFilters, 1);
     listGroups().then(setGroups).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,14 +106,14 @@ export function LessonsPage() {
   const applyFilters = () => {
     setAppliedFilters(draft);
     setIsModalOpen(false);
-    load(draft);
+    load(draft, 1);
   };
 
   const clearFilters = () => {
     setDraft(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(DEFAULT_FILTERS);
+    load(DEFAULT_FILTERS, 1);
   };
 
   const handleCreateLesson = async () => {
@@ -117,7 +126,7 @@ export function LessonsPage() {
       setSuccess("Dars qo'shildi");
       setIsCreateModalOpen(false);
       setNewGroupId("");
-      await load(appliedFilters);
+      await load(appliedFilters, page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -134,7 +143,7 @@ export function LessonsPage() {
     try {
       await deleteLesson(lesson.id);
       setSuccess("Dars o'chirildi");
-      await load(appliedFilters);
+      await load(appliedFilters, page);
     } catch (err) {
       setError(extractErrorMessage(err));
     }
@@ -156,13 +165,10 @@ export function LessonsPage() {
     Boolean,
   ).length;
 
-  const summary = useMemo(() => {
-    const completed = lessons.filter((l) => l.status === "completed").length;
-    const planned = lessons.filter((l) => l.status === "planned").length;
-    return { total: lessons.length, completed, planned };
-  }, [lessons]);
-
-  const { page, setPage, pageCount, pageItems, total: pageTotal } = usePagination(lessons);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const handlePageChange = (nextPage: number) => {
+    load(appliedFilters, nextPage);
+  };
 
   return (
     <Layout>
@@ -195,7 +201,7 @@ export function LessonsPage() {
         )}
 
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatTile label="Jami darslar" value={String(summary.total)} color="indigo" />
+          <StatTile label="Jami darslar" value={String(total)} color="indigo" />
           <StatTile label="O'tilgan" value={String(summary.completed)} color="green" />
           <StatTile label="Rejalashtirilgan" value={String(summary.planned)} color="amber" />
         </div>
@@ -205,7 +211,7 @@ export function LessonsPage() {
         ) : (
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
-            {pageItems.map((l) => (
+            {lessons.map((l) => (
               <tr key={l.id}>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
                 <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
@@ -234,7 +240,7 @@ export function LessonsPage() {
               </tr>
             ))}
           </Table>
-          <Pagination page={page} pageCount={pageCount} total={pageTotal} onPageChange={setPage} />
+          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={handlePageChange} />
           </>
         )}
       </Card>

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
@@ -10,12 +11,12 @@ from app.models.group import Group
 from app.models.lesson import Lesson
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
-from app.schemas.transaction import TransactionListItemOut
+from app.schemas.transaction import TransactionListItemOut, TransactionListOut
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
 
 
-@router.get("", response_model=list[TransactionListItemOut])
+@router.get("", response_model=TransactionListOut)
 def list_transactions(
     student_id: Optional[int] = Query(default=None),
     created_by_id: Optional[int] = Query(default=None),
@@ -23,6 +24,8 @@ def list_transactions(
     type: Optional[TransactionType] = Query(default=None),
     date_from: Optional[datetime] = Query(default=None),
     date_to: Optional[datetime] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -39,9 +42,7 @@ def list_transactions(
         .outerjoin(Group, Group.id == Lesson.group_id)
     )
 
-    if current_user.role == UserRole.admin:
-        query = query.filter(Transaction.created_by_id == current_user.id)
-    elif current_user.role == UserRole.teacher:
+    if current_user.role == UserRole.teacher:
         # A teacher sees deductions tied to their own groups, regardless of
         # who/what triggered them - group ownership, not personal authorship.
         query = query.filter(Group.teacher_id == current_user.id)
@@ -59,9 +60,28 @@ def list_transactions(
     if date_to is not None:
         query = query.filter(Transaction.created_at <= date_to)
 
-    rows = query.order_by(Transaction.created_at.desc()).all()
+    total = query.count()
+    total_deposits = (
+        query.filter(Transaction.type == TransactionType.deposit)
+        .with_entities(func.sum(Transaction.amount))
+        .scalar()
+        or 0.0
+    )
+    total_deductions = abs(
+        query.filter(Transaction.type == TransactionType.deduction)
+        .with_entities(func.sum(Transaction.amount))
+        .scalar()
+        or 0.0
+    )
 
-    return [
+    rows = (
+        query.order_by(Transaction.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    items = [
         TransactionListItemOut(
             id=t.id,
             student_id=t.student_id,
@@ -78,3 +98,11 @@ def list_transactions(
         )
         for t, student, actor, lesson, group in rows
     ]
+    return TransactionListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_deposits=total_deposits,
+        total_deductions=total_deductions,
+    )

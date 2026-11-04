@@ -24,6 +24,10 @@ class GroupOut(BaseModel):
     status: GroupStatus
 
 
+class GroupStatusUpdate(BaseModel):
+    status: GroupStatus
+
+
 class GroupStudentCreate(BaseModel):
     student_id: int
 

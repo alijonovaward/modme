@@ -4,6 +4,8 @@ import {
   getTeacherFinanceById,
   listStaffUsers,
   payoutTeacher,
+  updateStaffStatus,
+  updateStaffUser,
   updateUserPassword,
 } from "../../api/endpoints";
 import {
@@ -42,6 +44,9 @@ export function StaffDetailPage() {
   const [newPassword, setNewPassword] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutComment, setPayoutComment] = useState("");
+  const [editFullName, setEditFullName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPercentage, setEditPercentage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = async () => {
@@ -50,6 +55,11 @@ export function StaffDetailPage() {
       const staff = await listStaffUsers();
       const found = staff.find((s) => s.id === id) ?? null;
       setStaffMember(found);
+      if (found) {
+        setEditFullName(found.full_name);
+        setEditPhone(found.phone);
+        setEditPercentage(found.teacher_percentage != null ? String(found.teacher_percentage) : "");
+      }
       if (found?.role === "teacher") {
         setFinance(await getTeacherFinanceById(id));
       }
@@ -64,6 +74,40 @@ export function StaffDetailPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const handleEditSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!staffMember) return;
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await updateStaffUser(id, {
+        full_name: editFullName,
+        phone: editPhone,
+        teacher_percentage: staffMember.role === "teacher" ? Number(editPercentage) : undefined,
+      });
+      setSuccess("Ma'lumotlar saqlandi");
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    if (!staffMember) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateStaffStatus(id, !staffMember.is_active);
+      setSuccess(staffMember.is_active ? "Xodim bloklandi" : "Xodim faollashtirildi");
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
 
   const handlePasswordUpdate = async (e: FormEvent) => {
     e.preventDefault();
@@ -121,26 +165,66 @@ export function StaffDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{staffMember.full_name}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {staffMember.phone} ·{" "}
-          <Badge color={staffMember.role === "superadmin" ? "amber" : "slate"}>
-            {ROLE_LABEL[staffMember.role] ?? staffMember.role}
-          </Badge>
-          {staffMember.teacher_percentage !== null && (
-            <span className="ml-2">Foiz: {staffMember.teacher_percentage}%</span>
-          )}
-        </p>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Balans: <span className="font-semibold">{staffMember.balance.toLocaleString("uz-UZ")} so'm</span>
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{staffMember.full_name}</h1>
+            {!staffMember.is_active && <Badge color="red">Bloklangan</Badge>}
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {staffMember.phone} ·{" "}
+            <Badge color={staffMember.role === "superadmin" ? "amber" : "slate"}>
+              {ROLE_LABEL[staffMember.role] ?? staffMember.role}
+            </Badge>
+            {staffMember.teacher_percentage !== null && (
+              <span className="ml-2">Foiz: {staffMember.teacher_percentage}%</span>
+            )}
+          </p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Balans: <span className="font-semibold">{staffMember.balance.toLocaleString("uz-UZ")} so'm</span>
+          </p>
+        </div>
+        {staffMember.role !== "superadmin" && (
+          <Button
+            variant={staffMember.is_active ? "danger" : "secondary"}
+            onClick={handleToggleActive}
+          >
+            {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
+          </Button>
+        )}
       </div>
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card title="Ma'lumotlarni tahrirlash">
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label>F.I.O</Label>
+              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Telefon</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
+            </div>
+            {staffMember.role === "teacher" && (
+              <div>
+                <Label>Foiz stavkasi (%)</Label>
+                <Input
+                  type="number"
+                  value={editPercentage}
+                  onChange={(e) => setEditPercentage(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            <Button type="submit" disabled={isSubmitting}>
+              Saqlash
+            </Button>
+          </form>
+        </Card>
+
         <Card title="Parolni yangilash">
           <form onSubmit={handlePasswordUpdate} className="space-y-4">
             <div>

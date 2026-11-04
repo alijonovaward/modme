@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Enum
+from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, Enum
 from sqlalchemy.sql import func
 
 from app.db.session import Base
@@ -23,4 +23,5 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     teacher_percentage = Column(Float, nullable=True)
     balance = Column(Float, default=0.0, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

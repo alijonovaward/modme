@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -14,22 +15,38 @@ from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
 from app.schemas.attendance import StudentAttendanceHistoryItemOut
 from app.schemas.transaction import DepositCreate, StudentTransactionListItemOut, TransactionOut
-from app.schemas.user import UserCreate, UserOut
+from app.schemas.user import ActiveStatusUpdate, StudentListOut, StudentUpdate, UserCreate, UserOut
 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model=StudentListOut)
 def list_students(
+    search: Optional[str] = Query(default=None),
+    debtors_only: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    return (
-        db.query(User)
-        .filter(User.role == UserRole.student)
-        .order_by(User.created_at.desc())
+    query = db.query(User).filter(User.role == UserRole.student)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
+    if debtors_only:
+        query = query.filter(User.balance < 0)
+
+    total = query.count()
+    debtor_count = (
+        db.query(User).filter(User.role == UserRole.student, User.balance < 0).count()
+    )
+    items = (
+        query.order_by(User.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
+    return StudentListOut(items=items, total=total, page=page, page_size=page_size, debtor_count=debtor_count)
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -61,6 +78,44 @@ def _get_student_or_404(db: Session, student_id: int) -> User:
     student = db.get(User, student_id)
     if student is None or student.role != UserRole.student:
         raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+    return student
+
+
+@router.put("/{student_id}", response_model=UserOut)
+def update_student(
+    student_id: int,
+    payload: StudentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    student = _get_student_or_404(db, student_id)
+
+    existing = (
+        db.query(User)
+        .filter(User.phone == payload.phone, User.id != student.id)
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
+
+    student.full_name = payload.full_name
+    student.phone = payload.phone
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.put("/{student_id}/status", response_model=UserOut)
+def update_student_status(
+    student_id: int,
+    payload: ActiveStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    student = _get_student_or_404(db, student_id)
+    student.is_active = payload.is_active
+    db.commit()
+    db.refresh(student)
     return student
 
 

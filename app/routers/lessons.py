@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -8,26 +8,35 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_roles
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
-from app.models.group import Group
+from app.models.group import Group, GroupStatus
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
 from app.models.subject import Subject
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
-from app.schemas.attendance import AttendanceCreate, AttendanceDetailOut, AttendanceOut
-from app.schemas.lesson import LessonCreate, LessonListItemOut, LessonOut
+from app.schemas.attendance import (
+    AttendanceCreate,
+    AttendanceDetailOut,
+    AttendanceOut,
+    AttendanceUpdate,
+)
+from app.schemas.lesson import LessonCreate, LessonListItemOut, LessonListOut, LessonOut
+
+ATTENDANCE_EDIT_WINDOW = timedelta(hours=24)
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 
 
-@router.get("", response_model=list[LessonListItemOut])
+@router.get("", response_model=LessonListOut)
 def list_all_lessons(
     group_id: Optional[int] = Query(default=None),
     teacher_id: Optional[int] = Query(default=None),
     date_from: Optional[date] = Query(default=None),
     date_to: Optional[date] = Query(default=None),
     lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -51,7 +60,16 @@ def list_all_lessons(
     if lesson_status is not None:
         query = query.filter(Lesson.status == lesson_status)
 
-    rows = query.order_by(Lesson.lesson_date.desc()).all()
+    total = query.count()
+    completed_count = query.filter(Lesson.status == LessonStatus.completed).count()
+    planned_count = query.filter(Lesson.status == LessonStatus.planned).count()
+
+    rows = (
+        query.order_by(Lesson.lesson_date.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     lesson_ids = [lesson.id for lesson, _, _ in rows]
 
     counts: dict[int, dict[AttendanceStatus, int]] = {}
@@ -68,7 +86,7 @@ def list_all_lessons(
     teacher_ids = {group.teacher_id for _, group, _ in rows}
     teachers = {u.id: u.full_name for u in db.query(User).filter(User.id.in_(teacher_ids))} if teacher_ids else {}
 
-    return [
+    items = [
         LessonListItemOut(
             id=lesson.id,
             group_id=group.id,
@@ -84,6 +102,14 @@ def list_all_lessons(
         )
         for lesson, group, subject in rows
     ]
+    return LessonListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        completed_count=completed_count,
+        planned_count=planned_count,
+    )
 
 
 @router.post("", response_model=LessonOut, status_code=status.HTTP_201_CREATED)
@@ -95,6 +121,10 @@ def create_lesson(
     group = db.get(Group, payload.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Guruh topilmadi")
+    if group.status != GroupStatus.active:
+        raise HTTPException(
+            status_code=400, detail="Faol bo'lmagan guruh uchun dars ochib bo'lmaydi"
+        )
 
     lesson = Lesson(group_id=payload.group_id, lesson_date=payload.lesson_date)
     db.add(lesson)
@@ -256,3 +286,142 @@ def mark_attendance(
     for record in created_records:
         db.refresh(record)
     return created_records
+
+
+@router.put("/{lesson_id}/attendance/{student_id}", response_model=AttendanceOut)
+def update_attendance(
+    lesson_id: int,
+    student_id: int,
+    payload: AttendanceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Dars topilmadi")
+
+    group = db.get(Group, lesson.group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Guruh topilmadi")
+    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
+
+    attendance = (
+        db.query(Attendance)
+        .filter(Attendance.lesson_id == lesson_id, Attendance.student_id == student_id)
+        .first()
+    )
+    if attendance is None:
+        raise HTTPException(status_code=404, detail="Bu o'quvchi uchun davomat topilmadi")
+
+    if current_user.role == UserRole.teacher:
+        created_at = attendance.created_at
+        if created_at is not None and created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        if created_at is None or datetime.now(timezone.utc) - created_at > ATTENDANCE_EDIT_WINDOW:
+            raise HTTPException(
+                status_code=403,
+                detail="Davomat belgilangandan 24 soat o'tgan, endi faqat admin tuzatishi mumkin",
+            )
+
+    if payload.status == AttendanceStatus.present and payload.grade is None:
+        raise HTTPException(status_code=400, detail="Kelgan o'quvchiga baho qo'yilishi shart")
+    if payload.status != AttendanceStatus.present and payload.grade is not None:
+        raise HTTPException(status_code=400, detail="Baho faqat kelgan o'quvchiga qo'yiladi")
+
+    group_student = (
+        db.query(GroupStudent)
+        .filter(GroupStudent.group_id == group.id, GroupStudent.student_id == student_id)
+        .first()
+    )
+    is_frozen = group_student is not None and group_student.status == GroupStudentStatus.frozen
+
+    old_deduction = (
+        db.query(Transaction)
+        .filter(
+            Transaction.lesson_id == lesson_id,
+            Transaction.student_id == student_id,
+            Transaction.type == TransactionType.deduction,
+        )
+        .first()
+    )
+    old_earning = (
+        db.query(TeacherTransaction)
+        .filter(
+            TeacherTransaction.lesson_id == lesson_id,
+            TeacherTransaction.student_id == student_id,
+            TeacherTransaction.type == TeacherTransactionType.lesson_earning,
+        )
+        .first()
+    )
+
+    was_charged = old_deduction is not None
+    should_charge = (
+        payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
+    )
+
+    student = db.get(User, student_id)
+    teacher = db.get(User, group.teacher_id)
+
+    if was_charged and not should_charge:
+        student.balance += group.lesson_price
+        db.add(
+            Transaction(
+                student_id=student_id,
+                amount=group.lesson_price,
+                type=TransactionType.deposit,
+                comment=f"Davomat tuzatildi, pul qaytarildi ({group.name}, {lesson.lesson_date})",
+                created_by_id=current_user.id,
+                lesson_id=lesson.id,
+            )
+        )
+        refund_share = old_earning.amount if old_earning else 0.0
+        if refund_share:
+            teacher.balance -= refund_share
+            db.add(
+                TeacherTransaction(
+                    teacher_id=teacher.id,
+                    lesson_id=lesson.id,
+                    student_id=student_id,
+                    amount=-refund_share,
+                    type=TeacherTransactionType.payout,
+                    comment=(
+                        f"Davomat tuzatildi, hisoblangan foiz bekor qilindi "
+                        f"({group.name}, {lesson.lesson_date})"
+                    ),
+                    created_by_id=current_user.id,
+                )
+            )
+    elif not was_charged and should_charge:
+        student.balance -= group.lesson_price
+        db.add(
+            Transaction(
+                student_id=student_id,
+                amount=-group.lesson_price,
+                type=TransactionType.deduction,
+                comment=f"Davomat tuzatildi, dars uchun yechildi ({group.name}, {lesson.lesson_date})",
+                created_by_id=current_user.id,
+                lesson_id=lesson.id,
+            )
+        )
+        teacher_share = group.lesson_price * ((teacher.teacher_percentage or 0.0) / 100)
+        teacher.balance += teacher_share
+        db.add(
+            TeacherTransaction(
+                teacher_id=teacher.id,
+                lesson_id=lesson.id,
+                student_id=student_id,
+                amount=teacher_share,
+                type=TeacherTransactionType.lesson_earning,
+                comment=f"Davomat tuzatildi ({group.name}, {lesson.lesson_date})",
+                created_by_id=current_user.id,
+            )
+        )
+
+    attendance.status = payload.status
+    attendance.grade = payload.grade
+    db.commit()
+    db.refresh(attendance)
+    return attendance

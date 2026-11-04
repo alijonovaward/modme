@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { createStudent, listStudents } from "../../api/endpoints";
+import { createStudent, listStudentsPage } from "../../api/endpoints";
 import {
   Badge,
   Button,
@@ -10,10 +10,10 @@ import {
   Input,
   Label,
   Modal,
+  PAGE_SIZE,
   Pagination,
   SuccessMessage,
   Table,
-  usePagination,
 } from "../../components/ui";
 import type { User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -31,12 +31,31 @@ export function StudentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debtorsOnly, setDebtorsOnly] = useState(false);
 
-  const loadStudents = async () => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [debtorCount, setDebtorCount] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const load = async (pageArg: number, searchArg: string, debtorsOnlyArg: boolean) => {
     setIsLoading(true);
     try {
-      setStudents(await listStudents());
+      const data = await listStudentsPage({
+        search: searchArg || undefined,
+        debtors_only: debtorsOnlyArg || undefined,
+        page: pageArg,
+        page_size: PAGE_SIZE,
+      });
+      setStudents(data.items);
+      setTotal(data.total);
+      setDebtorCount(data.debtor_count);
+      setPage(data.page);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -45,24 +64,11 @@ export function StudentsPage() {
   };
 
   useEffect(() => {
-    loadStudents();
-  }, []);
+    load(1, debouncedSearch, debtorsOnly);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, debtorsOnly]);
 
-  const debtorCount = useMemo(() => students.filter((s) => s.balance < 0).length, [students]);
-
-  const filteredStudents = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return students.filter((s) => {
-      const matchesSearch =
-        !term ||
-        s.full_name.toLowerCase().includes(term) ||
-        s.phone.toLowerCase().includes(term);
-      const matchesDebtor = !debtorsOnly || s.balance < 0;
-      return matchesSearch && matchesDebtor;
-    });
-  }, [students, search, debtorsOnly]);
-
-  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const resetForm = () => {
     setFullName("");
@@ -81,7 +87,7 @@ export function StudentsPage() {
       setSuccess("O'quvchi muvaffaqiyatli qo'shildi");
       setIsModalOpen(false);
       resetForm();
-      await loadStudents();
+      await load(page, debouncedSearch, debtorsOnly);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -128,13 +134,20 @@ export function StudentsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["F.I.O", "Telefon", "Balans", ""]}>
-            {pageItems.map((s) => (
+          <Table headers={["F.I.O", "Telefon", "Balans", "Holat", ""]}>
+            {students.map((s) => (
               <tr key={s.id}>
                 <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.phone}</td>
                 <td className={`px-3 py-2 ${s.balance < 0 ? "font-medium text-rose-600" : "text-slate-600 dark:text-slate-400"}`}>
                   {s.balance.toLocaleString("uz-UZ")} so'm
+                </td>
+                <td className="px-3 py-2">
+                  {s.is_active ? (
+                    <Badge color="green">Faol</Badge>
+                  ) : (
+                    <Badge color="red">Bloklangan</Badge>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <Link
@@ -147,7 +160,12 @@ export function StudentsPage() {
               </tr>
             ))}
           </Table>
-          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            onPageChange={(next) => load(next, debouncedSearch, debtorsOnly)}
+          />
           </>
         )}
       </Card>

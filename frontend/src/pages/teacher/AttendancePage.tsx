@@ -4,6 +4,7 @@ import {
   getGroupDetail,
   getLessonAttendance,
   submitAttendance,
+  updateAttendance,
   type AttendanceRecordInput,
 } from "../../api/endpoints";
 import { Button, Card, ErrorMessage, extractErrorMessage, Select, SuccessMessage, Table } from "../../components/ui";
@@ -24,33 +25,41 @@ export function AttendancePage() {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [existing, setExisting] = useState<Attendance[]>([]);
   const [rows, setRows] = useState<Record<number, RowState>>({});
+  const [initialRows, setInitialRows] = useState<Record<number, RowState>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    Promise.all([getGroupDetail(gId), getLessonAttendance(lId)])
+  const load = () => {
+    setIsLoading(true);
+    return Promise.all([getGroupDetail(gId), getLessonAttendance(lId)])
       .then(([groupData, attendanceData]) => {
         setGroup(groupData);
         setExisting(attendanceData);
-        const initialRows: Record<number, RowState> = {};
+        const nextRows: Record<number, RowState> = {};
         groupData.students
           .filter((s) => s.status !== "dropped")
           .forEach((s) => {
             const existingRecord = attendanceData.find((a) => a.student_id === s.student_id);
-            initialRows[s.student_id] = {
+            nextRows[s.student_id] = {
               status: existingRecord?.status ?? "present",
               grade: existingRecord?.grade ? String(existingRecord.grade) : "",
             };
           });
-        setRows(initialRows);
+        setRows(nextRows);
+        setInitialRows(nextRows);
       })
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gId, lId]);
 
-  const isReadOnly = existing.length > 0;
+  const isEditMode = existing.length > 0;
 
   const handleSubmit = async () => {
     if (!group) return;
@@ -78,6 +87,50 @@ export function AttendancePage() {
     }
   };
 
+  const handleSaveCorrections = async () => {
+    if (!group) return;
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    try {
+      const changedStudentIds = Object.keys(rows)
+        .map(Number)
+        .filter((studentId) => {
+          const row = rows[studentId];
+          const initial = initialRows[studentId];
+          return row.status !== initial.status || row.grade !== initial.grade;
+        });
+
+      if (changedStudentIds.length === 0) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      await Promise.all(
+        changedStudentIds.map((studentId) => {
+          const row = rows[studentId];
+          return updateAttendance(lId, studentId, {
+            status: row.status,
+            grade: row.status === "present" ? Number(row.grade) : null,
+          });
+        }),
+      );
+      setSuccess("Tuzatishlar saqlandi");
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const hasChanges = Object.keys(rows).some((key) => {
+    const studentId = Number(key);
+    const row = rows[studentId];
+    const initial = initialRows[studentId];
+    return initial && (row.status !== initial.status || row.grade !== initial.grade);
+  });
+
   if (isLoading || !group) {
     return (
       <Layout>
@@ -93,9 +146,10 @@ export function AttendancePage() {
     <Layout>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name} — Davomat</h1>
-        {isReadOnly && (
+        {isEditMode && (
           <p className="text-sm text-amber-600">
-            Ushbu dars uchun davomat allaqachon qilingan, faqat ko'rish mumkin.
+            Ushbu dars uchun davomat allaqachon qilingan. Davomat belgilangandan 24 soat ichida
+            tuzatish mumkin, pul avtomatik qayta hisoblanadi.
           </p>
         )}
       </div>
@@ -115,7 +169,6 @@ export function AttendancePage() {
                 </td>
                 <td className="px-3 py-2">
                   <Select
-                    disabled={isReadOnly}
                     value={row?.status}
                     onChange={(e) =>
                       setRows((prev) => ({
@@ -134,7 +187,7 @@ export function AttendancePage() {
                 </td>
                 <td className="px-3 py-2">
                   <Select
-                    disabled={isReadOnly || row?.status !== "present"}
+                    disabled={row?.status !== "present"}
                     value={row?.grade}
                     onChange={(e) =>
                       setRows((prev) => ({
@@ -155,13 +208,17 @@ export function AttendancePage() {
             );
           })}
         </Table>
-        {!isReadOnly && (
-          <div className="mt-4">
+        <div className="mt-4">
+          {isEditMode ? (
+            <Button onClick={handleSaveCorrections} disabled={isSubmitting || !hasChanges}>
+              {isSubmitting ? "Saqlanmoqda..." : "Tuzatishlarni saqlash"}
+            </Button>
+          ) : (
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? "Saqlanmoqda..." : "Davomatni saqlash"}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
     </Layout>
   );
