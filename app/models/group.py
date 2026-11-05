@@ -16,7 +16,7 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
-    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     lesson_price = Column(Float, nullable=False)
     status = Column(Enum(GroupStatus), default=GroupStatus.active, nullable=False)

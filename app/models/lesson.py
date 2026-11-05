@@ -14,6 +14,6 @@ class Lesson(Base):
     __tablename__ = "lessons"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
     lesson_date = Column(Date, nullable=False)
     status = Column(Enum(LessonStatus), default=LessonStatus.planned, nullable=False)

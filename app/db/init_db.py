@@ -27,6 +27,15 @@ REQUIRED_COLUMNS = {
     },
 }
 
+REQUIRED_INDEXES = {
+    "groups": ["subject_id", "teacher_id"],
+    "group_students": ["group_id", "student_id"],
+    "lessons": ["group_id"],
+    "attendances": ["lesson_id", "student_id"],
+    "transactions": ["student_id", "lesson_id"],
+    "teacher_transactions": ["teacher_id", "lesson_id", "student_id"],
+}
+
 
 def _run_migrations() -> None:
     inspector = inspect(engine)
@@ -46,6 +55,23 @@ def _run_migrations() -> None:
     if "users" in existing_tables:
         with engine.begin() as conn:
             conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
+
+    for table_name, columns in REQUIRED_INDEXES.items():
+        if table_name not in existing_tables:
+            continue
+        existing_indexed_columns = {
+            col
+            for idx in inspector.get_indexes(table_name)
+            for col in idx["column_names"]
+        }
+        for column_name in columns:
+            if column_name in existing_indexed_columns:
+                continue
+            index_name = f"ix_{table_name}_{column_name}"
+            with engine.begin() as conn:
+                conn.execute(
+                    text(f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} ({column_name})")
+                )
 
 
 def init_db() -> None:

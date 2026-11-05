@@ -15,7 +15,7 @@ class GroupStudent(Base):
     __tablename__ = "group_students"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
-    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(Enum(GroupStudentStatus), default=GroupStudentStatus.active, nullable=False)
     status_reason = Column(String, nullable=True)
