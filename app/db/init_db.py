@@ -20,7 +20,7 @@ REQUIRED_COLUMNS = {
         "status_reason": "VARCHAR",
     },
     "attendances": {
-        "created_at": "DATETIME",
+        "created_at": "TIMESTAMP",
     },
     "users": {
         "is_active": "BOOLEAN",
@@ -58,7 +58,7 @@ def _run_migrations() -> None:
 
     if "users" in existing_tables:
         with engine.begin() as conn:
-            conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
+            conn.execute(text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
 
     for table_name, columns in REQUIRED_INDEXES.items():
         if table_name not in existing_tables:
