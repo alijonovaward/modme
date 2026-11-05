@@ -20,6 +20,7 @@ import {
 import type { StudentTransactionListItem } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
+import { downloadXlsx } from "../../utils/download";
 
 interface Filters {
   dateFrom: string;
@@ -109,9 +110,29 @@ export function StudentTransactionsPage() {
       <Card
         title="Tranzaksiyalar"
         action={
-          <Button onClick={openModal}>
-            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                user &&
+                downloadXlsx(
+                  `/api/v1/students/${user.id}/transactions/export`,
+                  {
+                    group_id: appliedFilters.groupId ? Number(appliedFilters.groupId) : undefined,
+                    type: appliedFilters.type || undefined,
+                    date_from: appliedFilters.dateFrom ? `${appliedFilters.dateFrom}T00:00:00` : undefined,
+                    date_to: appliedFilters.dateTo ? `${appliedFilters.dateTo}T23:59:59` : undefined,
+                  },
+                  "tranzaksiyalarim.xlsx",
+                )
+              }
+            >
+              Excel'ga chiqarish
+            </Button>
+            <Button onClick={openModal}>
+              Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            </Button>
+          </div>
         }
       >
         <ErrorMessage message={error} />

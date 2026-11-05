@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -19,6 +20,22 @@ from app.schemas.user import (
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
+ROLE_LABELS = {
+    UserRole.superadmin: "Bosh administrator",
+    UserRole.admin: "Administrator",
+    UserRole.teacher: "O'qituvchi",
+}
+
+
+def _build_staff_query(db: Session, role: Optional[UserRole], search: Optional[str]):
+    query = db.query(User).filter(User.role != UserRole.student)
+    if role is not None:
+        query = query.filter(User.role == role)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
+    return query
+
 
 @router.get("/users", response_model=StaffListOut)
 def list_staff_users(
@@ -29,12 +46,7 @@ def list_staff_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    query = db.query(User).filter(User.role != UserRole.student)
-    if role is not None:
-        query = query.filter(User.role == role)
-    if search:
-        term = f"%{search}%"
-        query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
+    query = _build_staff_query(db, role, search)
 
     total = query.count()
     items = (
@@ -44,6 +56,29 @@ def list_staff_users(
         .all()
     )
     return StaffListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/users/export")
+def export_staff_users(
+    role: Optional[UserRole] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    staff = _build_staff_query(db, role, search).order_by(User.created_at.desc()).all()
+    rows = [
+        [
+            u.full_name,
+            u.phone,
+            ROLE_LABELS.get(u.role, u.role.value),
+            u.teacher_percentage if u.teacher_percentage is not None else "",
+            "Faol" if u.is_active else "Bloklangan",
+        ]
+        for u in staff
+    ]
+    return xlsx_response(
+        "xodimlar.xlsx", ["F.I.O", "Telefon", "Lavozim", "Foiz", "Holat"], rows
+    )
 
 
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)

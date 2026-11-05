@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.db.session import get_db
 from app.models.group import Group
 from app.models.lesson import Lesson
@@ -16,20 +17,15 @@ from app.schemas.transaction import TransactionListItemOut, TransactionListOut
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
 
 
-@router.get("", response_model=TransactionListOut)
-def list_transactions(
-    student_id: Optional[int] = Query(default=None),
-    created_by_id: Optional[int] = Query(default=None),
-    group_id: Optional[int] = Query(default=None),
-    type: Optional[TransactionType] = Query(default=None),
-    date_from: Optional[datetime] = Query(default=None),
-    date_to: Optional[datetime] = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
-    ),
+def _build_transactions_query(
+    db: Session,
+    current_user: User,
+    student_id: Optional[int],
+    created_by_id: Optional[int],
+    group_id: Optional[int],
+    type: Optional[TransactionType],
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
 ):
     StudentUser = aliased(User)
     ActorUser = aliased(User)
@@ -59,6 +55,27 @@ def list_transactions(
         query = query.filter(Transaction.created_at >= date_from)
     if date_to is not None:
         query = query.filter(Transaction.created_at <= date_to)
+    return query
+
+
+@router.get("", response_model=TransactionListOut)
+def list_transactions(
+    student_id: Optional[int] = Query(default=None),
+    created_by_id: Optional[int] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    query = _build_transactions_query(
+        db, current_user, student_id, created_by_id, group_id, type, date_from, date_to
+    )
 
     total = query.count()
     total_deposits = (
@@ -105,4 +122,44 @@ def list_transactions(
         page_size=page_size,
         total_deposits=total_deposits,
         total_deductions=total_deductions,
+    )
+
+
+TRANSACTION_TYPE_LABELS = {TransactionType.deposit: "Kirim", TransactionType.deduction: "Chiqim"}
+
+
+@router.get("/export")
+def export_transactions(
+    student_id: Optional[int] = Query(default=None),
+    created_by_id: Optional[int] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    query = _build_transactions_query(
+        db, current_user, student_id, created_by_id, group_id, type, date_from, date_to
+    )
+    rows = query.order_by(Transaction.created_at.desc()).all()
+    xlsx_rows = [
+        [
+            t.created_at,
+            student.full_name,
+            TRANSACTION_TYPE_LABELS.get(t.type, t.type.value),
+            t.amount,
+            group.name if group else "",
+            lesson.lesson_date if lesson else None,
+            actor.full_name if actor else "",
+            t.comment or "",
+        ]
+        for t, student, actor, lesson, group in rows
+    ]
+    return xlsx_response(
+        "tranzaksiyalar.xlsx",
+        ["Sana", "O'quvchi", "Turi", "Summa", "Guruh", "Dars sanasi", "Kim kiritdi", "Izoh"],
+        xlsx_rows,
     )

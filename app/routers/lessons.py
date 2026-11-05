@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
@@ -28,19 +29,14 @@ ATTENDANCE_EDIT_WINDOW = timedelta(hours=24)
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 
 
-@router.get("", response_model=LessonListOut)
-def list_all_lessons(
-    group_id: Optional[int] = Query(default=None),
-    teacher_id: Optional[int] = Query(default=None),
-    date_from: Optional[date] = Query(default=None),
-    date_to: Optional[date] = Query(default=None),
-    lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
-    ),
+def _build_lessons_query(
+    db: Session,
+    current_user: User,
+    group_id: Optional[int],
+    teacher_id: Optional[int],
+    date_from: Optional[date],
+    date_to: Optional[date],
+    lesson_status: Optional[LessonStatus],
 ):
     query = (
         db.query(Lesson, Group, Subject)
@@ -59,17 +55,10 @@ def list_all_lessons(
         query = query.filter(Lesson.lesson_date <= date_to)
     if lesson_status is not None:
         query = query.filter(Lesson.status == lesson_status)
+    return query
 
-    total = query.count()
-    completed_count = query.filter(Lesson.status == LessonStatus.completed).count()
-    planned_count = query.filter(Lesson.status == LessonStatus.planned).count()
 
-    rows = (
-        query.order_by(Lesson.lesson_date.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+def _build_lesson_items(db: Session, rows: list) -> list[LessonListItemOut]:
     lesson_ids = [lesson.id for lesson, _, _ in rows]
 
     counts: dict[int, dict[AttendanceStatus, int]] = {}
@@ -86,7 +75,7 @@ def list_all_lessons(
     teacher_ids = {group.teacher_id for _, group, _ in rows}
     teachers = {u.id: u.full_name for u in db.query(User).filter(User.id.in_(teacher_ids))} if teacher_ids else {}
 
-    items = [
+    return [
         LessonListItemOut(
             id=lesson.id,
             group_id=group.id,
@@ -104,6 +93,37 @@ def list_all_lessons(
         )
         for lesson, group, subject in rows
     ]
+
+
+@router.get("", response_model=LessonListOut)
+def list_all_lessons(
+    group_id: Optional[int] = Query(default=None),
+    teacher_id: Optional[int] = Query(default=None),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    query = _build_lessons_query(
+        db, current_user, group_id, teacher_id, date_from, date_to, lesson_status
+    )
+
+    total = query.count()
+    completed_count = query.filter(Lesson.status == LessonStatus.completed).count()
+    planned_count = query.filter(Lesson.status == LessonStatus.planned).count()
+
+    rows = (
+        query.order_by(Lesson.lesson_date.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    items = _build_lesson_items(db, rows)
     return LessonListOut(
         items=items,
         total=total,
@@ -111,6 +131,59 @@ def list_all_lessons(
         page_size=page_size,
         completed_count=completed_count,
         planned_count=planned_count,
+    )
+
+
+LESSON_STATUS_LABELS = {LessonStatus.planned: "Rejada", LessonStatus.completed: "O'tildi"}
+
+
+@router.get("/export")
+def export_lessons(
+    group_id: Optional[int] = Query(default=None),
+    teacher_id: Optional[int] = Query(default=None),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    query = _build_lessons_query(
+        db, current_user, group_id, teacher_id, date_from, date_to, lesson_status
+    )
+    rows = query.order_by(Lesson.lesson_date.desc()).all()
+    items = _build_lesson_items(db, rows)
+    xlsx_rows = [
+        [
+            item.lesson_date,
+            f"{item.start_time.strftime('%H:%M')}-{item.end_time.strftime('%H:%M')}"
+            if item.start_time and item.end_time
+            else "",
+            item.group_name,
+            item.subject_name,
+            item.teacher_name,
+            LESSON_STATUS_LABELS.get(item.status, item.status.value),
+            item.present_count,
+            item.excused_count,
+            item.unexcused_count,
+        ]
+        for item in items
+    ]
+    return xlsx_response(
+        "darslar.xlsx",
+        [
+            "Sana",
+            "Vaqt",
+            "Guruh",
+            "Fan",
+            "O'qituvchi",
+            "Holat",
+            "Keldi",
+            "Sababli",
+            "Sababsiz",
+        ],
+        xlsx_rows,
     )
 
 

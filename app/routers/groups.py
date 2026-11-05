@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.db.session import get_db
 from app.models.group import Group, GroupStatus
 from app.models.group_schedule import GroupSchedule
@@ -195,6 +196,15 @@ def update_group(
     return group
 
 
+def _build_groups_query(db: Session, current_user: User, teacher_id: Optional[int]):
+    query = db.query(Group)
+    if current_user.role == UserRole.teacher:
+        query = query.filter(Group.teacher_id == current_user.id)
+    elif teacher_id is not None:
+        query = query.filter(Group.teacher_id == teacher_id)
+    return query
+
+
 @router.get("", response_model=list[GroupListItemOut])
 def list_groups(
     teacher_id: Optional[int] = Query(default=None),
@@ -203,13 +213,54 @@ def list_groups(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
     ),
 ):
-    query = db.query(Group)
-    if current_user.role == UserRole.teacher:
-        query = query.filter(Group.teacher_id == current_user.id)
-    elif teacher_id is not None:
-        query = query.filter(Group.teacher_id == teacher_id)
-
+    query = _build_groups_query(db, current_user, teacher_id)
     return [_to_list_item(group, db) for group in query.all()]
+
+
+GROUP_STATUS_LABELS = {
+    GroupStatus.active: "Faol",
+    GroupStatus.frozen: "Muzlatilgan",
+    GroupStatus.archived: "Arxivlangan",
+}
+
+SHORT_WEEKDAY_NAMES = ("Dush", "Sesh", "Chor", "Pay", "Jum", "Shan", "Yak")
+
+
+def _format_schedule_cell(schedule: list[GroupScheduleItem]) -> str:
+    if not schedule:
+        return ""
+    days = ", ".join(SHORT_WEEKDAY_NAMES[item.weekday] for item in schedule)
+    first = schedule[0]
+    return f"{days} {first.start_time.strftime('%H:%M')}-{first.end_time.strftime('%H:%M')}"
+
+
+@router.get("/export")
+def export_groups(
+    teacher_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    groups = _build_groups_query(db, current_user, teacher_id).all()
+    rows = []
+    for group in groups:
+        item = _to_list_item(group, db)
+        rows.append(
+            [
+                item.name,
+                item.subject_name,
+                item.teacher_name,
+                item.lesson_price,
+                GROUP_STATUS_LABELS.get(item.status, item.status.value),
+                _format_schedule_cell(item.schedule),
+            ]
+        )
+    return xlsx_response(
+        "guruhlar.xlsx",
+        ["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Holat", "Jadval"],
+        rows,
+    )
 
 
 @router.get("/{group_id}", response_model=GroupDetailOut)

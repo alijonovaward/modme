@@ -27,6 +27,7 @@ import {
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange, toLocalISODate } from "../../utils/date";
+import { downloadXlsx } from "../../utils/download";
 
 interface Filters {
   dateFrom: string;
@@ -188,6 +189,24 @@ export function LessonsPage() {
             </Button>
             <Button onClick={openModal}>
               Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                downloadXlsx(
+                  "/api/v1/lessons/export",
+                  {
+                    group_id: appliedFilters.groupId ? Number(appliedFilters.groupId) : undefined,
+                    teacher_id: appliedFilters.teacherId ? Number(appliedFilters.teacherId) : undefined,
+                    date_from: appliedFilters.dateFrom || undefined,
+                    date_to: appliedFilters.dateTo || undefined,
+                    status: appliedFilters.status || undefined,
+                  },
+                  "darslar.xlsx",
+                )
+              }
+            >
+              Excel'ga chiqarish
             </Button>
           </div>
         }

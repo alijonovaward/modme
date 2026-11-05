@@ -20,6 +20,7 @@ import {
 import type { GroupListItem, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
+import { downloadXlsx } from "../../utils/download";
 
 interface Filters {
   dateFrom: string;
@@ -108,9 +109,27 @@ export function FinancePage() {
       <Card
         title="Moliyam"
         action={
-          <Button onClick={openModal}>
-            Filterlar{extraFilterCount > 0 ? ` (${extraFilterCount})` : ""}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                downloadXlsx(
+                  "/api/v1/teachers/finance/export",
+                  {
+                    group_id: appliedFilters.groupId ? Number(appliedFilters.groupId) : undefined,
+                    date_from: appliedFilters.dateFrom ? `${appliedFilters.dateFrom}T00:00:00` : undefined,
+                    date_to: appliedFilters.dateTo ? `${appliedFilters.dateTo}T23:59:59` : undefined,
+                  },
+                  "moliyam.xlsx",
+                )
+              }
+            >
+              Excel'ga chiqarish
+            </Button>
+            <Button onClick={openModal}>
+              Filterlar{extraFilterCount > 0 ? ` (${extraFilterCount})` : ""}
+            </Button>
+          </div>
         }
       >
         <ErrorMessage message={error} />

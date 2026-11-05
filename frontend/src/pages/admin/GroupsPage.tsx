@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { createGroup, listGroups, listStaffUsers, listSubjects } from "../../api/endpoints";
+import { downloadXlsx } from "../../utils/download";
 import {
   Badge,
   Button,
@@ -177,6 +178,18 @@ export function GroupsPage() {
               ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
             ]}
           />
+          <Button
+            variant="secondary"
+            onClick={() =>
+              downloadXlsx(
+                "/api/v1/groups/export",
+                { teacher_id: teacherFilter ? Number(teacherFilter) : undefined },
+                "guruhlar.xlsx",
+              )
+            }
+          >
+            Excel'ga chiqarish
+          </Button>
         </div>
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>

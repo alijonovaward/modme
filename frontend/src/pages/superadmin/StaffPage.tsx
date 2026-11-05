@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { createStaffUser, listStaffUsersPage } from "../../api/endpoints";
+import { downloadXlsx } from "../../utils/download";
 import {
   Badge,
   Button,
@@ -143,6 +144,18 @@ export function StaffPage() {
             <option value="admin">Administrator</option>
             <option value="teacher">O'qituvchi</option>
           </Select>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              downloadXlsx(
+                "/api/v1/admin/users/export",
+                { search: debouncedSearch || undefined, role: roleFilter || undefined },
+                "xodimlar.xlsx",
+              )
+            }
+          >
+            Excel'ga chiqarish
+          </Button>
         </div>
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>

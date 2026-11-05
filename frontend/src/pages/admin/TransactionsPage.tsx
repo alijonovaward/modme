@@ -31,6 +31,7 @@ import type {
 } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
+import { downloadXlsx } from "../../utils/download";
 
 interface StudentFilters {
   dateFrom: string;
@@ -216,14 +217,49 @@ export function TransactionsPage() {
   const studentPageCount = Math.max(1, Math.ceil(studentTotal / PAGE_SIZE));
   const teacherPageCount = Math.max(1, Math.ceil(teacherTotal / PAGE_SIZE));
 
+  const handleExport = () => {
+    if (tab === "student") {
+      downloadXlsx(
+        "/api/v1/transactions/export",
+        {
+          created_by_id: studentFilters.adminId ? Number(studentFilters.adminId) : undefined,
+          group_id: studentFilters.groupId ? Number(studentFilters.groupId) : undefined,
+          student_id: studentFilters.studentId ? Number(studentFilters.studentId) : undefined,
+          type: studentFilters.type || undefined,
+          date_from: studentFilters.dateFrom ? `${studentFilters.dateFrom}T00:00:00` : undefined,
+          date_to: studentFilters.dateTo ? `${studentFilters.dateTo}T23:59:59` : undefined,
+        },
+        "tranzaksiyalar.xlsx",
+      );
+    } else {
+      downloadXlsx(
+        "/api/v1/teachers/transactions/export",
+        {
+          created_by_id: teacherFilters.adminId ? Number(teacherFilters.adminId) : undefined,
+          group_id: teacherFilters.groupId ? Number(teacherFilters.groupId) : undefined,
+          teacher_id: teacherFilters.teacherId ? Number(teacherFilters.teacherId) : undefined,
+          type: teacherFilters.type || undefined,
+          date_from: teacherFilters.dateFrom ? `${teacherFilters.dateFrom}T00:00:00` : undefined,
+          date_to: teacherFilters.dateTo ? `${teacherFilters.dateTo}T23:59:59` : undefined,
+        },
+        "oqituvchi_hisob_kitobi.xlsx",
+      );
+    }
+  };
+
   return (
     <Layout>
       <Card
         title="Tranzaksiyalar tarixi"
         action={
-          <Button onClick={openModal}>
-            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExport}>
+              Excel'ga chiqarish
+            </Button>
+            <Button onClick={openModal}>
+              Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            </Button>
+          </div>
         }
       >
         <ErrorMessage message={error} />

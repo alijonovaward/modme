@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { createStudent, listStudentsPage } from "../../api/endpoints";
+import { downloadXlsx } from "../../utils/download";
 import {
   Badge,
   Button,
@@ -129,6 +130,18 @@ export function StudentsPage() {
               <Badge color={debtorsOnly ? "slate" : "red"}>{debtorCount}</Badge>
             )}
           </button>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              downloadXlsx(
+                "/api/v1/students/export",
+                { search: debouncedSearch || undefined, debtors_only: debtorsOnly || undefined },
+                "oquvchilar.xlsx",
+              )
+            }
+          >
+            Excel'ga chiqarish
+          </Button>
         </div>
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>

@@ -25,6 +25,7 @@ import {
 } from "../../components/ui";
 import type { StudentAttendanceHistoryItem, StudentTransactionListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { downloadXlsx } from "../../utils/download";
 
 const ATTENDANCE_LABEL: Record<string, string> = {
   present: "Keldi",
@@ -248,7 +249,23 @@ export function StudentDetailPage() {
       </div>
 
       <div className="mt-6">
-        <Card title="To'lovlar va yechimlar tarixi">
+        <Card
+          title="To'lovlar va yechimlar tarixi"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() =>
+                downloadXlsx(
+                  `/api/v1/students/${id}/transactions/export`,
+                  undefined,
+                  `${student.full_name}_tranzaksiyalari.xlsx`,
+                )
+              }
+            >
+              Excel'ga chiqarish
+            </Button>
+          }
+        >
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StatTile
               label="Jami to'ldirilgan"
@@ -291,7 +308,23 @@ export function StudentDetailPage() {
       </div>
 
       <div className="mt-6">
-        <Card title="Davomat va baholar tarixi">
+        <Card
+          title="Davomat va baholar tarixi"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() =>
+                downloadXlsx(
+                  `/api/v1/students/${id}/attendance/export`,
+                  undefined,
+                  `${student.full_name}_davomati.xlsx`,
+                )
+              }
+            >
+              Excel'ga chiqarish
+            </Button>
+          }
+        >
           <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"]}>
             {attendancePageItems.map((a) => (
               <tr key={a.id}>

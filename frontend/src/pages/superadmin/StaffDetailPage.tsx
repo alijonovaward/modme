@@ -24,6 +24,7 @@ import {
 } from "../../components/ui";
 import type { TeacherTransaction, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { downloadXlsx } from "../../utils/download";
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Bosh Admin",
@@ -272,7 +273,23 @@ export function StaffDetailPage() {
 
       {staffMember.role === "teacher" && (
         <div className="mt-6">
-          <Card title="Moliya tarixi">
+          <Card
+            title="Moliya tarixi"
+            action={
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  downloadXlsx(
+                    `/api/v1/teachers/${id}/finance/export`,
+                    undefined,
+                    `${staffMember.full_name}_moliyasi.xlsx`,
+                  )
+                }
+              >
+                Excel'ga chiqarish
+              </Button>
+            }
+          >
             <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <StatTile
                 label="Jami dars daromadi"

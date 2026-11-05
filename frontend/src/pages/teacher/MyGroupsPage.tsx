@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { listGroups } from "../../api/endpoints";
 import {
   Badge,
+  Button,
   Card,
   ErrorMessage,
   extractErrorMessage,
@@ -13,6 +14,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem } from "../../types";
 import { Layout } from "../../components/Layout";
+import { downloadXlsx } from "../../utils/download";
 
 export function MyGroupsPage() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
@@ -42,13 +44,19 @@ export function MyGroupsPage() {
     <Layout>
       <Card title="Mening guruhlarim">
         <ErrorMessage message={error} />
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-3">
           <Input
             placeholder="Guruh yoki fan nomi bo'yicha qidirish"
-            className="max-w-md"
+            className="max-w-md flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <Button
+            variant="secondary"
+            onClick={() => downloadXlsx("/api/v1/groups/export", undefined, "guruhlarim.xlsx")}
+          >
+            Excel'ga chiqarish
+          </Button>
         </div>
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>

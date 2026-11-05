@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.db.session import get_db
 from app.models.group import Group
 from app.models.lesson import Lesson
@@ -89,18 +90,68 @@ def get_teacher_finance_by_id(
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
 
 
-@router.get("/transactions", response_model=TeacherTransactionListOut)
-def list_all_teacher_transactions(
-    teacher_id: Optional[int] = Query(default=None),
-    created_by_id: Optional[int] = Query(default=None),
-    group_id: Optional[int] = Query(default=None),
-    type: Optional[TeacherTransactionType] = Query(default=None),
+TEACHER_TX_TYPE_LABELS = {
+    TeacherTransactionType.lesson_earning: "Dars uchun",
+    TeacherTransactionType.payout: "To'lov",
+}
+
+
+def _finance_xlsx_rows(items: list[TeacherTransactionListItemOut]) -> list[list]:
+    return [
+        [
+            item.created_at,
+            TEACHER_TX_TYPE_LABELS.get(item.type, item.type.value),
+            item.amount,
+            item.group_name or "",
+            item.student_name or "",
+            item.lesson_date,
+            item.comment or "",
+        ]
+        for item in items
+    ]
+
+
+FINANCE_XLSX_HEADERS = ["Sana", "Turi", "Summa", "Guruh", "O'quvchi", "Dars sanasi", "Izoh"]
+
+
+@router.get("/finance/export")
+def export_teacher_finance(
     date_from: Optional[datetime] = Query(default=None),
     date_to: Optional[datetime] = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    group_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.teacher)),
+):
+    items = _query_teacher_finance(db, current_user.id, date_from, date_to, group_id)
+    return xlsx_response("moliyam.xlsx", FINANCE_XLSX_HEADERS, _finance_xlsx_rows(items))
+
+
+@router.get("/{teacher_id}/finance/export")
+def export_teacher_finance_by_id(
+    teacher_id: int,
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    teacher = db.get(User, teacher_id)
+    if teacher is None or teacher.role != UserRole.teacher:
+        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    items = _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
+    return xlsx_response(
+        f"{teacher.full_name}_moliyasi.xlsx", FINANCE_XLSX_HEADERS, _finance_xlsx_rows(items)
+    )
+
+
+def _build_teacher_transactions_query(
+    db: Session,
+    teacher_id: Optional[int],
+    created_by_id: Optional[int],
+    group_id: Optional[int],
+    type: Optional[TeacherTransactionType],
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
 ):
     TeacherUser = aliased(User)
     StudentUser = aliased(User)
@@ -128,6 +179,25 @@ def list_all_teacher_transactions(
         query = query.filter(TeacherTransaction.created_at >= date_from)
     if date_to is not None:
         query = query.filter(TeacherTransaction.created_at <= date_to)
+    return query
+
+
+@router.get("/transactions", response_model=TeacherTransactionListOut)
+def list_all_teacher_transactions(
+    teacher_id: Optional[int] = Query(default=None),
+    created_by_id: Optional[int] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TeacherTransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    query = _build_teacher_transactions_query(
+        db, teacher_id, created_by_id, group_id, type, date_from, date_to
+    )
 
     total = query.count()
     total_earnings = (
@@ -176,6 +246,52 @@ def list_all_teacher_transactions(
         page_size=page_size,
         total_earnings=total_earnings,
         total_payouts=total_payouts,
+    )
+
+
+@router.get("/transactions/export")
+def export_all_teacher_transactions(
+    teacher_id: Optional[int] = Query(default=None),
+    created_by_id: Optional[int] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TeacherTransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    query = _build_teacher_transactions_query(
+        db, teacher_id, created_by_id, group_id, type, date_from, date_to
+    )
+    rows = query.order_by(TeacherTransaction.created_at.desc()).all()
+    xlsx_rows = [
+        [
+            tt.created_at,
+            teacher.full_name,
+            TEACHER_TX_TYPE_LABELS.get(tt.type, tt.type.value),
+            tt.amount,
+            group.name if group else "",
+            student.full_name if student else "",
+            lesson.lesson_date if lesson else None,
+            actor.full_name if actor else "",
+            tt.comment or "",
+        ]
+        for tt, teacher, student, actor, lesson, group in rows
+    ]
+    return xlsx_response(
+        "oqituvchi_hisob_kitobi.xlsx",
+        [
+            "Sana",
+            "O'qituvchi",
+            "Turi",
+            "Summa",
+            "Guruh",
+            "O'quvchi",
+            "Dars sanasi",
+            "Kim kiritdi",
+            "Izoh",
+        ],
+        xlsx_rows,
     )
 
 

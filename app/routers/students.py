@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
+from app.core.excel import xlsx_response
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
@@ -20,6 +21,16 @@ from app.schemas.user import ActiveStatusUpdate, StudentListOut, StudentUpdate, 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 
+def _build_students_query(db: Session, search: Optional[str], debtors_only: bool):
+    query = db.query(User).filter(User.role == UserRole.student)
+    if search:
+        term = f"%{search}%"
+        query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
+    if debtors_only:
+        query = query.filter(User.balance < 0)
+    return query
+
+
 @router.get("", response_model=StudentListOut)
 def list_students(
     search: Optional[str] = Query(default=None),
@@ -29,12 +40,7 @@ def list_students(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    query = db.query(User).filter(User.role == UserRole.student)
-    if search:
-        term = f"%{search}%"
-        query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
-    if debtors_only:
-        query = query.filter(User.balance < 0)
+    query = _build_students_query(db, search, debtors_only)
 
     total = query.count()
     debtor_count = (
@@ -47,6 +53,23 @@ def list_students(
         .all()
     )
     return StudentListOut(items=items, total=total, page=page, page_size=page_size, debtor_count=debtor_count)
+
+
+@router.get("/export")
+def export_students(
+    search: Optional[str] = Query(default=None),
+    debtors_only: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    students = _build_students_query(db, search, debtors_only).order_by(User.created_at.desc()).all()
+    rows = [
+        [s.full_name, s.phone, s.balance, "Faol" if s.is_active else "Bloklangan"]
+        for s in students
+    ]
+    return xlsx_response(
+        "oquvchilar.xlsx", ["F.I.O", "Telefon", "Balans", "Holat"], rows
+    )
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -145,23 +168,14 @@ def deposit_to_student(
     return transaction
 
 
-@router.get("/{student_id}/transactions", response_model=list[StudentTransactionListItemOut])
-def get_student_transactions(
-    student_id: int,
-    group_id: Optional[int] = Query(default=None),
-    type: Optional[TransactionType] = Query(default=None),
-    date_from: Optional[datetime] = Query(default=None),
-    date_to: Optional[datetime] = Query(default=None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.student)
-    ),
+def _build_student_transactions_query(
+    db: Session,
+    student: User,
+    group_id: Optional[int],
+    type: Optional[TransactionType],
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
 ):
-    student = _get_student_or_404(db, student_id)
-
-    if current_user.role == UserRole.student and current_user.id != student.id:
-        raise HTTPException(status_code=403, detail="Faqat o'z tarixingizni ko'rishingiz mumkin")
-
     query = (
         db.query(Transaction, Lesson, Group, User)
         .outerjoin(Lesson, Lesson.id == Transaction.lesson_id)
@@ -177,8 +191,34 @@ def get_student_transactions(
         query = query.filter(Transaction.created_at >= date_from)
     if date_to is not None:
         query = query.filter(Transaction.created_at <= date_to)
+    return query
 
-    rows = query.order_by(Transaction.created_at.desc()).all()
+
+def _require_own_history_or_staff(current_user: User, student: User) -> None:
+    if current_user.role == UserRole.student and current_user.id != student.id:
+        raise HTTPException(status_code=403, detail="Faqat o'z tarixingizni ko'rishingiz mumkin")
+
+
+@router.get("/{student_id}/transactions", response_model=list[StudentTransactionListItemOut])
+def get_student_transactions(
+    student_id: int,
+    group_id: Optional[int] = Query(default=None),
+    type: Optional[TransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
+
+    rows = (
+        _build_student_transactions_query(db, student, group_id, type, date_from, date_to)
+        .order_by(Transaction.created_at.desc())
+        .all()
+    )
 
     return [
         StudentTransactionListItemOut(
@@ -196,23 +236,54 @@ def get_student_transactions(
     ]
 
 
-@router.get("/{student_id}/attendance", response_model=list[StudentAttendanceHistoryItemOut])
-def get_student_attendance_history(
+@router.get("/{student_id}/transactions/export")
+def export_student_transactions(
     student_id: int,
     group_id: Optional[int] = Query(default=None),
-    status_filter: Optional[AttendanceStatus] = Query(default=None, alias="status"),
-    date_from: Optional[date] = Query(default=None),
-    date_to: Optional[date] = Query(default=None),
+    type: Optional[TransactionType] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.student)
     ),
 ):
     student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
 
-    if current_user.role == UserRole.student and current_user.id != student.id:
-        raise HTTPException(status_code=403, detail="Faqat o'z tarixingizni ko'rishingiz mumkin")
+    rows = (
+        _build_student_transactions_query(db, student, group_id, type, date_from, date_to)
+        .order_by(Transaction.created_at.desc())
+        .all()
+    )
+    xlsx_rows = [
+        [
+            t.created_at,
+            t.type.value,
+            t.amount,
+            group.name if group else "",
+            teacher.full_name if teacher else "",
+            lesson.lesson_date if lesson else None,
+            t.comment or "",
+        ]
+        for t, lesson, group, teacher in rows
+    ]
+    return xlsx_response(
+        f"{student.full_name}_tranzaksiyalari.xlsx",
+        ["Sana", "Turi", "Summa", "Guruh", "O'qituvchi", "Dars sanasi", "Izoh"],
+        xlsx_rows,
+    )
 
+
+def _student_attendance_rows(
+    db: Session,
+    student: User,
+    current_user: User,
+    group_id: Optional[int],
+    status_filter: Optional[AttendanceStatus],
+    date_from: Optional[date],
+    date_to: Optional[date],
+):
     query = (
         db.query(Attendance, Lesson, Group, User)
         .join(Lesson, Lesson.id == Attendance.lesson_id)
@@ -233,6 +304,27 @@ def get_student_attendance_history(
 
     if current_user.role == UserRole.teacher:
         rows = [row for row in rows if row[2].teacher_id == current_user.id]
+    return rows
+
+
+@router.get("/{student_id}/attendance", response_model=list[StudentAttendanceHistoryItemOut])
+def get_student_attendance_history(
+    student_id: int,
+    group_id: Optional[int] = Query(default=None),
+    status_filter: Optional[AttendanceStatus] = Query(default=None, alias="status"),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
+
+    rows = _student_attendance_rows(
+        db, student, current_user, group_id, status_filter, date_from, date_to
+    )
 
     return [
         StudentAttendanceHistoryItemOut(
@@ -247,3 +339,32 @@ def get_student_attendance_history(
         )
         for attendance, lesson, group, teacher in rows
     ]
+
+
+@router.get("/{student_id}/attendance/export")
+def export_student_attendance(
+    student_id: int,
+    group_id: Optional[int] = Query(default=None),
+    status_filter: Optional[AttendanceStatus] = Query(default=None, alias="status"),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
+
+    rows = _student_attendance_rows(
+        db, student, current_user, group_id, status_filter, date_from, date_to
+    )
+    xlsx_rows = [
+        [lesson.lesson_date, group.name, teacher.full_name, attendance.status.value, attendance.grade]
+        for attendance, lesson, group, teacher in rows
+    ]
+    return xlsx_response(
+        f"{student.full_name}_davomati.xlsx",
+        ["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"],
+        xlsx_rows,
+    )
