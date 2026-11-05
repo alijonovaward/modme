@@ -323,13 +323,15 @@ export function SuccessMessage({ message }: { message: string | null }) {
 }
 
 export function extractErrorMessage(error: unknown): string {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail === "string"
-  ) {
-    return (error as { response: { data: { detail: string } } }).response.data.detail;
+  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
   }
+
+  if (Array.isArray(detail) && detail.length > 0 && typeof detail[0]?.msg === "string") {
+    return (detail[0].msg as string).replace(/^Value error,\s*/, "");
+  }
+
   return "Nimadir xato ketdi";
 }
