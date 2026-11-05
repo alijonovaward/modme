@@ -144,7 +144,7 @@ export function Label({ children }: { children: ReactNode }) {
 export function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="text-left text-sm">
+      <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {headers.map((h, i) => (
