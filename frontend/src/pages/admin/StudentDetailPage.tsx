@@ -178,6 +178,9 @@ export function StudentDetailPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.full_name}</h1>
             {!student.is_active && <Badge color="red">Bloklangan</Badge>}
+            <Badge color={student.telegram_linked ? "green" : "slate"}>
+              Telegram: {student.telegram_linked ? "Ulangan" : "Ulanmagan"}
+            </Badge>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">

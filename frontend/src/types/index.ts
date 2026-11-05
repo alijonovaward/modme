@@ -16,6 +16,7 @@ export interface User {
   balance: number;
   is_active: boolean;
   created_at: string;
+  telegram_linked: boolean;
 }
 
 export type TransactionType = "deposit" | "deduction";

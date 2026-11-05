@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from typing import Annotated, Optional
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, computed_field
 
 from app.models.user import UserRole
 
@@ -37,6 +37,12 @@ class UserOut(BaseModel):
     balance: float
     is_active: bool
     created_at: datetime
+    telegram_chat_id: Optional[str] = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def telegram_linked(self) -> bool:
+        return bool(self.telegram_chat_id)
 
 
 class PasswordUpdate(BaseModel):

@@ -171,6 +171,9 @@ export function StaffDetailPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{staffMember.full_name}</h1>
             {!staffMember.is_active && <Badge color="red">Bloklangan</Badge>}
+            <Badge color={staffMember.telegram_linked ? "green" : "slate"}>
+              Telegram: {staffMember.telegram_linked ? "Ulangan" : "Ulanmagan"}
+            </Badge>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {staffMember.phone} ·{" "}
