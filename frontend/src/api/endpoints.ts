@@ -5,7 +5,9 @@ import type {
   AttendanceStatus,
   GroupDetail,
   GroupListItem,
+  GroupScheduleItem,
   Lesson,
+  LessonGenerateResult,
   LessonListPage,
   LessonStatus,
   StaffListPage,
@@ -240,6 +242,7 @@ export async function createGroup(payload: {
   subject_id: number;
   teacher_id: number;
   lesson_price: number;
+  schedule: GroupScheduleItem[];
 }): Promise<GroupListItem> {
   const { data } = await apiClient.post<GroupListItem>("/api/v1/groups", payload);
   return data;
@@ -252,6 +255,7 @@ export async function updateGroup(
     subject_id: number;
     teacher_id: number;
     lesson_price: number;
+    schedule: GroupScheduleItem[];
   },
 ): Promise<GroupListItem> {
   const { data } = await apiClient.put<GroupListItem>(`/api/v1/groups/${groupId}`, payload);
@@ -316,6 +320,18 @@ export async function createLesson(groupId: number, lessonDate: string): Promise
 
 export async function deleteLesson(lessonId: number): Promise<void> {
   await apiClient.delete(`/api/v1/lessons/${lessonId}`);
+}
+
+export async function generateGroupLessons(
+  groupId: number,
+  dateFrom: string,
+  dateTo: string,
+): Promise<LessonGenerateResult> {
+  const { data } = await apiClient.post<LessonGenerateResult>(
+    `/api/v1/groups/${groupId}/lessons/generate`,
+    { date_from: dateFrom, date_to: dateTo },
+  );
+  return data;
 }
 
 export async function getLessonAttendance(lessonId: number): Promise<AttendanceDetail[]> {

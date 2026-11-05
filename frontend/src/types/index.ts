@@ -82,6 +82,12 @@ export interface Subject {
 
 export type GroupStatus = "active" | "frozen" | "archived";
 
+export interface GroupScheduleItem {
+  weekday: number;
+  start_time: string;
+  end_time: string;
+}
+
 export interface GroupListItem {
   id: number;
   name: string;
@@ -91,6 +97,7 @@ export interface GroupListItem {
   teacher_name: string;
   lesson_price: number;
   status: GroupStatus;
+  schedule: GroupScheduleItem[];
 }
 
 export type GroupStudentStatus = "active" | "frozen" | "dropped";
@@ -114,6 +121,8 @@ export interface Lesson {
   id: number;
   group_id: number;
   lesson_date: string;
+  start_time: string | null;
+  end_time: string | null;
   status: LessonStatus;
 }
 
@@ -125,10 +134,18 @@ export interface LessonListItem {
   teacher_id: number;
   teacher_name: string;
   lesson_date: string;
+  start_time: string | null;
+  end_time: string | null;
   status: LessonStatus;
   present_count: number;
   excused_count: number;
   unexcused_count: number;
+}
+
+export interface LessonGenerateResult {
+  created_count: number;
+  skipped_count: number;
+  lessons: Lesson[];
 }
 
 export type AttendanceStatus = "present" | "excused" | "unexcused";

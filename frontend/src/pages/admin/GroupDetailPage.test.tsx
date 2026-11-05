@@ -11,7 +11,9 @@ vi.mock("../../components/Layout", () => ({
 
 vi.mock("../../api/endpoints", () => ({
   addStudentToGroup: vi.fn(),
+  generateGroupLessons: vi.fn(),
   getGroupDetail: vi.fn(),
+  listGroupLessons: vi.fn(),
   listStaffUsers: vi.fn(),
   listStudents: vi.fn(),
   listSubjects: vi.fn(),
@@ -22,6 +24,7 @@ vi.mock("../../api/endpoints", () => ({
 
 import {
   getGroupDetail,
+  listGroupLessons,
   listStaffUsers,
   listStudents,
   listSubjects,
@@ -38,6 +41,7 @@ function makeGroup(overrides: Partial<GroupDetail> = {}): GroupDetail {
     teacher_name: "O'qituvchi",
     lesson_price: 30000,
     status: "active",
+    schedule: [],
     students: [],
     ...overrides,
   };
@@ -58,6 +62,7 @@ beforeEach(() => {
   vi.mocked(listStudents).mockReset().mockResolvedValue([]);
   vi.mocked(listSubjects).mockReset().mockResolvedValue([]);
   vi.mocked(listStaffUsers).mockReset().mockResolvedValue([]);
+  vi.mocked(listGroupLessons).mockReset().mockResolvedValue([]);
   vi.mocked(updateGroupStatus).mockReset();
 });
 

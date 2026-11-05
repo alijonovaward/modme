@@ -126,7 +126,9 @@ def make_group(
     subject_id: int,
     teacher_id: int,
     lesson_price: float = 30000,
-) -> dict:
+    schedule: list[dict] | None = None,
+    expected_status: int = 201,
+):
     response = client.post(
         "/api/v1/groups",
         headers=headers,
@@ -135,9 +137,10 @@ def make_group(
             "subject_id": subject_id,
             "teacher_id": teacher_id,
             "lesson_price": lesson_price,
+            "schedule": schedule or [],
         },
     )
-    assert response.status_code == 201, response.text
+    assert response.status_code == expected_status, response.text
     return response.json()
 
 

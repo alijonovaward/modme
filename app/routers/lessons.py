@@ -95,6 +95,8 @@ def list_all_lessons(
             teacher_id=group.teacher_id,
             teacher_name=teachers.get(group.teacher_id, ""),
             lesson_date=lesson.lesson_date,
+            start_time=lesson.start_time,
+            end_time=lesson.end_time,
             status=lesson.status,
             present_count=counts.get(lesson.id, {}).get(AttendanceStatus.present, 0),
             excused_count=counts.get(lesson.id, {}).get(AttendanceStatus.excused, 0),

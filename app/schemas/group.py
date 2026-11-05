@@ -1,9 +1,24 @@
+from datetime import time
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.group import GroupStatus
 from app.models.group_student import GroupStudentStatus
+
+
+class GroupScheduleItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    weekday: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+
+    @model_validator(mode="after")
+    def _check_time_range(self) -> "GroupScheduleItem":
+        if self.end_time <= self.start_time:
+            raise ValueError("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak")
+        return self
 
 
 class GroupCreate(BaseModel):
@@ -11,6 +26,7 @@ class GroupCreate(BaseModel):
     subject_id: int
     teacher_id: int
     lesson_price: float
+    schedule: list[GroupScheduleItem] = []
 
 
 class GroupOut(BaseModel):
@@ -22,6 +38,7 @@ class GroupOut(BaseModel):
     teacher_id: int
     lesson_price: float
     status: GroupStatus
+    schedule: list[GroupScheduleItem] = []
 
 
 class GroupStatusUpdate(BaseModel):
@@ -56,6 +73,7 @@ class GroupListItemOut(BaseModel):
     teacher_name: str
     lesson_price: float
     status: GroupStatus
+    schedule: list[GroupScheduleItem] = []
 
 
 class GroupRosterItemOut(BaseModel):

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
+  generateGroupLessons,
   getGroupDetail,
+  listGroupLessons,
   listStaffUsers,
   listStudents,
   listSubjects,
@@ -25,8 +27,10 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import type { GroupDetail, GroupRosterItem, GroupStatus, GroupStudentStatus, Subject, User } from "../../types";
+import type { GroupDetail, GroupRosterItem, GroupStatus, GroupStudentStatus, Lesson, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
+import { formatSchedule, WEEKDAYS } from "../../utils/weekdays";
 
 const ROSTER_STATUS_COLOR = {
   active: "green",
@@ -61,6 +65,7 @@ export function GroupDetailPage() {
   const [allStudents, setAllStudents] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,20 +80,30 @@ export function GroupDetailPage() {
   const [editSubjectId, setEditSubjectId] = useState("");
   const [editTeacherId, setEditTeacherId] = useState("");
   const [editLessonPrice, setEditLessonPrice] = useState("");
+  const [editScheduleDays, setEditScheduleDays] = useState<number[]>([]);
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
+
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [generateFrom, setGenerateFrom] = useState(() => currentMonthRange().dateFrom);
+  const [generateTo, setGenerateTo] = useState(() => currentMonthRange().dateTo);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [groupData, studentsData, subjectsData, teachersData] = await Promise.all([
+      const [groupData, studentsData, subjectsData, teachersData, lessonsData] = await Promise.all([
         getGroupDetail(id),
         listStudents(),
         listSubjects(),
         listStaffUsers("teacher"),
+        listGroupLessons(id),
       ]);
       setGroup(groupData);
       setAllStudents(studentsData);
       setSubjects(subjectsData);
       setTeachers(teachersData);
+      setLessons(lessonsData);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -133,12 +148,25 @@ export function GroupDetailPage() {
     setEditSubjectId(String(group.subject_id));
     setEditTeacherId(String(group.teacher_id));
     setEditLessonPrice(String(group.lesson_price));
+    setEditScheduleDays(group.schedule.map((s) => s.weekday));
+    setEditStartTime(group.schedule[0]?.start_time.slice(0, 5) ?? "");
+    setEditEndTime(group.schedule[0]?.end_time.slice(0, 5) ?? "");
     setIsEditModalOpen(true);
+  };
+
+  const toggleEditScheduleDay = (weekday: number) => {
+    setEditScheduleDays((prev) =>
+      prev.includes(weekday) ? prev.filter((d) => d !== weekday) : [...prev, weekday],
+    );
   };
 
   const handleEditSubmit = async () => {
     if (!editSubjectId || !editTeacherId) {
       setError("Fan va o'qituvchini tanlang");
+      return;
+    }
+    if (editScheduleDays.length > 0 && (!editStartTime || !editEndTime)) {
+      setError("Dars kunlarini tanlagan bo'lsangiz, boshlanish va tugash vaqtini kiriting");
       return;
     }
     setError(null);
@@ -149,12 +177,35 @@ export function GroupDetailPage() {
         subject_id: Number(editSubjectId),
         teacher_id: Number(editTeacherId),
         lesson_price: Number(editLessonPrice),
+        schedule: editScheduleDays.map((weekday) => ({
+          weekday,
+          start_time: editStartTime,
+          end_time: editEndTime,
+        })),
       });
       setSuccess("Guruh ma'lumotlari saqlandi");
       setIsEditModalOpen(false);
       await loadAll();
     } catch (err) {
       setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleGenerateLessons = async () => {
+    setError(null);
+    setSuccess(null);
+    setIsGenerating(true);
+    try {
+      const result = await generateGroupLessons(id, generateFrom, generateTo);
+      setSuccess(
+        `${result.created_count} ta dars yaratildi, ${result.skipped_count} ta allaqachon mavjud edi`,
+      );
+      setIsGenerateModalOpen(false);
+      await loadAll();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -191,6 +242,13 @@ export function GroupDetailPage() {
   }, [group, statusFilter]);
 
   const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
+  const {
+    page: lessonsPage,
+    setPage: setLessonsPage,
+    pageCount: lessonsPageCount,
+    pageItems: lessonsPageItems,
+    total: lessonsTotal,
+  } = usePagination(lessons);
 
   if (isLoading || !group) {
     return (
@@ -216,6 +274,7 @@ export function GroupDetailPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
           </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{formatSchedule(group.schedule)}</p>
         </div>
         <div className="flex gap-1">
           <Button variant="secondary" onClick={openEditModal}>
@@ -312,7 +371,66 @@ export function GroupDetailPage() {
           </Table>
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
         </Card>
+
+        <div className="mt-6">
+          <Card
+            title="Darslar"
+            action={
+              <Button variant="secondary" onClick={() => setIsGenerateModalOpen(true)}>
+                Darslarni generatsiya qilish
+              </Button>
+            }
+          >
+            {lessons.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Hali dars qo'shilmagan</p>
+            ) : (
+              <>
+                <Table headers={["Sana", "Vaqt", "Holat"]}>
+                  {lessonsPageItems.map((l) => (
+                    <tr key={l.id}>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                        {l.start_time && l.end_time
+                          ? `${l.start_time.slice(0, 5)}–${l.end_time.slice(0, 5)}`
+                          : "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge color={l.status === "completed" ? "green" : "slate"}>
+                          {l.status === "completed" ? "O'tildi" : "Rejada"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+                <Pagination
+                  page={lessonsPage}
+                  pageCount={lessonsPageCount}
+                  total={lessonsTotal}
+                  onPageChange={setLessonsPage}
+                />
+              </>
+            )}
+          </Card>
+        </div>
       </div>
+
+      {isGenerateModalOpen && (
+        <Modal title="Darslarni generatsiya qilish" onClose={() => setIsGenerateModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Boshlanish sanasi</Label>
+              <Input type="date" value={generateFrom} onChange={(e) => setGenerateFrom(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Tugash sanasi</Label>
+              <Input type="date" value={generateTo} onChange={(e) => setGenerateTo(e.target.value)} required />
+            </div>
+            <Button className="w-full" onClick={handleGenerateLessons} disabled={isGenerating}>
+              {isGenerating ? "Yaratilmoqda..." : "Generatsiya qilish"}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {dropTarget && (
         <Modal title={`${dropTarget.student_name} ni guruhdan chiqarish`} onClose={() => setDropTarget(null)}>
@@ -372,6 +490,43 @@ export function GroupDetailPage() {
                 required
               />
             </div>
+            <div>
+              <Label>Dars kunlari (ixtiyoriy)</Label>
+              <div className="flex gap-1">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleEditScheduleDay(day.value)}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                      editScheduleDays.includes(day.value)
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {editScheduleDays.length > 0 && (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label>Boshlanish vaqti</Label>
+                  <Input
+                    type="time"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label>Tugash vaqti</Label>
+                  <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} required />
+                </div>
+              </div>
+            )}
+            <ErrorMessage message={error} />
             <Button className="w-full" onClick={handleEditSubmit}>
               Saqlash
             </Button>

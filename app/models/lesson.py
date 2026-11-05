@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, ForeignKey, Enum, Date
+from sqlalchemy import Column, Integer, ForeignKey, Enum, Date, Time
 
 from app.db.session import Base
 
@@ -16,4 +16,6 @@ class Lesson(Base):
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
     lesson_date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
     status = Column(Enum(LessonStatus), default=LessonStatus.planned, nullable=False)

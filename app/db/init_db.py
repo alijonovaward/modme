@@ -25,6 +25,10 @@ REQUIRED_COLUMNS = {
     "users": {
         "is_active": "BOOLEAN",
     },
+    "lessons": {
+        "start_time": "TIME",
+        "end_time": "TIME",
+    },
 }
 
 REQUIRED_INDEXES = {

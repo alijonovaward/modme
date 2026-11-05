@@ -33,6 +33,7 @@ function makeGroup(): GroupDetail {
     teacher_name: "O'qituvchi",
     lesson_price: 30000,
     status: "active",
+    schedule: [],
     students: [
       { id: 1, student_id: 10, student_name: "Student A", student_phone: "+1", status: "active", status_reason: null },
       { id: 2, student_id: 11, student_name: "Student B", student_phone: "+2", status: "active", status_reason: null },

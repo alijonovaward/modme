@@ -1,6 +1,7 @@
 from app.models.user import User, UserRole
 from app.models.subject import Subject
 from app.models.group import Group, GroupStatus
+from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.transaction import Transaction, TransactionType
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
@@ -13,6 +14,7 @@ __all__ = [
     "Subject",
     "Group",
     "GroupStatus",
+    "GroupSchedule",
     "GroupStudent",
     "GroupStudentStatus",
     "Transaction",

@@ -17,6 +17,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { formatSchedule, WEEKDAYS } from "../../utils/weekdays";
 
 const STATUS_COLOR = {
   active: "green",
@@ -37,6 +38,9 @@ export function GroupsPage() {
   const [subjectId, setSubjectId] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [lessonPrice, setLessonPrice] = useState("");
+  const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
@@ -85,7 +89,16 @@ export function GroupsPage() {
     setSubjectId("");
     setTeacherId("");
     setLessonPrice("");
+    setScheduleDays([]);
+    setStartTime("");
+    setEndTime("");
     setError(null);
+  };
+
+  const toggleScheduleDay = (weekday: number) => {
+    setScheduleDays((prev) =>
+      prev.includes(weekday) ? prev.filter((d) => d !== weekday) : [...prev, weekday],
+    );
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -95,6 +108,10 @@ export function GroupsPage() {
       setError("Fan va o'qituvchini tanlang");
       return;
     }
+    if (scheduleDays.length > 0 && (!startTime || !endTime)) {
+      setError("Dars kunlarini tanlagan bo'lsangiz, boshlanish va tugash vaqtini kiriting");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createGroup({
@@ -102,6 +119,11 @@ export function GroupsPage() {
         subject_id: Number(subjectId),
         teacher_id: Number(teacherId),
         lesson_price: Number(lessonPrice),
+        schedule: scheduleDays.map((weekday) => ({
+          weekday,
+          start_time: startTime,
+          end_time: endTime,
+        })),
       });
       setIsModalOpen(false);
       resetForm();
@@ -160,7 +182,7 @@ export function GroupsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Holat", ""]}>
+          <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Jadval", "Holat", ""]}>
             {pageItems.map((g) => (
               <tr key={g.id}>
                 <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
@@ -169,6 +191,7 @@ export function GroupsPage() {
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                   {g.lesson_price.toLocaleString("uz-UZ")} so'm
                 </td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{formatSchedule(g.schedule)}</td>
                 <td className="px-3 py-2">
                   <Badge color={STATUS_COLOR[g.status]}>{g.status}</Badge>
                 </td>
@@ -224,6 +247,37 @@ export function GroupsPage() {
                 required
               />
             </div>
+            <div>
+              <Label>Dars kunlari (ixtiyoriy)</Label>
+              <div className="flex gap-1">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleScheduleDay(day.value)}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                      scheduleDays.includes(day.value)
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {scheduleDays.length > 0 && (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label>Boshlanish vaqti</Label>
+                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+                </div>
+                <div className="flex-1">
+                  <Label>Tugash vaqti</Label>
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+                </div>
+              </div>
+            )}
             <ErrorMessage message={error} />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
