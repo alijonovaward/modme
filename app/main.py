@@ -13,6 +13,7 @@ from app.routers import (
     students,
     subjects,
     teachers,
+    telegram,
     transactions,
 )
 
@@ -42,6 +43,7 @@ app.include_router(lessons.router)
 app.include_router(teachers.router)
 app.include_router(transactions.router)
 app.include_router(stats.router)
+app.include_router(telegram.router)
 
 
 @app.get("/")

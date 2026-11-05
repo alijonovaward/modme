@@ -1,13 +1,14 @@
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.security import hash_password
+from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
@@ -146,6 +147,7 @@ def update_student_status(
 def deposit_to_student(
     student_id: int,
     payload: DepositCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
@@ -165,6 +167,15 @@ def deposit_to_student(
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
+
+    if student.telegram_chat_id:
+        background_tasks.add_task(
+            send_telegram_message,
+            student.telegram_chat_id,
+            f"Balansingiz {payload.amount:,.0f} so'mga to'ldirildi. "
+            f"Joriy balans: {student.balance:,.0f} so'm",
+        )
+
     return transaction
 
 

@@ -1,12 +1,13 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
@@ -26,7 +27,24 @@ from app.schemas.lesson import LessonCreate, LessonListItemOut, LessonListOut, L
 
 ATTENDANCE_EDIT_WINDOW = timedelta(hours=24)
 
+ATTENDANCE_STATUS_LABELS = {
+    AttendanceStatus.present: "keldi",
+    AttendanceStatus.excused: "sababli qoldirdi",
+    AttendanceStatus.unexcused: "sababsiz qoldirdi",
+}
+
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
+
+
+def _attendance_notification_text(
+    group_name: str, lesson_date, status: AttendanceStatus, grade, charged_amount: Optional[float]
+) -> str:
+    lines = [f"{group_name} guruhi, {lesson_date}: {ATTENDANCE_STATUS_LABELS[status]}"]
+    if grade is not None:
+        lines.append(f"Baho: {grade}")
+    if charged_amount:
+        lines.append(f"Balansdan {charged_amount:,.0f} so'm yechildi.")
+    return "\n".join(lines)
 
 
 def _build_lessons_query(
@@ -274,6 +292,7 @@ def get_lesson_attendance(
 def mark_attendance(
     lesson_id: int,
     payload: AttendanceCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.teacher)),
 ):
@@ -326,9 +345,9 @@ def mark_attendance(
         is_frozen = group_student.status == GroupStudentStatus.frozen
         should_charge = item.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
 
-        if should_charge:
-            student = db.get(User, item.student_id)
+        student = db.get(User, item.student_id)
 
+        if should_charge:
             student.balance -= group.lesson_price
             db.add(
                 Transaction(
@@ -356,6 +375,19 @@ def mark_attendance(
                 )
             )
 
+        if student is not None and student.telegram_chat_id:
+            background_tasks.add_task(
+                send_telegram_message,
+                student.telegram_chat_id,
+                _attendance_notification_text(
+                    group.name,
+                    lesson.lesson_date,
+                    item.status,
+                    item.grade,
+                    group.lesson_price if should_charge else None,
+                ),
+            )
+
     lesson.status = LessonStatus.completed
     db.commit()
     for record in created_records:
@@ -368,6 +400,7 @@ def update_attendance(
     lesson_id: int,
     student_id: int,
     payload: AttendanceUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -499,4 +532,19 @@ def update_attendance(
     attendance.grade = payload.grade
     db.commit()
     db.refresh(attendance)
+
+    if student is not None and student.telegram_chat_id:
+        background_tasks.add_task(
+            send_telegram_message,
+            student.telegram_chat_id,
+            "Davomat tuzatildi.\n"
+            + _attendance_notification_text(
+                group.name,
+                lesson.lesson_date,
+                payload.status,
+                payload.grade,
+                group.lesson_price if should_charge else None,
+            ),
+        )
+
     return attendance

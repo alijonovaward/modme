@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.group import Group
 from app.models.lesson import Lesson
@@ -303,6 +304,7 @@ def export_all_teacher_transactions(
 def create_teacher_payout(
     teacher_id: int,
     payload: TeacherPayoutCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
@@ -326,6 +328,12 @@ def create_teacher_payout(
     db.add(payout)
     db.commit()
     db.refresh(payout)
+
+    if teacher.telegram_chat_id:
+        text = f"Balansingizdan {payload.amount:,.0f} so'm yechib berildi."
+        if payload.comment:
+            text += f" Izoh: {payload.comment}"
+        background_tasks.add_task(send_telegram_message, teacher.telegram_chat_id, text)
 
     return TeacherTransactionListItemOut(
         id=payout.id,

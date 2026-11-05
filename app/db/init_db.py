@@ -24,6 +24,7 @@ REQUIRED_COLUMNS = {
     },
     "users": {
         "is_active": "BOOLEAN",
+        "telegram_chat_id": "VARCHAR",
     },
     "lessons": {
         "start_time": "TIME",
