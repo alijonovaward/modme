@@ -23,6 +23,7 @@ import {
   StatTile,
   SuccessMessage,
   Table,
+  TdAction,
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -231,20 +232,20 @@ export function LessonsPage() {
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
             {lessons.map((l) => (
-              <tr key={l.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
-                <td className="px-3 py-2">
+              <tr key={l.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
+                <td className="px-3.5 py-2.5">
                   <Badge color={l.status === "completed" ? "green" : "slate"}>
                     {l.status === "completed" ? "O'tildi" : "Rejada"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{l.present_count}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
-                <td className="px-3 py-2 text-rose-600">{l.unexcused_count}</td>
-                <td className="px-3 py-2">
+                <td className="px-3.5 py-2.5 text-slate-800 dark:text-slate-200">{l.present_count}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
+                <td className="px-3.5 py-2.5 text-rose-600">{l.unexcused_count}</td>
+                <TdAction>
                   <div className="flex gap-1">
                     <Button variant="secondary" onClick={() => openDetail(l)}>
                       Batafsil
@@ -255,7 +256,7 @@ export function LessonsPage() {
                       </Button>
                     )}
                   </div>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>

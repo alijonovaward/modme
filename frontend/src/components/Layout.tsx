@@ -53,25 +53,25 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems = NAV_BY_ROLE[user.role] ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50/80 dark:bg-slate-900">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/95">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-6 sm:py-4">
           <div>
-            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">O'quv Markazi CRM</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">O'quv Markazi CRM</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {user.full_name} · {ROLE_LABEL[user.role]}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
             {(user.role === "teacher" || user.role === "student") && (
-              <div className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
+              <div className="rounded-xl border border-emerald-200/60 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400">
                 Balans: {user.balance.toLocaleString("uz-UZ")} so'm
               </div>
             )}
             <button
               onClick={toggleTheme}
               aria-label="Tun/kun rejimini almashtirish"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               {theme === "dark" ? (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -85,30 +85,35 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
             <button
               onClick={logout}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-xl border border-slate-200/80 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Chiqish
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
-          {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`shrink-0 whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-medium ${
-                  isActive
-                    ? "border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="relative border-t border-slate-100 dark:border-slate-800/60">
+          {/* Gradient fade indicators for horizontal tab scrolling */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white via-white/80 to-transparent sm:hidden dark:from-slate-950 dark:via-slate-950/80 dark:to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white via-white/80 to-transparent sm:hidden dark:from-slate-950 dark:via-slate-950/80 dark:to-transparent" />
+          <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 scroll-smooth sm:px-6">
+            {navItems.map((item) => {
+              const isActive = location.pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`shrink-0 whitespace-nowrap rounded-t-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? "border-b-2 border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>

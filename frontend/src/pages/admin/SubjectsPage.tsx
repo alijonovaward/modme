@@ -10,6 +10,7 @@ import {
   Modal,
   Pagination,
   Table,
+  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { Subject } from "../../types";
@@ -115,9 +116,9 @@ export function SubjectsPage() {
           <>
           <Table headers={["Fan nomi", ""]}>
             {pageItems.map((s) => (
-              <tr key={s.id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.name}</td>
-                <td className="px-3 py-2">
+              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.name}</td>
+                <TdAction>
                   <div className="flex gap-1">
                     <Button variant="secondary" onClick={() => openEditModal(s)}>
                       Tahrirlash
@@ -126,7 +127,7 @@ export function SubjectsPage() {
                       O'chirish
                     </Button>
                   </div>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>

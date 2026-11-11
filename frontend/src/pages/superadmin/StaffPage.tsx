@@ -16,6 +16,7 @@ import {
   Select,
   SuccessMessage,
   Table,
+  TdAction,
 } from "../../components/ui";
 import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -43,6 +44,9 @@ export function StaffPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [draftRoleFilter, setDraftRoleFilter] = useState<UserRole | "">("");
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -87,6 +91,24 @@ export function StaffPage() {
     setError(null);
   };
 
+  const openFilterModal = () => {
+    setDraftRoleFilter(roleFilter);
+    setIsFilterModalOpen(true);
+  };
+
+  const applyFilters = () => {
+    setRoleFilter(draftRoleFilter);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftRoleFilter("");
+    setRoleFilter("");
+    setIsFilterModalOpen(false);
+  };
+
+  const activeFilterCount = roleFilter ? 1 : 0;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -127,23 +149,16 @@ export function StaffPage() {
         }
       >
         <SuccessMessage message={success} />
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
             placeholder="F.I.O yoki telefon raqam bo'yicha qidirish"
-            className="flex-1 min-w-[260px]"
+            className="flex-1 min-w-[200px]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Select
-            className="w-48"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
-          >
-            <option value="">Barcha rollar</option>
-            <option value="superadmin">Bosh Admin</option>
-            <option value="admin">Administrator</option>
-            <option value="teacher">O'qituvchi</option>
-          </Select>
+          <Button variant="secondary" onClick={openFilterModal}>
+            Filterlar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
           <Button
             variant="secondary"
             onClick={() =>
@@ -163,10 +178,10 @@ export function StaffPage() {
           <>
           <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
             {staff.map((s) => (
-              <tr key={s.id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.phone}</td>
-                <td className="px-3 py-2">
+              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
+                <td className="px-3.5 py-2.5">
                   <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
                     {ROLE_LABEL[s.role] ?? s.role}
                   </Badge>
@@ -176,20 +191,20 @@ export function StaffPage() {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
                 </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {s.balance.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2">
+                <TdAction>
                   <Link
                     to={`/superadmin/staff/${s.id}`}
-                    className="text-sm text-indigo-600 hover:underline"
+                    className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     Batafsil
                   </Link>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>
@@ -202,6 +217,31 @@ export function StaffPage() {
           </>
         )}
       </Card>
+
+      {isFilterModalOpen && (
+        <Modal title="Filterlar" onClose={() => setIsFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Rol bo'yicha filter</Label>
+              <Select
+                value={draftRoleFilter}
+                onChange={(e) => setDraftRoleFilter(e.target.value as UserRole | "")}
+              >
+                <option value="">Barcha rollar</option>
+                <option value="superadmin">Bosh Admin</option>
+                <option value="admin">Administrator</option>
+                <option value="teacher">O'qituvchi</option>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={clearFilters}>
+                Tozalash
+              </Button>
+              <Button onClick={applyFilters}>Qo'llash</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {isModalOpen && (
         <Modal title="Yangi xodim qo'shish" onClose={() => setIsModalOpen(false)}>

@@ -14,6 +14,7 @@ import {
   Modal,
   Pagination,
   Table,
+  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { GroupListItem, Subject, User } from "../../types";
@@ -46,6 +47,10 @@ export function GroupsPage() {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [teacherFilter, setTeacherFilter] = useState("");
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [draftSubjectFilter, setDraftSubjectFilter] = useState("");
+  const [draftTeacherFilter, setDraftTeacherFilter] = useState("");
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -102,6 +107,28 @@ export function GroupsPage() {
     );
   };
 
+  const openFilterModal = () => {
+    setDraftSubjectFilter(subjectFilter);
+    setDraftTeacherFilter(teacherFilter);
+    setIsFilterModalOpen(true);
+  };
+
+  const applyFilters = () => {
+    setSubjectFilter(draftSubjectFilter);
+    setTeacherFilter(draftTeacherFilter);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftSubjectFilter("");
+    setDraftTeacherFilter("");
+    setSubjectFilter("");
+    setTeacherFilter("");
+    setIsFilterModalOpen(false);
+  };
+
+  const activeFilterCount = [subjectFilter, teacherFilter].filter(Boolean).length;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -151,33 +178,16 @@ export function GroupsPage() {
           </Button>
         }
       >
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
             placeholder="Guruh, fan yoki o'qituvchi nomi bo'yicha qidirish"
-            className="max-w-md flex-1"
+            className="flex-1 min-w-[200px]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Combobox
-            className="w-56"
-            value={subjectFilter}
-            onChange={setSubjectFilter}
-            placeholder="Barcha fanlar"
-            options={[
-              { value: "", label: "Barcha fanlar" },
-              ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
-            ]}
-          />
-          <Combobox
-            className="w-56"
-            value={teacherFilter}
-            onChange={setTeacherFilter}
-            placeholder="Barcha o'qituvchilar"
-            options={[
-              { value: "", label: "Barcha o'qituvchilar" },
-              ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
-            ]}
-          />
+          <Button variant="secondary" onClick={openFilterModal}>
+            Filterlar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
           <Button
             variant="secondary"
             onClick={() =>
@@ -197,22 +207,22 @@ export function GroupsPage() {
           <>
           <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Jadval", "Holat", ""]}>
             {pageItems.map((g) => (
-              <tr key={g.id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+              <tr key={g.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {g.lesson_price.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{formatSchedule(g.schedule)}</td>
-                <td className="px-3 py-2">
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{formatSchedule(g.schedule)}</td>
+                <td className="px-3.5 py-2.5">
                   <Badge color={STATUS_COLOR[g.status]}>{g.status}</Badge>
                 </td>
-                <td className="px-3 py-2">
-                  <Link to={`/admin/groups/${g.id}`} className="text-sm text-indigo-600 hover:underline">
+                <TdAction>
+                  <Link to={`/admin/groups/${g.id}`} className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
                     Batafsil
                   </Link>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>
@@ -220,6 +230,43 @@ export function GroupsPage() {
           </>
         )}
       </Card>
+
+      {isFilterModalOpen && (
+        <Modal title="Filterlar" onClose={() => setIsFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Fan bo'yicha filter</Label>
+              <Combobox
+                value={draftSubjectFilter}
+                onChange={setDraftSubjectFilter}
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>O'qituvchi bo'yicha filter</Label>
+              <Combobox
+                value={draftTeacherFilter}
+                onChange={setDraftTeacherFilter}
+                placeholder="Barcha o'qituvchilar"
+                options={[
+                  { value: "", label: "Barcha o'qituvchilar" },
+                  ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+                ]}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={clearFilters}>
+                Tozalash
+              </Button>
+              <Button onClick={applyFilters}>Qo'llash</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {isModalOpen && (
         <Modal title="Yangi guruh ochish" onClose={() => setIsModalOpen(false)}>
@@ -268,7 +315,7 @@ export function GroupsPage() {
                     key={day.value}
                     type="button"
                     onClick={() => toggleScheduleDay(day.value)}
-                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                    className={`rounded-xl px-3 py-1 text-xs font-semibold transition-all ${
                       scheduleDays.includes(day.value)
                         ? "bg-indigo-600 text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"

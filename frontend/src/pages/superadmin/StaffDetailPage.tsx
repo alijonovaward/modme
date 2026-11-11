@@ -166,22 +166,22 @@ export function StaffDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{staffMember.full_name}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">{staffMember.full_name}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {!staffMember.is_active && <Badge color="red">Bloklangan</Badge>}
             <Badge color={staffMember.telegram_linked ? "green" : "slate"}>
               Telegram: {staffMember.telegram_linked ? "Ulangan" : "Ulanmagan"}
             </Badge>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {staffMember.phone} ·{" "}
             <Badge color={staffMember.role === "superadmin" ? "amber" : "slate"}>
               {ROLE_LABEL[staffMember.role] ?? staffMember.role}
             </Badge>
+          </div>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            {staffMember.phone}
             {staffMember.teacher_percentage !== null && (
-              <span className="ml-2">Foiz: {staffMember.teacher_percentage}%</span>
+              <span className="ml-2">· Foiz: {staffMember.teacher_percentage}%</span>
             )}
           </p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -189,12 +189,14 @@ export function StaffDetailPage() {
           </p>
         </div>
         {staffMember.role !== "superadmin" && (
-          <Button
-            variant={staffMember.is_active ? "danger" : "secondary"}
-            onClick={handleToggleActive}
-          >
-            {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
-          </Button>
+          <div className="shrink-0">
+            <Button
+              variant={staffMember.is_active ? "danger" : "secondary"}
+              onClick={handleToggleActive}
+            >
+              {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
+            </Button>
+          </div>
         )}
       </div>
 

@@ -10,6 +10,7 @@ import {
   Input,
   Pagination,
   Table,
+  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { GroupListItem } from "../../types";
@@ -64,20 +65,20 @@ export function MyGroupsPage() {
           <>
           <Table headers={["Nomi", "Fan", "Dars narxi", "Holat", ""]}>
             {pageItems.map((g) => (
-              <tr key={g.id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+              <tr key={g.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {g.lesson_price.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3.5 py-2.5">
                   <Badge color={g.status === "active" ? "green" : "slate"}>{g.status}</Badge>
                 </td>
-                <td className="px-3 py-2">
-                  <Link to={`/teacher/groups/${g.id}`} className="text-sm text-indigo-600 hover:underline">
+                <TdAction>
+                  <Link to={`/teacher/groups/${g.id}`} className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
                     Batafsil
                   </Link>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>

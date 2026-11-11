@@ -16,6 +16,7 @@ import {
   Select,
   StatTile,
   Table,
+  TdAction,
 } from "../../components/ui";
 import type { GroupListItem, LessonListItem } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -130,26 +131,26 @@ export function AttendanceHubPage() {
           <>
           <Table headers={["Sana", "Guruh", "Fan", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
             {lessons.map((l) => (
-              <tr key={l.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
-                <td className="px-3 py-2">
+              <tr key={l.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                <td className="px-3.5 py-2.5">
                   <Badge color={l.status === "completed" ? "green" : "slate"}>
                     {l.status === "completed" ? "O'tildi" : "Rejada"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{l.present_count}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
-                <td className="px-3 py-2 text-rose-600">{l.unexcused_count}</td>
-                <td className="px-3 py-2">
+                <td className="px-3.5 py-2.5 text-slate-800 dark:text-slate-200">{l.present_count}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
+                <td className="px-3.5 py-2.5 text-rose-600">{l.unexcused_count}</td>
+                <TdAction>
                   <Link
                     to={`/teacher/groups/${l.group_id}/lessons/${l.id}`}
-                    className="text-sm text-indigo-600 hover:underline"
+                    className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     {l.status === "completed" ? "Ko'rish" : "Davomat olish"}
                   </Link>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>

@@ -25,6 +25,7 @@ import {
   Pagination,
   SuccessMessage,
   Table,
+  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { GroupDetail, GroupRosterItem, GroupStatus, GroupStudentStatus, Lesson, Subject, User } from "../../types";
@@ -265,18 +266,18 @@ export function GroupDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">{group.name}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge color={GROUP_STATUS_COLOR[group.status]}>{GROUP_STATUS_LABEL[group.status]}</Badge>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {group.subject_name} · {group.teacher_name} · {group.lesson_price.toLocaleString("uz-UZ")} so'm/dars
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{formatSchedule(group.schedule)}</p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{formatSchedule(group.schedule)}</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Button variant="secondary" onClick={openEditModal}>
             Tahrirlash
           </Button>
@@ -332,16 +333,16 @@ export function GroupDetailPage() {
 
           <Table headers={["F.I.O", "Telefon", "Holat", ""]}>
             {pageItems.map((s) => (
-              <tr key={s.id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.student_phone}</td>
-                <td className="px-3 py-2">
+              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
+                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.student_phone}</td>
+                <td className="px-3.5 py-2.5">
                   <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
                   {s.status === "dropped" && s.status_reason && (
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sababi: {s.status_reason}</p>
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <TdAction>
                   <div className="flex gap-1">
                     {s.status !== "active" && (
                       <Button variant="secondary" onClick={() => handleStatusChange(s.student_id, "active")}>
@@ -365,7 +366,7 @@ export function GroupDetailPage() {
                       </Button>
                     )}
                   </div>
-                </td>
+                </TdAction>
               </tr>
             ))}
           </Table>

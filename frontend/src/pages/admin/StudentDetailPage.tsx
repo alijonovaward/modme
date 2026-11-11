@@ -173,23 +173,27 @@ export function StudentDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.full_name}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+            {student.full_name}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {!student.is_active && <Badge color="red">Bloklangan</Badge>}
             <Badge color={student.telegram_linked ? "green" : "slate"}>
               Telegram: {student.telegram_linked ? "Ulangan" : "Ulanmagan"}
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Balans: <span className="font-semibold">{student.balance.toLocaleString("uz-UZ")} so'm</span>
           </p>
         </div>
-        <Button variant={student.is_active ? "danger" : "secondary"} onClick={handleToggleActive}>
-          {student.is_active ? "Bloklash" : "Faollashtirish"}
-        </Button>
+        <div className="shrink-0">
+          <Button variant={student.is_active ? "danger" : "secondary"} onClick={handleToggleActive}>
+            {student.is_active ? "Bloklash" : "Faollashtirish"}
+          </Button>
+        </div>
       </div>
 
       <ErrorMessage message={error} />
