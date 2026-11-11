@@ -39,6 +39,7 @@ REQUIRED_INDEXES = {
     "attendances": ["lesson_id", "student_id"],
     "transactions": ["student_id", "lesson_id"],
     "teacher_transactions": ["teacher_id", "lesson_id", "student_id"],
+    "users": ["telegram_chat_id"],
 }
 
 

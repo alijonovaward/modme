@@ -18,16 +18,14 @@ from app.schemas.stats import StatsOverviewOut
 router = APIRouter(prefix="/api/v1/stats", tags=["stats"])
 
 
-@router.get("/overview", response_model=StatsOverviewOut)
-def get_stats_overview(
-    date_from: Optional[datetime] = Query(default=None),
-    date_to: Optional[datetime] = Query(default=None),
-    group_id: Optional[int] = Query(default=None),
-    teacher_id: Optional[int] = Query(default=None),
-    student_id: Optional[int] = Query(default=None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.superadmin)),
-):
+def _compute_stats_overview(
+    db: Session,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    group_id: Optional[int] = None,
+    teacher_id: Optional[int] = None,
+    student_id: Optional[int] = None,
+) -> StatsOverviewOut:
     def _sum(query) -> float:
         result = query.scalar()
         return float(result) if result is not None else 0.0
@@ -111,3 +109,16 @@ def get_stats_overview(
         total_student_balance=total_student_balance,
         total_center_revenue=total_center_revenue,
     )
+
+
+@router.get("/overview", response_model=StatsOverviewOut)
+def get_stats_overview(
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    teacher_id: Optional[int] = Query(default=None),
+    student_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin)),
+):
+    return _compute_stats_overview(db, date_from, date_to, group_id, teacher_id, student_id)

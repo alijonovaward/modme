@@ -24,5 +24,5 @@ class User(Base):
     teacher_percentage = Column(Float, nullable=True)
     balance = Column(Float, default=0.0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    telegram_chat_id = Column(String, nullable=True)
+    telegram_chat_id = Column(String, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
