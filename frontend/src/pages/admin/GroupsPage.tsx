@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createGroup, listGroups, listStaffUsers, listSubjects } from "../../api/endpoints";
 import { downloadXlsx } from "../../utils/download";
 import {
@@ -14,7 +14,6 @@ import {
   Modal,
   Pagination,
   Table,
-  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { GroupListItem, Subject, User } from "../../types";
@@ -28,6 +27,7 @@ const STATUS_COLOR = {
 } as const;
 
 export function GroupsPage() {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
@@ -88,7 +88,7 @@ export function GroupsPage() {
     });
   }, [groups, search, subjectFilter, teacherFilter]);
 
-  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredGroups);
+  const { page, setPage, pageCount, pageItems, total } = usePagination<GroupListItem>(filteredGroups);
 
   const resetForm = () => {
     setName("");
@@ -211,9 +211,13 @@ export function GroupsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Jadval", "Holat", ""]}>
-            {pageItems.map((g) => (
-              <tr key={g.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+          <Table headers={["Nomi", "Fan", "O'qituvchi", "Dars narxi", "Jadval", "Holat"]}>
+            {pageItems.map((g: GroupListItem) => (
+              <tr
+                key={g.id}
+                onClick={() => navigate(`/admin/groups/${g.id}`)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
                 <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{g.name}</td>
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
@@ -224,11 +228,6 @@ export function GroupsPage() {
                 <td className="px-3.5 py-2.5">
                   <Badge color={STATUS_COLOR[g.status]}>{g.status}</Badge>
                 </td>
-                <TdAction>
-                  <Link to={`/admin/groups/${g.id}`} className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
-                    Batafsil
-                  </Link>
-                </TdAction>
               </tr>
             ))}
           </Table>

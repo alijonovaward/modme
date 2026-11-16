@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createStaffUser, listStaffUsersPage } from "../../api/endpoints";
 import { downloadXlsx } from "../../utils/download";
 import {
@@ -16,7 +16,6 @@ import {
   Select,
   SuccessMessage,
   Table,
-  TdAction,
 } from "../../components/ui";
 import type { User, UserRole } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -28,6 +27,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export function StaffPage() {
+  const navigate = useNavigate();
   const [staff, setStaff] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,9 +176,13 @@ export function StaffPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans", ""]}>
+          <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans"]}>
             {staff.map((s) => (
-              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+              <tr
+                key={s.id}
+                onClick={() => navigate(`/superadmin/staff/${s.id}`)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
                 <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
                 <td className="px-3.5 py-2.5">
@@ -197,14 +201,6 @@ export function StaffPage() {
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {s.balance.toLocaleString("uz-UZ")} so'm
                 </td>
-                <TdAction>
-                  <Link
-                    to={`/superadmin/staff/${s.id}`}
-                    className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
-                  >
-                    Batafsil
-                  </Link>
-                </TdAction>
               </tr>
             ))}
           </Table>
