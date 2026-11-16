@@ -24,7 +24,6 @@ import {
   StatTile,
   SuccessMessage,
   Table,
-  TdAction,
   usePagination,
 } from "../../components/ui";
 import type {
@@ -364,29 +363,25 @@ export function StudentDetailPage() {
               color="red"
             />
           </div>
-          <Table headers={["Sana", "Turi", "Guruh", "Summa", ""]}>
+          <Table headers={["Sana", "Turi", "Guruh", "Summa"]}>
             {transactionsPageItems.map((t) => (
-              <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
+              <tr
+                key={t.id}
+                onClick={() => setSelectedTx(t)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
-                <td className="px-2.5 py-2">
+                <td className="px-2.5 py-2.5">
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <TdAction>
-                  <button
-                    onClick={() => setSelectedTx(t)}
-                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-indigo-400"
-                  >
-                    Batafsil
-                  </button>
-                </TdAction>
               </tr>
             ))}
           </Table>

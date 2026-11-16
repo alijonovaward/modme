@@ -23,7 +23,6 @@ import {
   Select,
   StatTile,
   Table,
-  TdAction,
 } from "../../components/ui";
 import type {
   GroupListItem,
@@ -365,30 +364,26 @@ export function TransactionsPage() {
 
         {!isLoading && tab === "student" ? (
           <>
-          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", ""]}>
+          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa"]}>
             {transactions.map((t) => (
-              <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
+              <tr
+                key={t.id}
+                onClick={() => setSelectedStudentTx(t)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
-                <td className="px-2.5 py-2 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2">
+                <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-2.5 py-2.5">
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
+                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <TdAction>
-                  <button
-                    onClick={() => setSelectedStudentTx(t)}
-                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-indigo-400"
-                  >
-                    Batafsil
-                  </button>
-                </TdAction>
               </tr>
             ))}
           </Table>
@@ -401,30 +396,26 @@ export function TransactionsPage() {
           </>
         ) : !isLoading && tab === "teacher" ? (
           <>
-          <Table headers={["Sana", "O'qituvchi", "Guruh", "Turi", "Summa", ""]}>
+          <Table headers={["Sana", "O'qituvchi", "Guruh", "Turi", "Summa"]}>
             {teacherTransactions.map((t) => (
-              <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
+              <tr
+                key={t.id}
+                onClick={() => setSelectedTeacherTx(t)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
                   {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
-                <td className="px-2.5 py-2 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
-                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2">
+                <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
+                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-2.5 py-2.5">
                   <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
                   </Badge>
                 </td>
-                <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
+                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <TdAction>
-                  <button
-                    onClick={() => setSelectedTeacherTx(t)}
-                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-indigo-400"
-                  >
-                    Batafsil
-                  </button>
-                </TdAction>
               </tr>
             ))}
           </Table>
