@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ThemeProvider } from "./theme/ThemeContext";
+import { InstallPWA } from "./components/InstallPWA";
 import { LoginPage } from "./pages/Login";
 import { HomePage } from "./pages/Home";
 import { StaffPage } from "./pages/superadmin/StaffPage";
@@ -172,6 +173,7 @@ function App() {
             }
           />
         </Routes>
+        <InstallPWA />
       </AuthProvider>
     </BrowserRouter>
     </ThemeProvider>

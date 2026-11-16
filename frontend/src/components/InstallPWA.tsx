@@ -56,8 +56,9 @@ export function InstallPWA() {
   // Don't show if already installed or dismissed by user
   if (isStandalone || dismissed) return null;
 
-  // Show if deferredPrompt exists OR if device is iOS
-  const showBanner = Boolean(deferredPrompt) || isIOS;
+  // Show if deferredPrompt exists, or if device is iOS, or if running in dev mode for easy testing
+  const isMobileScreen = typeof window !== "undefined" && window.innerWidth <= 768;
+  const showBanner = Boolean(deferredPrompt) || isIOS || (import.meta.env.DEV && isMobileScreen);
   if (!showBanner) return null;
 
   return (
