@@ -13,6 +13,7 @@ import type {
   StaffListPage,
   StatsOverview,
   StudentAttendanceHistoryItem,
+  StudentAttendanceStats,
   StudentListPage,
   StudentGroupStats,
   StudentPendingCharge,
@@ -253,6 +254,15 @@ export async function listGroups(teacherId?: number): Promise<GroupListItem[]> {
 
 export async function getGroupDetail(groupId: number): Promise<GroupDetail> {
   const { data } = await apiClient.get<GroupDetail>(`/api/v1/groups/${groupId}`);
+  return data;
+}
+
+export async function getGroupAttendanceStats(
+  groupId: number,
+): Promise<StudentAttendanceStats[]> {
+  const { data } = await apiClient.get<StudentAttendanceStats[]>(
+    `/api/v1/groups/${groupId}/attendance-stats`,
+  );
   return data;
 }
 

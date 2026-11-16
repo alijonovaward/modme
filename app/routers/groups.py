@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.db.session import get_db
+from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
 from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
@@ -24,6 +25,7 @@ from app.schemas.group import (
     GroupStudentCreate,
     GroupStudentOut,
     GroupStudentStatusUpdate,
+    StudentAttendanceStatsOut,
 )
 from app.schemas.lesson import LessonGenerateRequest, LessonGenerateResult, LessonOut
 
@@ -292,6 +294,72 @@ def get_group_detail(
 
     base = _to_list_item(group, db)
     return GroupDetailOut(**base.model_dump(), students=students)
+
+
+ATTENDANCE_TREND_WINDOW = timedelta(days=14)
+
+
+@router.get("/{group_id}/attendance-stats", response_model=list[StudentAttendanceStatsOut])
+def get_group_attendance_stats(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    group = _get_group_or_404(db, group_id)
+    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
+
+    roster = (
+        db.query(GroupStudent)
+        .filter(
+            GroupStudent.group_id == group_id,
+            GroupStudent.status != GroupStudentStatus.dropped,
+        )
+        .all()
+    )
+
+    today = date.today()
+    recent_start = today - ATTENDANCE_TREND_WINDOW
+    previous_start = today - (ATTENDANCE_TREND_WINDOW * 2)
+
+    def _rate(records: list) -> Optional[float]:
+        if not records:
+            return None
+        present = sum(1 for status, _ in records if status == AttendanceStatus.present)
+        return round(present / len(records) * 100, 1)
+
+    results: list[StudentAttendanceStatsOut] = []
+    for gs in roster:
+        student = db.get(User, gs.student_id)
+        rows = (
+            db.query(Attendance.status, Lesson.lesson_date)
+            .join(Lesson, Lesson.id == Attendance.lesson_id)
+            .filter(Lesson.group_id == group_id, Attendance.student_id == gs.student_id)
+            .all()
+        )
+
+        recent_rows = [r for r in rows if r[1] >= recent_start]
+        previous_rows = [r for r in rows if previous_start <= r[1] < recent_start]
+        recent_rate = _rate(recent_rows)
+        previous_rate = _rate(previous_rows)
+        is_declining = (
+            recent_rate is not None and previous_rate is not None and recent_rate < previous_rate
+        )
+
+        results.append(
+            StudentAttendanceStatsOut(
+                student_id=gs.student_id,
+                student_name=student.full_name if student else "",
+                total_lessons=len(rows),
+                attendance_rate=_rate(rows) or 0.0,
+                recent_attendance_rate=recent_rate,
+                previous_attendance_rate=previous_rate,
+                is_declining=is_declining,
+            )
+        )
+    return results
 
 
 @router.get("/{group_id}/lessons", response_model=list[LessonOut])

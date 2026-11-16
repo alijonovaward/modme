@@ -89,6 +89,16 @@ class GroupDetailOut(GroupListItemOut):
     students: list[GroupRosterItemOut]
 
 
+class StudentAttendanceStatsOut(BaseModel):
+    student_id: int
+    student_name: str
+    total_lessons: int
+    attendance_rate: float
+    recent_attendance_rate: Optional[float] = None
+    previous_attendance_rate: Optional[float] = None
+    is_declining: bool
+
+
 class StudentGroupStatsOut(BaseModel):
     group_id: int
     group_name: str

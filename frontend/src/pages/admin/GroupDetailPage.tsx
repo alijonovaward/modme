@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
   generateGroupLessons,
+  getGroupAttendanceStats,
   getGroupDetail,
   listGroupLessons,
   listStaffUsers,
@@ -28,7 +29,16 @@ import {
   TdAction,
   usePagination,
 } from "../../components/ui";
-import type { GroupDetail, GroupRosterItem, GroupStatus, GroupStudentStatus, Lesson, Subject, User } from "../../types";
+import type {
+  GroupDetail,
+  GroupRosterItem,
+  GroupStatus,
+  GroupStudentStatus,
+  Lesson,
+  StudentAttendanceStats,
+  Subject,
+  User,
+} from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
 import { formatSchedule, WEEKDAYS } from "../../utils/weekdays";
@@ -67,6 +77,7 @@ export function GroupDetailPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -93,18 +104,21 @@ export function GroupDetailPage() {
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [groupData, studentsData, subjectsData, teachersData, lessonsData] = await Promise.all([
-        getGroupDetail(id),
-        listStudents(),
-        listSubjects(),
-        listStaffUsers("teacher"),
-        listGroupLessons(id),
-      ]);
+      const [groupData, studentsData, subjectsData, teachersData, lessonsData, attendanceStatsData] =
+        await Promise.all([
+          getGroupDetail(id),
+          listStudents(),
+          listSubjects(),
+          listStaffUsers("teacher"),
+          listGroupLessons(id),
+          getGroupAttendanceStats(id),
+        ]);
       setGroup(groupData);
       setAllStudents(studentsData);
       setSubjects(subjectsData);
       setTeachers(teachersData);
       setLessons(lessonsData);
+      setAttendanceStats(attendanceStatsData);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -410,6 +424,50 @@ export function GroupDetailPage() {
                   onPageChange={setLessonsPage}
                 />
               </>
+            )}
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card title="Davomat statistikasi">
+            {attendanceStats.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Hali o'quvchi yo'q</p>
+            ) : (
+              <Table
+                headers={[
+                  "O'quvchi",
+                  "Jami darslar",
+                  "Umumiy foiz",
+                  "Oldingi 14 kun",
+                  "So'nggi 14 kun",
+                  "Trend",
+                ]}
+              >
+                {attendanceStats.map((s) => (
+                  <tr key={s.student_id}>
+                    <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                      {s.student_name}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.total_lessons}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                      {s.attendance_rate}%
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                      {s.previous_attendance_rate != null ? `${s.previous_attendance_rate}%` : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                      {s.recent_attendance_rate != null ? `${s.recent_attendance_rate}%` : "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {s.is_declining ? (
+                        <Badge color="red">Pasaymoqda</Badge>
+                      ) : (
+                        <Badge color="slate">Barqaror</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
             )}
           </Card>
         </div>
