@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -9,10 +9,13 @@ from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.telegram import send_telegram_message
 from app.db.session import get_db
+from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
-from app.models.lesson import Lesson
+from app.models.group_student import GroupStudent, GroupStudentStatus
+from app.models.lesson import Lesson, LessonStatus
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.user import User, UserRole
+from app.schemas.stats import TeacherStatsOut
 from app.schemas.transaction import (
     TeacherPayoutCreate,
     TeacherTransactionGlobalListItemOut,
@@ -89,6 +92,63 @@ def get_teacher_finance_by_id(
     if teacher is None or teacher.role != UserRole.teacher:
         raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
+
+
+@router.get("/{teacher_id}/stats", response_model=TeacherStatsOut)
+def get_teacher_stats(
+    teacher_id: int,
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    group_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    teacher = db.get(User, teacher_id)
+    if teacher is None or teacher.role != UserRole.teacher:
+        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+
+    student_query = (
+        db.query(GroupStudent.student_id)
+        .join(Group, Group.id == GroupStudent.group_id)
+        .filter(Group.teacher_id == teacher_id, GroupStudent.status == GroupStudentStatus.active)
+    )
+    if group_id is not None:
+        student_query = student_query.filter(Group.id == group_id)
+    active_student_count = student_query.distinct().count()
+
+    lesson_query = (
+        db.query(Lesson)
+        .join(Group, Group.id == Lesson.group_id)
+        .filter(Group.teacher_id == teacher_id, Lesson.status == LessonStatus.completed)
+    )
+    if group_id is not None:
+        lesson_query = lesson_query.filter(Group.id == group_id)
+    if date_from is not None:
+        lesson_query = lesson_query.filter(Lesson.lesson_date >= date_from)
+    if date_to is not None:
+        lesson_query = lesson_query.filter(Lesson.lesson_date <= date_to)
+    completed_lesson_count = lesson_query.count()
+
+    lesson_ids = [row[0] for row in lesson_query.with_entities(Lesson.id).all()]
+    att_counts: dict = {}
+    if lesson_ids:
+        att_counts = dict(
+            db.query(Attendance.status, func.count(Attendance.id))
+            .filter(Attendance.lesson_id.in_(lesson_ids))
+            .group_by(Attendance.status)
+            .all()
+        )
+    present = att_counts.get(AttendanceStatus.present, 0)
+    excused = att_counts.get(AttendanceStatus.excused, 0)
+    unexcused = att_counts.get(AttendanceStatus.unexcused, 0)
+    total_marked = present + excused + unexcused
+    attendance_rate = round((present / total_marked * 100), 1) if total_marked else 0.0
+
+    return TeacherStatsOut(
+        active_student_count=active_student_count,
+        completed_lesson_count=completed_lesson_count,
+        attendance_rate=attendance_rate,
+    )
 
 
 TEACHER_TX_TYPE_LABELS = {

@@ -2,7 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
   getTeacherFinanceById,
+  getTeacherStats,
+  listGroups,
   listStaffUsers,
+  listSubjects,
   payoutTeacher,
   updateStaffStatus,
   updateStaffUser,
@@ -12,19 +15,35 @@ import {
   Badge,
   Button,
   Card,
+  Combobox,
   ErrorMessage,
   extractErrorMessage,
   Input,
   Label,
+  Modal,
   Pagination,
   StatTile,
   SuccessMessage,
   Table,
   usePagination,
 } from "../../components/ui";
-import type { TeacherTransaction, User } from "../../types";
+import type { GroupListItem, Subject, TeacherStats, TeacherTransaction, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
+
+interface FinanceFilters {
+  dateFrom: string;
+  dateTo: string;
+  subjectId: string;
+  groupId: string;
+}
+
+const DEFAULT_FINANCE_FILTERS: FinanceFilters = {
+  ...currentMonthRange(),
+  subjectId: "",
+  groupId: "",
+};
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Bosh Admin",
@@ -38,9 +57,16 @@ export function StaffDetailPage() {
 
   const [staffMember, setStaffMember] = useState<User | null>(null);
   const [finance, setFinance] = useState<TeacherTransaction[]>([]);
+  const [stats, setStats] = useState<TeacherStats | null>(null);
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState<FinanceFilters>(DEFAULT_FINANCE_FILTERS);
+  const [financeFilters, setFinanceFilters] = useState<FinanceFilters>(DEFAULT_FINANCE_FILTERS);
 
   const [newPassword, setNewPassword] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -50,7 +76,7 @@ export function StaffDetailPage() {
   const [editPercentage, setEditPercentage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const load = async () => {
+  const load = async (filters: FinanceFilters = financeFilters) => {
     setIsLoading(true);
     try {
       const staff = await listStaffUsers();
@@ -62,7 +88,17 @@ export function StaffDetailPage() {
         setEditPercentage(found.teacher_percentage != null ? String(found.teacher_percentage) : "");
       }
       if (found?.role === "teacher") {
-        setFinance(await getTeacherFinanceById(id));
+        const params = {
+          date_from: filters.dateFrom || undefined,
+          date_to: filters.dateTo || undefined,
+          group_id: filters.groupId ? Number(filters.groupId) : undefined,
+        };
+        const [financeData, statsData] = await Promise.all([
+          getTeacherFinanceById(id, params),
+          getTeacherStats(id, params),
+        ]);
+        setFinance(financeData);
+        setStats(statsData);
       }
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -72,9 +108,42 @@ export function StaffDetailPage() {
   };
 
   useEffect(() => {
-    load();
+    load(DEFAULT_FINANCE_FILTERS);
+    listSubjects().then(setSubjects).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (staffMember?.role === "teacher") {
+      listGroups(staffMember.id).then(setGroups).catch(() => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffMember?.id]);
+
+  const openFilterModal = () => {
+    setFilterDraft(financeFilters);
+    setIsFilterModalOpen(true);
+  };
+
+  const applyFinanceFilters = () => {
+    setFinanceFilters(filterDraft);
+    setIsFilterModalOpen(false);
+    load(filterDraft);
+  };
+
+  const clearFinanceFilters = () => {
+    setFilterDraft(DEFAULT_FINANCE_FILTERS);
+    setFinanceFilters(DEFAULT_FINANCE_FILTERS);
+    setIsFilterModalOpen(false);
+    load(DEFAULT_FINANCE_FILTERS);
+  };
+
+  const financeFilterGroupOptions = groups.filter(
+    (g) => !filterDraft.subjectId || String(g.subject_id) === filterDraft.subjectId,
+  );
+  const financeActiveFilterCount = [financeFilters.subjectId, financeFilters.groupId].filter(
+    Boolean,
+  ).length;
 
   const handleEditSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -282,20 +351,34 @@ export function StaffDetailPage() {
           <Card
             title="Moliya tarixi"
             action={
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  downloadXlsx(
-                    `/api/v1/teachers/${id}/finance/export`,
-                    undefined,
-                    `${staffMember.full_name}_moliyasi.xlsx`,
-                  )
-                }
-              >
-                Excel'ga chiqarish
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    downloadXlsx(
+                      `/api/v1/teachers/${id}/finance/export`,
+                      {
+                        date_from: financeFilters.dateFrom || undefined,
+                        date_to: financeFilters.dateTo || undefined,
+                        group_id: financeFilters.groupId ? Number(financeFilters.groupId) : undefined,
+                      },
+                      `${staffMember.full_name}_moliyasi.xlsx`,
+                    )
+                  }
+                >
+                  Excel'ga chiqarish
+                </Button>
+                <Button onClick={openFilterModal}>
+                  Filterlar{financeActiveFilterCount > 0 ? ` (${financeActiveFilterCount})` : ""}
+                </Button>
+              </div>
             }
           >
+            {(financeFilters.dateFrom || financeFilters.dateTo) && (
+              <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+                Davr: {financeFilters.dateFrom || "..."} — {financeFilters.dateTo || "..."}
+              </p>
+            )}
             <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <StatTile
                 label="Jami dars daromadi"
@@ -311,6 +394,23 @@ export function StaffDetailPage() {
                 label="Jami pul berilgan"
                 value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
                 color="red"
+              />
+            </div>
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatTile
+                label="Faol o'quvchilar"
+                value={String(stats?.active_student_count ?? 0)}
+                color="slate"
+              />
+              <StatTile
+                label="O'tilgan darslar"
+                value={String(stats?.completed_lesson_count ?? 0)}
+                color="amber"
+              />
+              <StatTile
+                label="Davomat foizi"
+                value={`${(stats?.attendance_rate ?? 0).toLocaleString("uz-UZ")}%`}
+                color="violet"
               />
             </div>
             <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
@@ -336,6 +436,65 @@ export function StaffDetailPage() {
             <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
           </Card>
         </div>
+      )}
+
+      {isFilterModalOpen && (
+        <Modal title="Filterlar" onClose={() => setIsFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Dan</Label>
+                <Input
+                  type="date"
+                  value={filterDraft.dateFrom}
+                  onChange={(e) => setFilterDraft((prev) => ({ ...prev, dateFrom: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Gacha</Label>
+                <Input
+                  type="date"
+                  value={filterDraft.dateTo}
+                  onChange={(e) => setFilterDraft((prev) => ({ ...prev, dateTo: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={filterDraft.subjectId}
+                onChange={(value) =>
+                  setFilterDraft((prev) => ({ ...prev, subjectId: value, groupId: "" }))
+                }
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={filterDraft.groupId}
+                onChange={(value) => setFilterDraft((prev) => ({ ...prev, groupId: value }))}
+                placeholder="Barcha guruhlar"
+                options={[
+                  { value: "", label: "Barcha guruhlar" },
+                  ...financeFilterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
+                ]}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={applyFinanceFilters}>
+                Qo'llash
+              </Button>
+              <Button variant="secondary" onClick={clearFinanceFilters}>
+                Tozalash
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </Layout>
   );

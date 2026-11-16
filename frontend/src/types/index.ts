@@ -59,6 +59,12 @@ export interface TeacherTransaction {
   lesson_date: string | null;
 }
 
+export interface TeacherStats {
+  active_student_count: number;
+  completed_lesson_count: number;
+  attendance_rate: number;
+}
+
 export interface TeacherTransactionGlobalListItem {
   id: number;
   teacher_id: number;

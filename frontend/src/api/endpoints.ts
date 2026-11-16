@@ -16,6 +16,7 @@ import type {
   StudentListPage,
   StudentTransactionListItem,
   Subject,
+  TeacherStats,
   TeacherTransaction,
   TeacherTransactionListPage,
   Transaction,
@@ -393,6 +394,20 @@ export async function getTeacherFinanceById(
     `/api/v1/teachers/${teacherId}/finance`,
     { params },
   );
+  return data;
+}
+
+export async function getTeacherStats(
+  teacherId: number,
+  params?: {
+    date_from?: string;
+    date_to?: string;
+    group_id?: number;
+  },
+): Promise<TeacherStats> {
+  const { data } = await apiClient.get<TeacherStats>(`/api/v1/teachers/${teacherId}/stats`, {
+    params,
+  });
   return data;
 }
 
