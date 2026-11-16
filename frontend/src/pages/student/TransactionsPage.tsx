@@ -165,7 +165,7 @@ export function StudentTransactionsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh", ""]}>
+          <Table headers={["Sana", "Turi", "Guruh", "Summa", ""]}>
             {pageItems.map((t) => (
               <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                 <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
@@ -179,9 +179,6 @@ export function StudentTransactionsPage() {
                 <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
                 <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
-                </td>
-                <td className="max-w-[120px] truncate px-2.5 py-2 text-slate-500 dark:text-slate-400">
-                  {t.comment || "-"}
                 </td>
                 <TdAction>
                   <button
