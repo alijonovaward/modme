@@ -19,5 +19,6 @@ class Attendance(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False, index=True)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(Enum(AttendanceStatus), nullable=False)
-    grade = Column(Integer, nullable=True)
+    correct_count = Column(Integer, nullable=True)
+    total_count = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

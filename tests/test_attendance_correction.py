@@ -56,7 +56,7 @@ def test_unexcused_to_present_does_not_move_money(client, superadmin_headers, ad
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
         headers=teacher_headers,
-        json={"status": "present", "grade": 5},
+        json={"status": "present", "correct_count": 5, "total_count": 5},
     )
     assert resp.status_code == 200, resp.text
 
@@ -83,7 +83,7 @@ def test_excused_to_present_charges_student_and_pays_teacher(client, superadmin_
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
         headers=teacher_headers,
-        json={"status": "present", "grade": 4},
+        json={"status": "present", "correct_count": 4, "total_count": 5},
     )
     assert resp.status_code == 200, resp.text
 
@@ -100,7 +100,7 @@ def test_present_to_excused_refunds_student_and_claws_back_teacher(client, super
     resp = client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert resp.status_code == 201, resp.text
 
@@ -144,7 +144,7 @@ def test_frozen_student_is_never_charged_even_after_edit(client, superadmin_head
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
         headers=teacher_headers,
-        json={"status": "present", "grade": 5},
+        json={"status": "present", "correct_count": 5, "total_count": 5},
     )
     assert resp.status_code == 200, resp.text
 
@@ -160,7 +160,7 @@ def test_teacher_blocked_after_24h_but_admin_can_still_correct(client, superadmi
     resp = client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert resp.status_code == 201, resp.text
 

@@ -78,7 +78,7 @@ def test_full_lesson_flow(client, superadmin):
     attendance_resp = client.post(
         f"/api/v1/lessons/{lesson_id}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student_id, "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student_id, "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert attendance_resp.status_code == 201, attendance_resp.text
 

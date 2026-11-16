@@ -408,7 +408,7 @@ export function StudentDetailPage() {
             </Button>
           }
         >
-          <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"]}>
+          <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"]}>
             {attendancePageItems.map((a) => (
               <tr key={a.id}>
                 <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
@@ -419,7 +419,9 @@ export function StudentDetailPage() {
                     {ATTENDANCE_LABEL[a.status]}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{a.grade ?? "-"}</td>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                  {a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}
+                </td>
               </tr>
             ))}
           </Table>

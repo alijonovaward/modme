@@ -105,7 +105,7 @@ def test_export_student_transactions_and_attendance(client, superadmin_headers, 
     )
 
     resp = client.get(f"/api/v1/students/{student['id']}/attendance/export", headers=student_headers)
-    _assert_xlsx(resp, ["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"])
+    _assert_xlsx(resp, ["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"])
 
 
 def test_export_student_transactions_forbidden_for_other_student(client, admin_headers):

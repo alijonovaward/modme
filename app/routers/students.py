@@ -498,7 +498,8 @@ def get_student_attendance_history(
             group_name=group.name,
             teacher_name=teacher.full_name,
             status=attendance.status,
-            grade=attendance.grade,
+            correct_count=attendance.correct_count,
+            total_count=attendance.total_count,
         )
         for attendance, lesson, group, teacher in rows
     ]
@@ -523,11 +524,19 @@ def export_student_attendance(
         db, student, current_user, group_id, status_filter, date_from, date_to
     )
     xlsx_rows = [
-        [lesson.lesson_date, group.name, teacher.full_name, attendance.status.value, attendance.grade]
+        [
+            lesson.lesson_date,
+            group.name,
+            teacher.full_name,
+            attendance.status.value,
+            f"{attendance.correct_count}/{attendance.total_count}"
+            if attendance.total_count is not None
+            else "",
+        ]
         for attendance, lesson, group, teacher in rows
     ]
     return xlsx_response(
         f"{student.full_name}_davomati.xlsx",
-        ["Sana", "Guruh", "O'qituvchi", "Holat", "Baho"],
+        ["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"],
         xlsx_rows,
     )

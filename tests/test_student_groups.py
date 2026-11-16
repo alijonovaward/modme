@@ -29,7 +29,19 @@ def test_student_groups_lists_enrollment_with_attendance_and_spend(
         resp = client.post(
             f"/api/v1/lessons/{lesson['id']}/attendance",
             headers=teacher_headers,
-            json={"records": [{"student_id": student["id"], "status": lesson_status, **({"grade": 5} if lesson_status == "present" else {})}]},
+            json={
+                "records": [
+                    {
+                        "student_id": student["id"],
+                        "status": lesson_status,
+                        **(
+                            {"correct_count": 5, "total_count": 5}
+                            if lesson_status == "present"
+                            else {}
+                        ),
+                    }
+                ]
+            },
         )
         assert resp.status_code == 201, resp.text
 

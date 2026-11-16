@@ -53,7 +53,7 @@ def test_insufficient_balance_marks_attendance_but_holds_the_charge(
     resp = client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert resp.status_code == 201, resp.text
 
@@ -84,7 +84,7 @@ def test_depositing_enough_money_settles_pending_charge_and_pays_teacher(
     client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert _balance(db_session, student["id"]) == 0
 
@@ -118,7 +118,7 @@ def test_cancelling_attendance_removes_pending_charge_without_moving_money(
     client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     resp = client.get(f"/api/v1/students/{student['id']}/pending-charges", headers=admin_headers)
     assert len(resp.json()) == 1

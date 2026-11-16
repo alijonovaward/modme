@@ -72,8 +72,9 @@ describe("AttendancePage - first-time submission", () => {
     for (const name of ["Student A", "Student B"]) {
       const row = screen.getByText(name).closest("tr");
       if (!row) throw new Error("row not found");
-      const gradeSelect = within(row).getAllByRole("combobox")[1];
-      await user.selectOptions(gradeSelect, "5");
+      const [correctInput, totalInput] = within(row).getAllByRole("spinbutton");
+      await user.type(correctInput, "5");
+      await user.type(totalInput, "5");
     }
 
     await user.click(screen.getByRole("button", { name: "Davomatni saqlash" }));
@@ -81,8 +82,8 @@ describe("AttendancePage - first-time submission", () => {
     await waitFor(() => expect(submitAttendance).toHaveBeenCalledTimes(1));
     const [, records] = vi.mocked(submitAttendance).mock.calls[0];
     expect(records).toEqual([
-      { student_id: 10, status: "present", grade: 5 },
-      { student_id: 11, status: "present", grade: 5 },
+      { student_id: 10, status: "present", correct_count: 5, total_count: 5 },
+      { student_id: 11, status: "present", correct_count: 5, total_count: 5 },
     ]);
   });
 });
@@ -90,8 +91,24 @@ describe("AttendancePage - first-time submission", () => {
 describe("AttendancePage - correcting existing attendance", () => {
   function existingAttendance(): AttendanceDetail[] {
     return [
-      { id: 1, lesson_id: 5, student_id: 10, student_name: "Student A", status: "present", grade: 5 },
-      { id: 2, lesson_id: 5, student_id: 11, student_name: "Student B", status: "present", grade: 4 },
+      {
+        id: 1,
+        lesson_id: 5,
+        student_id: 10,
+        student_name: "Student A",
+        status: "present",
+        correct_count: 5,
+        total_count: 5,
+      },
+      {
+        id: 2,
+        lesson_id: 5,
+        student_id: 11,
+        student_name: "Student B",
+        status: "present",
+        correct_count: 4,
+        total_count: 5,
+      },
     ];
   }
 
@@ -106,7 +123,14 @@ describe("AttendancePage - correcting existing attendance", () => {
 
   it("only calls updateAttendance for the student whose row actually changed", async () => {
     vi.mocked(getLessonAttendance).mockResolvedValue(existingAttendance());
-    vi.mocked(updateAttendance).mockResolvedValue({ id: 2, lesson_id: 5, student_id: 11, status: "excused", grade: null });
+    vi.mocked(updateAttendance).mockResolvedValue({
+      id: 2,
+      lesson_id: 5,
+      student_id: 11,
+      status: "excused",
+      correct_count: null,
+      total_count: null,
+    });
 
     const user = userEvent.setup();
     renderPage();
@@ -124,6 +148,10 @@ describe("AttendancePage - correcting existing attendance", () => {
     await user.click(saveButton);
 
     await waitFor(() => expect(updateAttendance).toHaveBeenCalledTimes(1));
-    expect(updateAttendance).toHaveBeenCalledWith(5, 11, { status: "excused", grade: null });
+    expect(updateAttendance).toHaveBeenCalledWith(5, 11, {
+      status: "excused",
+      correct_count: null,
+      total_count: null,
+    });
   });
 });

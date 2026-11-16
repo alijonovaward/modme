@@ -21,6 +21,8 @@ REQUIRED_COLUMNS = {
     },
     "attendances": {
         "created_at": "TIMESTAMP",
+        "correct_count": "INTEGER",
+        "total_count": "INTEGER",
     },
     "users": {
         "is_active": "BOOLEAN",

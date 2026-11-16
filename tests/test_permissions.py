@@ -87,7 +87,7 @@ def test_admin_sees_lesson_driven_transactions_not_just_own_deposits(client, sup
     resp = client.post(
         f"/api/v1/lessons/{lesson['id']}/attendance",
         headers=teacher_headers,
-        json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
     assert resp.status_code == 201, resp.text
 

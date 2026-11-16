@@ -34,7 +34,7 @@ def test_teacher_stats_counts_active_students_lessons_and_attendance_rate(
         headers=teacher_headers,
         json={
             "records": [
-                {"student_id": student_a["id"], "status": "present", "grade": 5},
+                {"student_id": student_a["id"], "status": "present", "correct_count": 5, "total_count": 5},
                 {"student_id": student_b["id"], "status": "unexcused"},
             ]
         },

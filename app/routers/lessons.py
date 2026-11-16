@@ -42,13 +42,14 @@ def _attendance_notification_text(
     group_name: str,
     lesson_date,
     status: AttendanceStatus,
-    grade,
+    correct_count,
+    total_count,
     charged_amount: Optional[float],
     pending_amount: Optional[float] = None,
 ) -> str:
     lines = [f"{group_name} guruhi, {lesson_date}: {ATTENDANCE_STATUS_LABELS[status]}"]
-    if grade is not None:
-        lines.append(f"Baho: {grade}")
+    if total_count is not None:
+        lines.append(f"Test natijasi: {correct_count}/{total_count}")
     if charged_amount:
         lines.append(f"Balansdan {charged_amount:,.0f} so'm yechildi.")
     if pending_amount:
@@ -343,7 +344,8 @@ def get_lesson_attendance(
             student_id=att.student_id,
             student_name=student.full_name,
             status=att.status,
-            grade=att.grade,
+            correct_count=att.correct_count,
+            total_count=att.total_count,
         )
         for att, student in rows
     ]
@@ -393,16 +395,21 @@ def mark_attendance(
                 detail=f"O'quvchi {item.student_id} ushbu guruhda topilmadi",
             )
 
-        if item.status == AttendanceStatus.present and item.grade is None:
-            raise HTTPException(status_code=400, detail="Kelgan o'quvchiga baho qo'yilishi shart")
-        if item.status != AttendanceStatus.present and item.grade is not None:
-            raise HTTPException(status_code=400, detail="Baho faqat kelgan o'quvchiga qo'yiladi")
+        if item.status == AttendanceStatus.present and item.total_count is None:
+            raise HTTPException(
+                status_code=400, detail="Kelgan o'quvchiga test natijasi kiritilishi shart"
+            )
+        if item.status != AttendanceStatus.present and item.total_count is not None:
+            raise HTTPException(
+                status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"
+            )
 
         attendance = Attendance(
             lesson_id=lesson.id,
             student_id=item.student_id,
             status=item.status,
-            grade=item.grade,
+            correct_count=item.correct_count,
+            total_count=item.total_count,
         )
         db.add(attendance)
         created_records.append(attendance)
@@ -461,7 +468,8 @@ def mark_attendance(
                     group.name,
                     lesson.lesson_date,
                     item.status,
-                    item.grade,
+                    item.correct_count,
+                    item.total_count,
                     group.lesson_price if should_charge and not is_pending else None,
                     group.lesson_price if is_pending else None,
                 ),
@@ -513,10 +521,14 @@ def update_attendance(
                 detail="Davomat belgilangandan 24 soat o'tgan, endi faqat admin tuzatishi mumkin",
             )
 
-    if payload.status == AttendanceStatus.present and payload.grade is None:
-        raise HTTPException(status_code=400, detail="Kelgan o'quvchiga baho qo'yilishi shart")
-    if payload.status != AttendanceStatus.present and payload.grade is not None:
-        raise HTTPException(status_code=400, detail="Baho faqat kelgan o'quvchiga qo'yiladi")
+    if payload.status == AttendanceStatus.present and payload.total_count is None:
+        raise HTTPException(
+            status_code=400, detail="Kelgan o'quvchiga test natijasi kiritilishi shart"
+        )
+    if payload.status != AttendanceStatus.present and payload.total_count is not None:
+        raise HTTPException(
+            status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"
+        )
 
     group_student = (
         db.query(GroupStudent)
@@ -631,7 +643,8 @@ def update_attendance(
             )
 
     attendance.status = payload.status
-    attendance.grade = payload.grade
+    attendance.correct_count = payload.correct_count
+    attendance.total_count = payload.total_count
     db.commit()
     db.refresh(attendance)
 
@@ -644,7 +657,8 @@ def update_attendance(
                 group.name,
                 lesson.lesson_date,
                 payload.status,
-                payload.grade,
+                payload.correct_count,
+                payload.total_count,
                 group.lesson_price if should_charge else None,
             ),
         )

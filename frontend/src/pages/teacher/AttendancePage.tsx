@@ -7,13 +7,23 @@ import {
   updateAttendance,
   type AttendanceRecordInput,
 } from "../../api/endpoints";
-import { Button, Card, ErrorMessage, extractErrorMessage, Select, SuccessMessage, Table } from "../../components/ui";
+import {
+  Button,
+  Card,
+  ErrorMessage,
+  extractErrorMessage,
+  Input,
+  Select,
+  SuccessMessage,
+  Table,
+} from "../../components/ui";
 import type { Attendance, AttendanceStatus, GroupDetail } from "../../types";
 import { Layout } from "../../components/Layout";
 
 interface RowState {
   status: AttendanceStatus;
-  grade: string;
+  correctCount: string;
+  totalCount: string;
 }
 
 export function AttendancePage() {
@@ -44,7 +54,10 @@ export function AttendancePage() {
             const existingRecord = attendanceData.find((a) => a.student_id === s.student_id);
             nextRows[s.student_id] = {
               status: existingRecord?.status ?? "present",
-              grade: existingRecord?.grade ? String(existingRecord.grade) : "",
+              correctCount:
+                existingRecord?.correct_count != null ? String(existingRecord.correct_count) : "",
+              totalCount:
+                existingRecord?.total_count != null ? String(existingRecord.total_count) : "",
             };
           });
         setRows(nextRows);
@@ -74,7 +87,8 @@ export function AttendancePage() {
           return {
             student_id: s.student_id,
             status: row.status,
-            grade: row.status === "present" ? Number(row.grade) : null,
+            correct_count: row.status === "present" ? Number(row.correctCount) : null,
+            total_count: row.status === "present" ? Number(row.totalCount) : null,
           };
         });
       await submitAttendance(lId, records);
@@ -98,7 +112,11 @@ export function AttendancePage() {
         .filter((studentId) => {
           const row = rows[studentId];
           const initial = initialRows[studentId];
-          return row.status !== initial.status || row.grade !== initial.grade;
+          return (
+            row.status !== initial.status ||
+            row.correctCount !== initial.correctCount ||
+            row.totalCount !== initial.totalCount
+          );
         });
 
       if (changedStudentIds.length === 0) {
@@ -111,7 +129,8 @@ export function AttendancePage() {
           const row = rows[studentId];
           return updateAttendance(lId, studentId, {
             status: row.status,
-            grade: row.status === "present" ? Number(row.grade) : null,
+            correct_count: row.status === "present" ? Number(row.correctCount) : null,
+            total_count: row.status === "present" ? Number(row.totalCount) : null,
           });
         }),
       );
@@ -128,7 +147,12 @@ export function AttendancePage() {
     const studentId = Number(key);
     const row = rows[studentId];
     const initial = initialRows[studentId];
-    return initial && (row.status !== initial.status || row.grade !== initial.grade);
+    return (
+      initial &&
+      (row.status !== initial.status ||
+        row.correctCount !== initial.correctCount ||
+        row.totalCount !== initial.totalCount)
+    );
   });
 
   if (isLoading || !group) {
@@ -156,7 +180,7 @@ export function AttendancePage() {
       <Card>
         <ErrorMessage message={error} />
         <SuccessMessage message={success} />
-        <Table headers={["O'quvchi", "Holat", "Baho"]}>
+        <Table headers={["O'quvchi", "Holat", "Test natijasi"]}>
           {activeStudents.map((s) => {
             const row = rows[s.student_id];
             return (
@@ -175,7 +199,10 @@ export function AttendancePage() {
                         ...prev,
                         [s.student_id]: {
                           status: e.target.value as AttendanceStatus,
-                          grade: e.target.value === "present" ? prev[s.student_id].grade : "",
+                          correctCount:
+                            e.target.value === "present" ? prev[s.student_id].correctCount : "",
+                          totalCount:
+                            e.target.value === "present" ? prev[s.student_id].totalCount : "",
                         },
                       }))
                     }
@@ -186,23 +213,35 @@ export function AttendancePage() {
                   </Select>
                 </td>
                 <td className="px-3 py-2">
-                  <Select
-                    disabled={row?.status !== "present"}
-                    value={row?.grade}
-                    onChange={(e) =>
-                      setRows((prev) => ({
-                        ...prev,
-                        [s.student_id]: { ...prev[s.student_id], grade: e.target.value },
-                      }))
-                    }
-                  >
-                    <option value="">-</option>
-                    {[1, 2, 3, 4, 5].map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="w-16"
+                      disabled={row?.status !== "present"}
+                      value={row?.correctCount}
+                      onChange={(e) =>
+                        setRows((prev) => ({
+                          ...prev,
+                          [s.student_id]: { ...prev[s.student_id], correctCount: e.target.value },
+                        }))
+                      }
+                    />
+                    <span className="text-slate-400">/</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-16"
+                      disabled={row?.status !== "present"}
+                      value={row?.totalCount}
+                      onChange={(e) =>
+                        setRows((prev) => ({
+                          ...prev,
+                          [s.student_id]: { ...prev[s.student_id], totalCount: e.target.value },
+                        }))
+                      }
+                    />
+                  </div>
                 </td>
               </tr>
             );

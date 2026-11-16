@@ -155,7 +155,7 @@ def test_mark_attendance_notifies_linked_student(client, superadmin_headers, adm
         resp = client.post(
             f"/api/v1/lessons/{lesson_id}/attendance",
             headers=teacher_headers,
-            json={"records": [{"student_id": student["id"], "status": "present", "grade": 5}]},
+            json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
         )
     assert resp.status_code == 201, resp.text
     mock_send.assert_called_once()

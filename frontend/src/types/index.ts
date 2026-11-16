@@ -183,7 +183,8 @@ export interface Attendance {
   lesson_id: number;
   student_id: number;
   status: AttendanceStatus;
-  grade: number | null;
+  correct_count: number | null;
+  total_count: number | null;
 }
 
 export interface AttendanceDetail {
@@ -192,7 +193,8 @@ export interface AttendanceDetail {
   student_id: number;
   student_name: string;
   status: AttendanceStatus;
-  grade: number | null;
+  correct_count: number | null;
+  total_count: number | null;
 }
 
 export interface StatsOverview {
@@ -212,7 +214,8 @@ export interface StudentAttendanceHistoryItem {
   group_name: string;
   teacher_name: string;
   status: AttendanceStatus;
-  grade: number | null;
+  correct_count: number | null;
+  total_count: number | null;
 }
 
 export interface StudentListPage extends Page<User> {

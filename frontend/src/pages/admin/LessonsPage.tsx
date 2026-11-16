@@ -411,7 +411,7 @@ export function LessonsPage() {
           ) : detailAttendance.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Hali davomat olinmagan.</p>
           ) : (
-            <Table headers={["O'quvchi", "Holat", "Baho"]}>
+            <Table headers={["O'quvchi", "Holat", "Test natijasi"]}>
               {detailAttendance.map((a) => (
                 <tr key={a.id}>
                   <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{a.student_name}</td>
@@ -428,7 +428,9 @@ export function LessonsPage() {
                           : "Sababsiz"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.grade ?? "-"}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                    {a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}
+                  </td>
                 </tr>
               ))}
             </Table>

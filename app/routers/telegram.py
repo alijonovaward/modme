@@ -39,7 +39,11 @@ def _handle_attendance(db: Session, user: User) -> str:
         return "Hali davomat yozuvlari yo'q."
     lines = [
         f"{lesson.lesson_date} — {group.name}: {ATTENDANCE_STATUS_LABELS[attendance.status]}"
-        + (f" (baho: {attendance.grade})" if attendance.grade is not None else "")
+        + (
+            f" (natija: {attendance.correct_count}/{attendance.total_count})"
+            if attendance.total_count is not None
+            else ""
+        )
         for attendance, lesson, group, _teacher in rows
     ]
     return "📋 So'nggi davomatlaringiz:\n\n" + "\n".join(lines)
