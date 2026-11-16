@@ -211,8 +211,10 @@ export function TransactionsPage() {
 
   const totalDeposits = studentSums.deposits;
   const totalDeductions = studentSums.deductions;
+  const totalStudentRemaining = totalDeposits - totalDeductions;
   const totalEarnings = teacherSums.earnings;
   const totalPayouts = teacherSums.payouts;
+  const totalTeacherRemaining = totalEarnings - totalPayouts;
 
   const studentPageCount = Math.max(1, Math.ceil(studentTotal / PAGE_SIZE));
   const teacherPageCount = Math.max(1, Math.ceil(teacherTotal / PAGE_SIZE));
@@ -296,11 +298,16 @@ export function TransactionsPage() {
         </div>
 
         {!isLoading && tab === "student" && (
-          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatTile
               label="Jami to'ldirilgan"
               value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
               color="green"
+            />
+            <StatTile
+              label="Jami qolgan"
+              value={`${totalStudentRemaining.toLocaleString("uz-UZ")} so'm`}
+              color="indigo"
             />
             <StatTile
               label="Jami yechilgan"
@@ -310,11 +317,16 @@ export function TransactionsPage() {
           </div>
         )}
         {!isLoading && tab === "teacher" && (
-          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatTile
               label="Jami dars daromadi"
               value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
               color="green"
+            />
+            <StatTile
+              label="Jami qolgan"
+              value={`${totalTeacherRemaining.toLocaleString("uz-UZ")} so'm`}
+              color="indigo"
             />
             <StatTile
               label="Jami pul berilgan"

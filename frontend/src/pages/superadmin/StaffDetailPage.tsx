@@ -152,6 +152,7 @@ export function StaffDetailPage() {
   const totalPayouts = Math.abs(
     finance.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
+  const totalRemaining = totalEarnings - totalPayouts;
 
   const { page, setPage, pageCount, pageItems, total } = usePagination(finance);
 
@@ -295,11 +296,16 @@ export function StaffDetailPage() {
               </Button>
             }
           >
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <StatTile
                 label="Jami dars daromadi"
                 value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
                 color="green"
+              />
+              <StatTile
+                label="Jami qolgan"
+                value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
+                color="indigo"
               />
               <StatTile
                 label="Jami pul berilgan"

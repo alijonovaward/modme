@@ -95,6 +95,7 @@ export function FinancePage() {
   const totalPayouts = Math.abs(
     transactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
+  const totalRemaining = totalEarnings - totalPayouts;
   const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
 
   return (
@@ -138,11 +139,16 @@ export function FinancePage() {
             Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
           </p>
         )}
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile
             label="Jami kirim (dars daromadi)"
             value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
             color="green"
+          />
+          <StatTile
+            label="Jami qolgan"
+            value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
+            color="indigo"
           />
           <StatTile
             label="Jami yechilgan (admin bergan)"

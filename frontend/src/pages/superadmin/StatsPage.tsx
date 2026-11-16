@@ -128,36 +128,43 @@ export function StatsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatTile
-                label="Jami kiritilgan pul"
+                label="O'quvchilardan jami tushgani"
                 value={formatSom(stats.total_deposits)}
                 color="green"
               />
               <StatTile
-                label="Darslar uchun yechilgan pul"
-                value={formatSom(stats.total_deductions)}
-                color="red"
+                label="O'quvchilar balansida qolgani"
+                value={formatSom(stats.total_student_balance)}
+                color="indigo"
               />
               <StatTile
-                label="Markazga qolgan pul"
-                value={formatSom(stats.total_center_revenue)}
-                color="violet"
+                label="Darslar uchun yechilgani"
+                value={formatSom(stats.total_deductions)}
+                color="red"
               />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatTile
-                label="O'qituvchilarga tushum"
+                label="O'qituvchilarga jami tushgani"
                 value={formatSom(stats.total_teacher_earnings)}
+                color="green"
+              />
+              <StatTile
+                label="O'qituvchilarga qolgani"
+                value={formatSom(stats.total_teacher_earnings - stats.total_teacher_payouts)}
                 color="indigo"
               />
               <StatTile
-                label="O'qituvchilarga berilgan pul"
+                label="O'qituvchilarga berib yuborilgani"
                 value={formatSom(stats.total_teacher_payouts)}
-                color="amber"
+                color="red"
               />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatTile
-                label="O'quvchilar balansi (hali ishlatilmagan)"
-                value={formatSom(stats.total_student_balance)}
-                color="slate"
+                label="Markazga qolgan pul"
+                value={formatSom(stats.total_center_revenue)}
+                color="violet"
               />
             </div>
           </div>
