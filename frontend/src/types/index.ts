@@ -122,6 +122,17 @@ export interface GroupDetail extends GroupListItem {
   students: GroupRosterItem[];
 }
 
+export interface StudentPendingCharge {
+  id: number;
+  lesson_id: number;
+  group_name: string;
+  subject_name: string;
+  teacher_name: string;
+  lesson_date: string;
+  amount: number;
+  created_at: string;
+}
+
 export interface StudentGroupStats {
   group_id: number;
   group_name: string;

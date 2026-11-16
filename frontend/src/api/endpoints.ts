@@ -15,6 +15,7 @@ import type {
   StudentAttendanceHistoryItem,
   StudentListPage,
   StudentGroupStats,
+  StudentPendingCharge,
   StudentTransactionListItem,
   Subject,
   TeacherStats,
@@ -168,6 +169,15 @@ export async function getStudentTransactions(
 export async function getStudentGroups(studentId: number): Promise<StudentGroupStats[]> {
   const { data } = await apiClient.get<StudentGroupStats[]>(
     `/api/v1/students/${studentId}/groups`,
+  );
+  return data;
+}
+
+export async function getStudentPendingCharges(
+  studentId: number,
+): Promise<StudentPendingCharge[]> {
+  const { data } = await apiClient.get<StudentPendingCharge[]>(
+    `/api/v1/students/${studentId}/pending-charges`,
   );
   return data;
 }

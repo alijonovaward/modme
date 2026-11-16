@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -14,11 +14,14 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
 from app.models.group_student import GroupStudent
 from app.models.lesson import Lesson
+from app.models.pending_charge import PendingCharge
 from app.models.subject import Subject
+from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
 from app.schemas.attendance import StudentAttendanceHistoryItemOut
 from app.schemas.group import StudentGroupStatsOut
+from app.schemas.pending_charge import StudentPendingChargeOut
 from app.schemas.transaction import DepositCreate, StudentTransactionListItemOut, TransactionOut
 from app.schemas.user import ActiveStatusUpdate, StudentListOut, StudentUpdate, UserCreate, UserOut
 
@@ -146,6 +149,45 @@ def update_student_status(
     return student
 
 
+def _settle_pending_charges(db: Session, student: User) -> list[PendingCharge]:
+    pending = (
+        db.query(PendingCharge)
+        .filter(PendingCharge.student_id == student.id, PendingCharge.resolved_at.is_(None))
+        .order_by(PendingCharge.created_at.asc())
+        .all()
+    )
+    settled: list[PendingCharge] = []
+    for charge in pending:
+        if student.balance < charge.amount:
+            break
+        student.balance -= charge.amount
+        db.add(
+            Transaction(
+                student_id=student.id,
+                amount=-charge.amount,
+                type=TransactionType.deduction,
+                comment="Oldin kutilgan dars puli, balans to'ldirilgach yechildi",
+                lesson_id=charge.lesson_id,
+            )
+        )
+        teacher = db.get(User, charge.teacher_id)
+        if teacher is not None:
+            teacher.balance += charge.teacher_share
+            db.add(
+                TeacherTransaction(
+                    teacher_id=charge.teacher_id,
+                    lesson_id=charge.lesson_id,
+                    student_id=student.id,
+                    amount=charge.teacher_share,
+                    type=TeacherTransactionType.lesson_earning,
+                    comment="Kutilgan dars uchun hisoblandi",
+                )
+            )
+        charge.resolved_at = datetime.now(timezone.utc)
+        settled.append(charge)
+    return settled
+
+
 @router.post("/{student_id}/deposit", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def deposit_to_student(
     student_id: int,
@@ -168,16 +210,24 @@ def deposit_to_student(
     )
     student.balance += payload.amount
     db.add(transaction)
+
+    settled = _settle_pending_charges(db, student)
+
     db.commit()
     db.refresh(transaction)
 
     if student.telegram_chat_id:
-        background_tasks.add_task(
-            send_telegram_message,
-            student.telegram_chat_id,
+        message = (
             f"Balansingiz {payload.amount:,.0f} so'mga to'ldirildi. "
-            f"Joriy balans: {student.balance:,.0f} so'm",
+            f"Joriy balans: {student.balance:,.0f} so'm"
         )
+        if settled:
+            total_settled = sum(c.amount for c in settled)
+            message += (
+                f"\nOldin kutilgan {len(settled)} ta dars uchun {total_settled:,.0f} so'm "
+                "avtomatik yechildi."
+            )
+        background_tasks.add_task(send_telegram_message, student.telegram_chat_id, message)
 
     return transaction
 
@@ -273,6 +323,43 @@ def get_student_groups(
             )
         )
     return results
+
+
+@router.get("/{student_id}/pending-charges", response_model=list[StudentPendingChargeOut])
+def get_student_pending_charges(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
+
+    rows = (
+        db.query(PendingCharge, Lesson, Group, Subject, User)
+        .join(Lesson, Lesson.id == PendingCharge.lesson_id)
+        .join(Group, Group.id == Lesson.group_id)
+        .join(Subject, Subject.id == Group.subject_id)
+        .join(User, User.id == Group.teacher_id)
+        .filter(PendingCharge.student_id == student.id, PendingCharge.resolved_at.is_(None))
+        .order_by(PendingCharge.created_at.asc())
+        .all()
+    )
+
+    return [
+        StudentPendingChargeOut(
+            id=charge.id,
+            lesson_id=lesson.id,
+            group_name=group.name,
+            subject_name=subject.name,
+            teacher_name=teacher.full_name,
+            lesson_date=lesson.lesson_date,
+            amount=charge.amount,
+            created_at=charge.created_at,
+        )
+        for charge, lesson, group, subject, teacher in rows
+    ]
 
 
 @router.get("/{student_id}/transactions", response_model=list[StudentTransactionListItemOut])

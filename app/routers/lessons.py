@@ -14,6 +14,7 @@ from app.models.group import Group, GroupStatus
 from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
+from app.models.pending_charge import PendingCharge
 from app.models.subject import Subject
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
@@ -38,13 +39,23 @@ router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 
 
 def _attendance_notification_text(
-    group_name: str, lesson_date, status: AttendanceStatus, grade, charged_amount: Optional[float]
+    group_name: str,
+    lesson_date,
+    status: AttendanceStatus,
+    grade,
+    charged_amount: Optional[float],
+    pending_amount: Optional[float] = None,
 ) -> str:
     lines = [f"{group_name} guruhi, {lesson_date}: {ATTENDANCE_STATUS_LABELS[status]}"]
     if grade is not None:
         lines.append(f"Baho: {grade}")
     if charged_amount:
         lines.append(f"Balansdan {charged_amount:,.0f} so'm yechildi.")
+    if pending_amount:
+        lines.append(
+            f"Balansingizda {pending_amount:,.0f} so'm uchun mablag' yetarli emas. "
+            "Balans to'ldirilgach avtomatik yechiladi."
+        )
     return "\n".join(lines)
 
 
@@ -400,34 +411,47 @@ def mark_attendance(
         should_charge = item.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
 
         student = db.get(User, item.student_id)
+        is_pending = False
 
         if should_charge:
-            student.balance -= group.lesson_price
-            db.add(
-                Transaction(
-                    student_id=student.id,
-                    amount=-group.lesson_price,
-                    type=TransactionType.deduction,
-                    comment=(
-                        f"Dars uchun yechim ({group.name}, {lesson.lesson_date}, "
-                        f"o'qituvchi: {current_user.full_name})"
-                    ),
-                    created_by_id=current_user.id,
-                    lesson_id=lesson.id,
-                )
-            )
-
             teacher_share = group.lesson_price * (teacher_percentage / 100)
-            current_user.balance += teacher_share
-            db.add(
-                TeacherTransaction(
-                    teacher_id=current_user.id,
-                    lesson_id=lesson.id,
-                    student_id=item.student_id,
-                    amount=teacher_share,
-                    type=TeacherTransactionType.lesson_earning,
+            if student.balance >= group.lesson_price:
+                student.balance -= group.lesson_price
+                db.add(
+                    Transaction(
+                        student_id=student.id,
+                        amount=-group.lesson_price,
+                        type=TransactionType.deduction,
+                        comment=(
+                            f"Dars uchun yechim ({group.name}, {lesson.lesson_date}, "
+                            f"o'qituvchi: {current_user.full_name})"
+                        ),
+                        created_by_id=current_user.id,
+                        lesson_id=lesson.id,
+                    )
                 )
-            )
+
+                current_user.balance += teacher_share
+                db.add(
+                    TeacherTransaction(
+                        teacher_id=current_user.id,
+                        lesson_id=lesson.id,
+                        student_id=item.student_id,
+                        amount=teacher_share,
+                        type=TeacherTransactionType.lesson_earning,
+                    )
+                )
+            else:
+                is_pending = True
+                db.add(
+                    PendingCharge(
+                        student_id=item.student_id,
+                        lesson_id=lesson.id,
+                        teacher_id=current_user.id,
+                        amount=group.lesson_price,
+                        teacher_share=teacher_share,
+                    )
+                )
 
         if student is not None and student.telegram_chat_id:
             background_tasks.add_task(
@@ -438,7 +462,8 @@ def mark_attendance(
                     lesson.lesson_date,
                     item.status,
                     item.grade,
-                    group.lesson_price if should_charge else None,
+                    group.lesson_price if should_charge and not is_pending else None,
+                    group.lesson_price if is_pending else None,
                 ),
             )
 
@@ -518,8 +543,18 @@ def update_attendance(
         )
         .first()
     )
+    old_pending = (
+        db.query(PendingCharge)
+        .filter(
+            PendingCharge.lesson_id == lesson_id,
+            PendingCharge.student_id == student_id,
+            PendingCharge.resolved_at.is_(None),
+        )
+        .first()
+    )
 
     was_charged = old_deduction is not None
+    was_pending = old_pending is not None
     should_charge = (
         payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
     )
@@ -527,7 +562,9 @@ def update_attendance(
     student = db.get(User, student_id)
     teacher = db.get(User, group.teacher_id)
 
-    if was_charged and not should_charge:
+    if was_pending and not should_charge:
+        db.delete(old_pending)
+    elif was_charged and not should_charge:
         student.balance += group.lesson_price
         db.add(
             Transaction(
@@ -556,31 +593,42 @@ def update_attendance(
                     created_by_id=current_user.id,
                 )
             )
-    elif not was_charged and should_charge:
-        student.balance -= group.lesson_price
-        db.add(
-            Transaction(
-                student_id=student_id,
-                amount=-group.lesson_price,
-                type=TransactionType.deduction,
-                comment=f"Davomat tuzatildi, dars uchun yechildi ({group.name}, {lesson.lesson_date})",
-                created_by_id=current_user.id,
-                lesson_id=lesson.id,
-            )
-        )
+    elif not was_charged and not was_pending and should_charge:
         teacher_share = group.lesson_price * ((teacher.teacher_percentage or 0.0) / 100)
-        teacher.balance += teacher_share
-        db.add(
-            TeacherTransaction(
-                teacher_id=teacher.id,
-                lesson_id=lesson.id,
-                student_id=student_id,
-                amount=teacher_share,
-                type=TeacherTransactionType.lesson_earning,
-                comment=f"Davomat tuzatildi ({group.name}, {lesson.lesson_date})",
-                created_by_id=current_user.id,
+        if student.balance >= group.lesson_price:
+            student.balance -= group.lesson_price
+            db.add(
+                Transaction(
+                    student_id=student_id,
+                    amount=-group.lesson_price,
+                    type=TransactionType.deduction,
+                    comment=f"Davomat tuzatildi, dars uchun yechildi ({group.name}, {lesson.lesson_date})",
+                    created_by_id=current_user.id,
+                    lesson_id=lesson.id,
+                )
             )
-        )
+            teacher.balance += teacher_share
+            db.add(
+                TeacherTransaction(
+                    teacher_id=teacher.id,
+                    lesson_id=lesson.id,
+                    student_id=student_id,
+                    amount=teacher_share,
+                    type=TeacherTransactionType.lesson_earning,
+                    comment=f"Davomat tuzatildi ({group.name}, {lesson.lesson_date})",
+                    created_by_id=current_user.id,
+                )
+            )
+        else:
+            db.add(
+                PendingCharge(
+                    student_id=student_id,
+                    lesson_id=lesson.id,
+                    teacher_id=teacher.id,
+                    amount=group.lesson_price,
+                    teacher_share=teacher_share,
+                )
+            )
 
     attendance.status = payload.status
     attendance.grade = payload.grade

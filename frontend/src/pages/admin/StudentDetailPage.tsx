@@ -4,6 +4,7 @@ import {
   depositToStudent,
   getStudentAttendanceHistory,
   getStudentGroups,
+  getStudentPendingCharges,
   getStudentTransactions,
   listStudents,
   updateStudent,
@@ -27,6 +28,7 @@ import {
 import type {
   StudentAttendanceHistoryItem,
   StudentGroupStats,
+  StudentPendingCharge,
   StudentTransactionListItem,
   User,
 } from "../../types";
@@ -59,6 +61,7 @@ export function StudentDetailPage() {
   const [transactions, setTransactions] = useState<StudentTransactionListItem[]>([]);
   const [attendance, setAttendance] = useState<StudentAttendanceHistoryItem[]>([]);
   const [groups, setGroups] = useState<StudentGroupStats[]>([]);
+  const [pendingCharges, setPendingCharges] = useState<StudentPendingCharge[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,6 +86,7 @@ export function StudentDetailPage() {
       setTransactions(await getStudentTransactions(id));
       setAttendance(await getStudentAttendanceHistory(id));
       setGroups(await getStudentGroups(id));
+      setPendingCharges(await getStudentPendingCharges(id));
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -219,6 +223,25 @@ export function StudentDetailPage() {
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
+
+      {pendingCharges.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+            Balans yetmagani uchun {pendingCharges.length} ta dars puli kutilmoqda
+          </p>
+          <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
+            {pendingCharges.map((p) => (
+              <li key={p.id}>
+                {p.lesson_date} — {p.subject_name} ({p.group_name}, {p.teacher_name}):{" "}
+                {p.amount.toLocaleString("uz-UZ")} so'm
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
+            Balans to'ldirilgach, bu summalar avtomatik yechilib o'qituvchiga o'tkaziladi.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Ma'lumotlarni tahrirlash">
