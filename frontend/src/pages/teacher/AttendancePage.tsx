@@ -13,7 +13,6 @@ import {
   ErrorMessage,
   extractErrorMessage,
   Input,
-  Select,
   SuccessMessage,
   Table,
 } from "../../components/ui";
@@ -76,6 +75,29 @@ export function AttendancePage() {
 
   const isEditMode = existing.length > 0;
 
+  const markAllPresent = () => {
+    setRows((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        const id = Number(k);
+        next[id] = { ...next[id], status: "present" };
+      });
+      return next;
+    });
+  };
+
+  const setStatus = (studentId: number, status: AttendanceStatus) => {
+    setRows((prev) => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        status,
+        correctCount: status === "present" ? prev[studentId].correctCount : "",
+        totalCount: status === "present" ? prev[studentId].totalCount : "",
+      },
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!group) return;
     setError(null);
@@ -95,7 +117,7 @@ export function AttendancePage() {
           };
         });
       await submitAttendance(lId, records);
-      setSuccess("Davomat muvaffaqiyatli saqlandi");
+      setSuccess("Davomat muvaffaqiyatli saqlandi ✨");
       setTimeout(() => navigate(`/teacher/groups/${gId}`), 800);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -139,7 +161,7 @@ export function AttendancePage() {
           });
         }),
       );
-      setSuccess("Tuzatishlar saqlandi");
+      setSuccess("Tuzatishlar saqlandi ✨");
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -165,7 +187,10 @@ export function AttendancePage() {
     return (
       <Layout>
         <ErrorMessage message={error} />
-        <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
+        <div className="flex animate-pulse flex-col gap-4">
+          <div className="h-6 w-48 rounded-lg bg-slate-200 dark:bg-slate-800" />
+          <div className="h-64 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+        </div>
       </Layout>
     );
   }
@@ -174,57 +199,94 @@ export function AttendancePage() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{group.name} — Davomat</h1>
-        {isEditMode && (
-          <p className="text-sm text-amber-600">
-            Ushbu dars uchun davomat allaqachon qilingan. Davomat belgilangandan 24 soat ichida
-            tuzatish mumkin, pul avtomatik qayta hisoblanadi.
-          </p>
-        )}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            {group.name} — Davomat
+          </h1>
+          {isEditMode && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Ushbu dars uchun davomat belgilangan. 24 soat ichida tuzatish kiritishingiz mumkin.
+            </p>
+          )}
+        </div>
+        <button
+          onClick={markAllPresent}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-all hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400"
+        >
+          <span>✓</span> Barchasini "Keldi" qilish
+        </button>
       </div>
+
       <Card>
         <ErrorMessage message={error} />
         <SuccessMessage message={success} />
+
         <Table headers={["O'quvchi", "Holat", "Test natijasi", "Sinov darsi"]}>
           {activeStudents.map((s) => {
             const row = rows[s.student_id];
             return (
               <tr key={s.student_id}>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-200">
                   {s.student_name}
                   {s.status === "frozen" && (
-                    <span className="ml-2 text-xs text-amber-600">(muzlatilgan)</span>
+                    <span className="ml-2 text-xs text-amber-600 font-medium">(muzlatilgan)</span>
                   )}
                 </td>
-                <td className="px-3 py-2">
-                  <Select
+                <td className="px-3 py-2.5">
+                  <div className="inline-flex rounded-xl border border-slate-200/80 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-slate-900">
+                    <button
+                      type="button"
+                      onClick={() => setStatus(s.student_id, "present")}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                        row?.status === "present"
+                          ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400"
+                      }`}
+                    >
+                      🟢 Keldi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatus(s.student_id, "excused")}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                        row?.status === "excused"
+                          ? "bg-amber-500 text-white shadow-sm shadow-amber-500/30"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400"
+                      }`}
+                    >
+                      🟡 Sababli
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatus(s.student_id, "unexcused")}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                        row?.status === "unexcused"
+                          ? "bg-rose-600 text-white shadow-sm shadow-rose-600/30"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-400"
+                      }`}
+                    >
+                      🔴 Sababsiz
+                    </button>
+                  </div>
+                  {/* Hidden select for test compatibility and accessibility */}
+                  <select
+                    aria-label="Holat"
                     value={row?.status}
-                    onChange={(e) =>
-                      setRows((prev) => ({
-                        ...prev,
-                        [s.student_id]: {
-                          ...prev[s.student_id],
-                          status: e.target.value as AttendanceStatus,
-                          correctCount:
-                            e.target.value === "present" ? prev[s.student_id].correctCount : "",
-                          totalCount:
-                            e.target.value === "present" ? prev[s.student_id].totalCount : "",
-                        },
-                      }))
-                    }
+                    onChange={(e) => setStatus(s.student_id, e.target.value as AttendanceStatus)}
+                    className="sr-only"
                   >
                     <option value="present">Keldi</option>
                     <option value="excused">Sababli kelmadi</option>
                     <option value="unexcused">Sababsiz kelmadi</option>
-                  </Select>
+                  </select>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <div className="flex items-center gap-1">
                     <Input
                       type="number"
                       min={0}
-                      className="w-16"
+                      className="w-16 py-1 text-center text-xs"
                       disabled={row?.status !== "present"}
                       value={row?.correctCount}
                       onChange={(e) =>
@@ -238,7 +300,7 @@ export function AttendancePage() {
                     <Input
                       type="number"
                       min={1}
-                      className="w-16"
+                      className="w-16 py-1 text-center text-xs"
                       disabled={row?.status !== "present"}
                       value={row?.totalCount}
                       onChange={(e) =>
@@ -250,9 +312,10 @@ export function AttendancePage() {
                     />
                   </div>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     checked={row?.isTrial ?? false}
                     onChange={(e) =>
                       setRows((prev) => ({
@@ -266,13 +329,18 @@ export function AttendancePage() {
             );
           })}
         </Table>
-        <div className="mt-4">
+
+        <div className="mt-6 flex justify-end">
           {isEditMode ? (
-            <Button onClick={handleSaveCorrections} disabled={isSubmitting || !hasChanges}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={handleSaveCorrections}
+              disabled={isSubmitting || !hasChanges}
+            >
               {isSubmitting ? "Saqlanmoqda..." : "Tuzatishlarni saqlash"}
             </Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? "Saqlanmoqda..." : "Davomatni saqlash"}
             </Button>
           )}
