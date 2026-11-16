@@ -3,10 +3,10 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAt
 
 export function Card({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6 dark:border-slate-800/80 dark:bg-slate-950">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-6 dark:border-slate-800/80 dark:bg-slate-950">
       {(title || action) && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          {title && <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>}
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:mb-5 sm:gap-3">
+          {title && <h2 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg dark:text-slate-100">{title}</h2>}
           {action}
         </div>
       )}
