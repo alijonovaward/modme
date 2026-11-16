@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   depositToStudent,
   getStudentAttendanceHistory,
+  getStudentGroups,
   getStudentTransactions,
   listStudents,
   updateStudent,
@@ -23,7 +24,12 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import type { StudentAttendanceHistoryItem, StudentTransactionListItem, User } from "../../types";
+import type {
+  StudentAttendanceHistoryItem,
+  StudentGroupStats,
+  StudentTransactionListItem,
+  User,
+} from "../../types";
 import { Layout } from "../../components/Layout";
 import { downloadXlsx } from "../../utils/download";
 
@@ -33,6 +39,18 @@ const ATTENDANCE_LABEL: Record<string, string> = {
   unexcused: "Sababsiz",
 };
 
+const GROUP_STATUS_LABEL: Record<string, string> = {
+  active: "Faol",
+  frozen: "Muzlatilgan",
+  dropped: "Chetlatilgan",
+};
+
+const GROUP_STATUS_COLOR: Record<string, "green" | "amber" | "red"> = {
+  active: "green",
+  frozen: "amber",
+  dropped: "red",
+};
+
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>();
   const id = Number(studentId);
@@ -40,6 +58,7 @@ export function StudentDetailPage() {
   const [student, setStudent] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<StudentTransactionListItem[]>([]);
   const [attendance, setAttendance] = useState<StudentAttendanceHistoryItem[]>([]);
+  const [groups, setGroups] = useState<StudentGroupStats[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +82,7 @@ export function StudentDetailPage() {
       }
       setTransactions(await getStudentTransactions(id));
       setAttendance(await getStudentAttendanceHistory(id));
+      setGroups(await getStudentGroups(id));
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -253,6 +273,33 @@ export function StudentDetailPage() {
               Saqlash
             </Button>
           </form>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card title="Fanlar va guruhlar">
+          {groups.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              O'quvchi hali hech qanday guruhga yozilmagan.
+            </p>
+          ) : (
+            <Table headers={["Fan", "Guruh", "O'qituvchi", "Holat", "Davomat foizi", "Sarflangan summa"]}>
+              {groups.map((g) => (
+                <tr key={g.group_id}>
+                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.subject_name}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.group_name}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
+                  <td className="px-3 py-2">
+                    <Badge color={GROUP_STATUS_COLOR[g.status]}>{GROUP_STATUS_LABEL[g.status]}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.attendance_rate}%</td>
+                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                    {g.total_spent.toLocaleString("uz-UZ")} so'm
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          )}
         </Card>
       </div>
 

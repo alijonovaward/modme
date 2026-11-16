@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -12,10 +12,13 @@ from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
+from app.models.group_student import GroupStudent
 from app.models.lesson import Lesson
+from app.models.subject import Subject
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
 from app.schemas.attendance import StudentAttendanceHistoryItemOut
+from app.schemas.group import StudentGroupStatsOut
 from app.schemas.transaction import DepositCreate, StudentTransactionListItemOut, TransactionOut
 from app.schemas.user import ActiveStatusUpdate, StudentListOut, StudentUpdate, UserCreate, UserOut
 
@@ -208,6 +211,68 @@ def _build_student_transactions_query(
 def _require_own_history_or_staff(current_user: User, student: User) -> None:
     if current_user.role == UserRole.student and current_user.id != student.id:
         raise HTTPException(status_code=403, detail="Faqat o'z tarixingizni ko'rishingiz mumkin")
+
+
+@router.get("/{student_id}/groups", response_model=list[StudentGroupStatsOut])
+def get_student_groups(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.student)
+    ),
+):
+    student = _get_student_or_404(db, student_id)
+    _require_own_history_or_staff(current_user, student)
+
+    rows = (
+        db.query(GroupStudent, Group, Subject, User)
+        .join(Group, Group.id == GroupStudent.group_id)
+        .join(Subject, Subject.id == Group.subject_id)
+        .join(User, User.id == Group.teacher_id)
+        .filter(GroupStudent.student_id == student.id)
+        .order_by(Group.name)
+        .all()
+    )
+
+    results: list[StudentGroupStatsOut] = []
+    for group_student, group, subject, teacher in rows:
+        att_counts = dict(
+            db.query(Attendance.status, func.count(Attendance.id))
+            .join(Lesson, Lesson.id == Attendance.lesson_id)
+            .filter(Lesson.group_id == group.id, Attendance.student_id == student.id)
+            .group_by(Attendance.status)
+            .all()
+        )
+        present = att_counts.get(AttendanceStatus.present, 0)
+        excused = att_counts.get(AttendanceStatus.excused, 0)
+        unexcused = att_counts.get(AttendanceStatus.unexcused, 0)
+        total_marked = present + excused + unexcused
+        attendance_rate = round(present / total_marked * 100, 1) if total_marked else 0.0
+
+        total_spent = abs(
+            db.query(func.sum(Transaction.amount))
+            .join(Lesson, Lesson.id == Transaction.lesson_id)
+            .filter(
+                Transaction.student_id == student.id,
+                Transaction.type == TransactionType.deduction,
+                Lesson.group_id == group.id,
+            )
+            .scalar()
+            or 0.0
+        )
+
+        results.append(
+            StudentGroupStatsOut(
+                group_id=group.id,
+                group_name=group.name,
+                subject_name=subject.name,
+                teacher_name=teacher.full_name,
+                status=group_student.status,
+                attendance_rate=attendance_rate,
+                total_spent=total_spent,
+            )
+        )
+    return results
 
 
 @router.get("/{student_id}/transactions", response_model=list[StudentTransactionListItemOut])

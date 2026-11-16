@@ -14,6 +14,7 @@ import type {
   StatsOverview,
   StudentAttendanceHistoryItem,
   StudentListPage,
+  StudentGroupStats,
   StudentTransactionListItem,
   Subject,
   TeacherStats,
@@ -160,6 +161,13 @@ export async function getStudentTransactions(
   const { data } = await apiClient.get<StudentTransactionListItem[]>(
     `/api/v1/students/${studentId}/transactions`,
     { params },
+  );
+  return data;
+}
+
+export async function getStudentGroups(studentId: number): Promise<StudentGroupStats[]> {
+  const { data } = await apiClient.get<StudentGroupStats[]>(
+    `/api/v1/students/${studentId}/groups`,
   );
   return data;
 }

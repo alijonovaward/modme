@@ -87,3 +87,13 @@ class GroupRosterItemOut(BaseModel):
 
 class GroupDetailOut(GroupListItemOut):
     students: list[GroupRosterItemOut]
+
+
+class StudentGroupStatsOut(BaseModel):
+    group_id: int
+    group_name: str
+    subject_name: str
+    teacher_name: str
+    status: GroupStudentStatus
+    attendance_rate: float
+    total_spent: float

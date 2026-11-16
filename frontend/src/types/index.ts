@@ -122,6 +122,16 @@ export interface GroupDetail extends GroupListItem {
   students: GroupRosterItem[];
 }
 
+export interface StudentGroupStats {
+  group_id: number;
+  group_name: string;
+  subject_name: string;
+  teacher_name: string;
+  status: GroupStudentStatus;
+  attendance_rate: number;
+  total_spent: number;
+}
+
 export type LessonStatus = "planned" | "completed";
 
 export interface Lesson {
