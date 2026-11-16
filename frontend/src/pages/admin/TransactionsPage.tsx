@@ -23,6 +23,7 @@ import {
   Select,
   StatTile,
   Table,
+  TdAction,
 } from "../../components/ui";
 import type {
   GroupListItem,
@@ -97,6 +98,8 @@ export function TransactionsPage() {
   const [teacherDraft, setTeacherDraft] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
   const [teacherFilters, setTeacherFilters] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
 
+  const [selectedStudentTx, setSelectedStudentTx] = useState<TransactionListItem | null>(null);
+  const [selectedTeacherTx, setSelectedTeacherTx] = useState<TeacherTransactionGlobalListItem | null>(null);
   const [studentPage, setStudentPage] = useState(1);
   const [studentTotal, setStudentTotal] = useState(0);
   const [studentSums, setStudentSums] = useState({ deposits: 0, deductions: 0 });
@@ -360,28 +363,35 @@ export function TransactionsPage() {
           </div>
         )}
 
-        {isLoading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
-        ) : tab === "student" ? (
+        {!isLoading && tab === "student" ? (
           <>
-          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Kim tomonidan", "Izoh"]}>
+          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa", "Izoh", ""]}>
             {transactions.map((t) => (
-              <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                  {new Date(t.created_at).toLocaleString("uz-UZ")}
+              <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
+                  {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-3 py-2">
+                <td className="px-2.5 py-2 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
+                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-2.5 py-2">
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.created_by_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
+                <td className="max-w-[120px] truncate px-2.5 py-2 text-slate-500 dark:text-slate-400">
+                  {t.comment || "-"}
+                </td>
+                <TdAction>
+                  <button
+                    onClick={() => setSelectedStudentTx(t)}
+                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-indigo-400"
+                  >
+                    Batafsil
+                  </button>
+                </TdAction>
               </tr>
             ))}
           </Table>
@@ -392,27 +402,35 @@ export function TransactionsPage() {
             onPageChange={(next) => loadStudentTransactions(studentFilters, next)}
           />
           </>
-        ) : (
+        ) : !isLoading && tab === "teacher" ? (
           <>
-          <Table headers={["Sana", "O'qituvchi", "O'quvchi", "Guruh", "Turi", "Summa", "Kim bergan", "Izoh"]}>
+          <Table headers={["Sana", "O'qituvchi", "Guruh", "Turi", "Summa", "Izoh", ""]}>
             {teacherTransactions.map((t) => (
-              <tr key={t.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                  {new Date(t.created_at).toLocaleString("uz-UZ")}
+              <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">
+                  {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.student_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-3 py-2">
+                <td className="px-2.5 py-2 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
+                <td className="px-2.5 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                <td className="px-2.5 py-2">
                   <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                <td className="px-2.5 py-2 font-semibold text-slate-800 dark:text-slate-200">
                   {t.amount.toLocaleString("uz-UZ")} so'm
                 </td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.created_by_name ?? "-"}</td>
-                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
+                <td className="max-w-[120px] truncate px-2.5 py-2 text-slate-500 dark:text-slate-400">
+                  {t.comment || "-"}
+                </td>
+                <TdAction>
+                  <button
+                    onClick={() => setSelectedTeacherTx(t)}
+                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-indigo-400"
+                  >
+                    Batafsil
+                  </button>
+                </TdAction>
               </tr>
             ))}
           </Table>
@@ -423,7 +441,7 @@ export function TransactionsPage() {
             onPageChange={(next) => loadTeacherTransactions(teacherFilters, next)}
           />
           </>
-        )}
+        ) : null}
       </Card>
 
       {isModalOpen && tab === "student" && (
@@ -620,6 +638,98 @@ export function TransactionsPage() {
                 Tozalash
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {selectedStudentTx && (
+        <Modal title="Tranzaksiya tafsilotlari" onClose={() => setSelectedStudentTx(null)}>
+          <div className="space-y-3.5 text-xs sm:text-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Turi:</span>
+              <Badge color={selectedStudentTx.type === "deposit" ? "green" : "red"}>
+                {selectedStudentTx.type === "deposit" ? "To'ldirish" : "Yechim"}
+              </Badge>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Summa:</span>
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {selectedStudentTx.amount.toLocaleString("uz-UZ")} so'm
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">O'quvchi:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedStudentTx.student_name}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Guruh:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedStudentTx.group_name || "-"}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Kim kiritgan:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedStudentTx.created_by_name || "-"}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Sana va vaqt:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                {new Date(selectedStudentTx.created_at).toLocaleString("uz-UZ")}
+              </span>
+            </div>
+            <div>
+              <span className="block font-semibold text-slate-500 mb-1 dark:text-slate-400">To'liq izoh:</span>
+              <p className="rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                {selectedStudentTx.comment || "Izoh mavjud emas"}
+              </p>
+            </div>
+            <Button className="w-full mt-2" onClick={() => setSelectedStudentTx(null)}>
+              Yopish
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {selectedTeacherTx && (
+        <Modal title="Tranzaksiya tafsilotlari" onClose={() => setSelectedTeacherTx(null)}>
+          <div className="space-y-3.5 text-xs sm:text-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Turi:</span>
+              <Badge color={selectedTeacherTx.type === "lesson_earning" ? "green" : "red"}>
+                {selectedTeacherTx.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
+              </Badge>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Summa:</span>
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {selectedTeacherTx.amount.toLocaleString("uz-UZ")} so'm
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">O'qituvchi:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedTeacherTx.teacher_name}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Guruh:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedTeacherTx.group_name || "-"}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Kim bergan:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedTeacherTx.created_by_name || "-"}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Sana va vaqt:</span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                {new Date(selectedTeacherTx.created_at).toLocaleString("uz-UZ")}
+              </span>
+            </div>
+            <div>
+              <span className="block font-semibold text-slate-500 mb-1 dark:text-slate-400">To'liq izoh:</span>
+              <p className="rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                {selectedTeacherTx.comment || "Izoh mavjud emas"}
+              </p>
+            </div>
+            <Button className="w-full mt-2" onClick={() => setSelectedTeacherTx(null)}>
+              Yopish
+            </Button>
           </div>
         </Modal>
       )}
