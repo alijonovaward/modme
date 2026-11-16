@@ -146,6 +146,7 @@ export function StudentDetailPage() {
   const totalDeductions = Math.abs(
     transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
   );
+  const totalRemaining = totalDeposits - totalDeductions;
 
   const {
     page: transactionsPage,
@@ -273,11 +274,16 @@ export function StudentDetailPage() {
             </Button>
           }
         >
-          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatTile
               label="Jami to'ldirilgan"
               value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
               color="green"
+            />
+            <StatTile
+              label="Jami qolgan"
+              value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
+              color="indigo"
             />
             <StatTile
               label="Jami yechilgan"
