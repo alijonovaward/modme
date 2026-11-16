@@ -21,6 +21,7 @@ class AttendanceItem(BaseModel):
     status: AttendanceStatus
     correct_count: Optional[int] = None
     total_count: Optional[int] = None
+    is_trial: bool = False
 
     @model_validator(mode="after")
     def validate_test_result(self) -> "AttendanceItem":
@@ -36,6 +37,7 @@ class AttendanceUpdate(BaseModel):
     status: AttendanceStatus
     correct_count: Optional[int] = None
     total_count: Optional[int] = None
+    is_trial: bool = False
 
     @model_validator(mode="after")
     def validate_test_result(self) -> "AttendanceUpdate":
@@ -52,6 +54,7 @@ class AttendanceOut(BaseModel):
     status: AttendanceStatus
     correct_count: Optional[int] = None
     total_count: Optional[int] = None
+    is_trial: bool = False
 
 
 class AttendanceDetailOut(BaseModel):
@@ -62,6 +65,7 @@ class AttendanceDetailOut(BaseModel):
     status: AttendanceStatus
     correct_count: Optional[int] = None
     total_count: Optional[int] = None
+    is_trial: bool = False
 
 
 class StudentAttendanceHistoryItemOut(BaseModel):
@@ -74,3 +78,4 @@ class StudentAttendanceHistoryItemOut(BaseModel):
     status: AttendanceStatus
     correct_count: Optional[int] = None
     total_count: Optional[int] = None
+    is_trial: bool = False

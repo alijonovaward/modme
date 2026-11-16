@@ -170,7 +170,10 @@ export function StudentAttendancePage() {
                   </Badge>
                 </td>
                 <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                  {a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}
+                  <div className="flex items-center gap-2">
+                    <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
+                    {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                  </div>
                 </td>
               </tr>
             ))}

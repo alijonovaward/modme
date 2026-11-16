@@ -500,6 +500,7 @@ def get_student_attendance_history(
             status=attendance.status,
             correct_count=attendance.correct_count,
             total_count=attendance.total_count,
+            is_trial=attendance.is_trial,
         )
         for attendance, lesson, group, teacher in rows
     ]
@@ -532,11 +533,12 @@ def export_student_attendance(
             f"{attendance.correct_count}/{attendance.total_count}"
             if attendance.total_count is not None
             else "",
+            "Ha" if attendance.is_trial else "",
         ]
         for attendance, lesson, group, teacher in rows
     ]
     return xlsx_response(
         f"{student.full_name}_davomati.xlsx",
-        ["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"],
+        ["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi", "Sinov darsi"],
         xlsx_rows,
     )

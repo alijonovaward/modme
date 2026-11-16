@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, DateTime, Integer, ForeignKey, Enum
+from sqlalchemy import Boolean, Column, DateTime, Integer, ForeignKey, Enum
 from sqlalchemy.sql import func
 
 from app.db.session import Base
@@ -21,4 +21,5 @@ class Attendance(Base):
     status = Column(Enum(AttendanceStatus), nullable=False)
     correct_count = Column(Integer, nullable=True)
     total_count = Column(Integer, nullable=True)
+    is_trial = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

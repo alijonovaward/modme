@@ -24,6 +24,7 @@ interface RowState {
   status: AttendanceStatus;
   correctCount: string;
   totalCount: string;
+  isTrial: boolean;
 }
 
 export function AttendancePage() {
@@ -58,6 +59,7 @@ export function AttendancePage() {
                 existingRecord?.correct_count != null ? String(existingRecord.correct_count) : "",
               totalCount:
                 existingRecord?.total_count != null ? String(existingRecord.total_count) : "",
+              isTrial: existingRecord?.is_trial ?? false,
             };
           });
         setRows(nextRows);
@@ -89,6 +91,7 @@ export function AttendancePage() {
             status: row.status,
             correct_count: row.status === "present" ? Number(row.correctCount) : null,
             total_count: row.status === "present" ? Number(row.totalCount) : null,
+            is_trial: row.isTrial,
           };
         });
       await submitAttendance(lId, records);
@@ -115,7 +118,8 @@ export function AttendancePage() {
           return (
             row.status !== initial.status ||
             row.correctCount !== initial.correctCount ||
-            row.totalCount !== initial.totalCount
+            row.totalCount !== initial.totalCount ||
+            row.isTrial !== initial.isTrial
           );
         });
 
@@ -131,6 +135,7 @@ export function AttendancePage() {
             status: row.status,
             correct_count: row.status === "present" ? Number(row.correctCount) : null,
             total_count: row.status === "present" ? Number(row.totalCount) : null,
+            is_trial: row.isTrial,
           });
         }),
       );
@@ -151,7 +156,8 @@ export function AttendancePage() {
       initial &&
       (row.status !== initial.status ||
         row.correctCount !== initial.correctCount ||
-        row.totalCount !== initial.totalCount)
+        row.totalCount !== initial.totalCount ||
+        row.isTrial !== initial.isTrial)
     );
   });
 
@@ -180,7 +186,7 @@ export function AttendancePage() {
       <Card>
         <ErrorMessage message={error} />
         <SuccessMessage message={success} />
-        <Table headers={["O'quvchi", "Holat", "Test natijasi"]}>
+        <Table headers={["O'quvchi", "Holat", "Test natijasi", "Sinov darsi"]}>
           {activeStudents.map((s) => {
             const row = rows[s.student_id];
             return (
@@ -198,6 +204,7 @@ export function AttendancePage() {
                       setRows((prev) => ({
                         ...prev,
                         [s.student_id]: {
+                          ...prev[s.student_id],
                           status: e.target.value as AttendanceStatus,
                           correctCount:
                             e.target.value === "present" ? prev[s.student_id].correctCount : "",
@@ -242,6 +249,18 @@ export function AttendancePage() {
                       }
                     />
                   </div>
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={row?.isTrial ?? false}
+                    onChange={(e) =>
+                      setRows((prev) => ({
+                        ...prev,
+                        [s.student_id]: { ...prev[s.student_id], isTrial: e.target.checked },
+                      }))
+                    }
+                  />
                 </td>
               </tr>
             );

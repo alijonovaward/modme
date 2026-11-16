@@ -365,6 +365,7 @@ export interface AttendanceRecordInput {
   status: AttendanceStatus;
   correct_count?: number | null;
   total_count?: number | null;
+  is_trial?: boolean;
 }
 
 export async function submitAttendance(
@@ -381,7 +382,12 @@ export async function submitAttendance(
 export async function updateAttendance(
   lessonId: number,
   studentId: number,
-  payload: { status: AttendanceStatus; correct_count?: number | null; total_count?: number | null },
+  payload: {
+    status: AttendanceStatus;
+    correct_count?: number | null;
+    total_count?: number | null;
+    is_trial?: boolean;
+  },
 ): Promise<Attendance> {
   const { data } = await apiClient.put<Attendance>(
     `/api/v1/lessons/${lessonId}/attendance/${studentId}`,

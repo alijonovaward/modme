@@ -23,6 +23,7 @@ REQUIRED_COLUMNS = {
         "created_at": "TIMESTAMP",
         "correct_count": "INTEGER",
         "total_count": "INTEGER",
+        "is_trial": "BOOLEAN",
     },
     "users": {
         "is_active": "BOOLEAN",
@@ -63,6 +64,10 @@ def _run_migrations() -> None:
     if "users" in existing_tables:
         with engine.begin() as conn:
             conn.execute(text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
+
+    if "attendances" in existing_tables:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE attendances SET is_trial = FALSE WHERE is_trial IS NULL"))
 
     for table_name, columns in REQUIRED_INDEXES.items():
         if table_name not in existing_tables:

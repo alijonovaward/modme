@@ -44,6 +44,7 @@ def _handle_attendance(db: Session, user: User) -> str:
             if attendance.total_count is not None
             else ""
         )
+        + (" [sinov darsi]" if attendance.is_trial else "")
         for attendance, lesson, group, _teacher in rows
     ]
     return "📋 So'nggi davomatlaringiz:\n\n" + "\n".join(lines)

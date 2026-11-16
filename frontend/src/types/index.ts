@@ -185,6 +185,7 @@ export interface Attendance {
   status: AttendanceStatus;
   correct_count: number | null;
   total_count: number | null;
+  is_trial: boolean;
 }
 
 export interface AttendanceDetail {
@@ -195,6 +196,7 @@ export interface AttendanceDetail {
   status: AttendanceStatus;
   correct_count: number | null;
   total_count: number | null;
+  is_trial: boolean;
 }
 
 export interface StatsOverview {
@@ -216,6 +218,7 @@ export interface StudentAttendanceHistoryItem {
   status: AttendanceStatus;
   correct_count: number | null;
   total_count: number | null;
+  is_trial: boolean;
 }
 
 export interface StudentListPage extends Page<User> {

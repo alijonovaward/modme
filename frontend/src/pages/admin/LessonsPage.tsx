@@ -429,7 +429,10 @@ export function LessonsPage() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                    {a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}
+                    <div className="flex items-center gap-2">
+                      <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
+                      {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                    </div>
                   </td>
                 </tr>
               ))}

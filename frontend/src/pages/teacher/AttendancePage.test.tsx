@@ -82,8 +82,8 @@ describe("AttendancePage - first-time submission", () => {
     await waitFor(() => expect(submitAttendance).toHaveBeenCalledTimes(1));
     const [, records] = vi.mocked(submitAttendance).mock.calls[0];
     expect(records).toEqual([
-      { student_id: 10, status: "present", correct_count: 5, total_count: 5 },
-      { student_id: 11, status: "present", correct_count: 5, total_count: 5 },
+      { student_id: 10, status: "present", correct_count: 5, total_count: 5, is_trial: false },
+      { student_id: 11, status: "present", correct_count: 5, total_count: 5, is_trial: false },
     ]);
   });
 });
@@ -99,6 +99,7 @@ describe("AttendancePage - correcting existing attendance", () => {
         status: "present",
         correct_count: 5,
         total_count: 5,
+        is_trial: false,
       },
       {
         id: 2,
@@ -108,6 +109,7 @@ describe("AttendancePage - correcting existing attendance", () => {
         status: "present",
         correct_count: 4,
         total_count: 5,
+        is_trial: false,
       },
     ];
   }
@@ -130,6 +132,7 @@ describe("AttendancePage - correcting existing attendance", () => {
       status: "excused",
       correct_count: null,
       total_count: null,
+      is_trial: false,
     });
 
     const user = userEvent.setup();
@@ -152,6 +155,7 @@ describe("AttendancePage - correcting existing attendance", () => {
       status: "excused",
       correct_count: null,
       total_count: null,
+      is_trial: false,
     });
   });
 });

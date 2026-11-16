@@ -46,10 +46,13 @@ def _attendance_notification_text(
     total_count,
     charged_amount: Optional[float],
     pending_amount: Optional[float] = None,
+    is_trial: bool = False,
 ) -> str:
     lines = [f"{group_name} guruhi, {lesson_date}: {ATTENDANCE_STATUS_LABELS[status]}"]
     if total_count is not None:
         lines.append(f"Test natijasi: {correct_count}/{total_count}")
+    if is_trial:
+        lines.append("Bu sinov darsi edi, pul yechilmadi.")
     if charged_amount:
         lines.append(f"Balansdan {charged_amount:,.0f} so'm yechildi.")
     if pending_amount:
@@ -346,6 +349,7 @@ def get_lesson_attendance(
             status=att.status,
             correct_count=att.correct_count,
             total_count=att.total_count,
+            is_trial=att.is_trial,
         )
         for att, student in rows
     ]
@@ -410,12 +414,17 @@ def mark_attendance(
             status=item.status,
             correct_count=item.correct_count,
             total_count=item.total_count,
+            is_trial=item.is_trial,
         )
         db.add(attendance)
         created_records.append(attendance)
 
         is_frozen = group_student.status == GroupStudentStatus.frozen
-        should_charge = item.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
+        should_charge = (
+            item.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
+            and not is_frozen
+            and not item.is_trial
+        )
 
         student = db.get(User, item.student_id)
         is_pending = False
@@ -472,6 +481,7 @@ def mark_attendance(
                     item.total_count,
                     group.lesson_price if should_charge and not is_pending else None,
                     group.lesson_price if is_pending else None,
+                    item.is_trial,
                 ),
             )
 
@@ -568,7 +578,9 @@ def update_attendance(
     was_charged = old_deduction is not None
     was_pending = old_pending is not None
     should_charge = (
-        payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused) and not is_frozen
+        payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
+        and not is_frozen
+        and not payload.is_trial
     )
 
     student = db.get(User, student_id)
@@ -645,6 +657,7 @@ def update_attendance(
     attendance.status = payload.status
     attendance.correct_count = payload.correct_count
     attendance.total_count = payload.total_count
+    attendance.is_trial = payload.is_trial
     db.commit()
     db.refresh(attendance)
 
@@ -660,6 +673,8 @@ def update_attendance(
                 payload.correct_count,
                 payload.total_count,
                 group.lesson_price if should_charge else None,
+                None,
+                payload.is_trial,
             ),
         )
 
