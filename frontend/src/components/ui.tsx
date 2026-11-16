@@ -152,16 +152,16 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
 
   return (
     <div className="relative w-full overflow-x-auto rounded-xl border border-slate-200/60 dark:border-slate-800/60">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-xs sm:text-sm">
         <thead>
-          <tr className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold tracking-wider text-slate-500 dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-400">
+          <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-semibold tracking-wider text-slate-500 sm:text-xs dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-400">
             {headers.map((h, i) => {
               const isLast = i === headers.length - 1;
               const isEmptyHeader = h === "";
               return (
                 <th
                   key={i}
-                  className={`px-3.5 py-3 font-semibold ${
+                  className={`px-2.5 py-2 font-semibold sm:px-3.5 sm:py-3 ${
                     isEmptyHeader ? "w-px whitespace-nowrap" : ""
                   } ${
                     isLast && hasEmptyLastHeader
@@ -184,7 +184,7 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
 export function TdAction({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <td
-      className={`sticky right-0 z-10 bg-white px-3.5 py-2.5 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] transition-colors group-hover:bg-slate-50 dark:bg-slate-950 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)] dark:group-hover:bg-slate-900 ${className}`}
+      className={`sticky right-0 z-10 bg-white px-2.5 py-2 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] transition-colors group-hover:bg-slate-50 sm:px-3.5 sm:py-2.5 dark:bg-slate-950 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)] dark:group-hover:bg-slate-900 ${className}`}
     >
       {children}
     </td>
@@ -301,9 +301,9 @@ export function StatTile({
     violet: "bg-violet-50/70 text-violet-800 border-violet-200/80 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/80",
   }[color];
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 sm:p-6 ${styles}`}>
-      <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">{value}</p>
+    <div className={`rounded-2xl border p-3.5 shadow-sm transition-all hover:-translate-y-0.5 sm:p-6 ${styles}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80 sm:text-xs">{label}</p>
+      <p className="mt-1 break-words text-lg font-bold tracking-tight sm:text-3xl">{value}</p>
     </div>
   );
 }
