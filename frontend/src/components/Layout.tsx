@@ -93,7 +93,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        <div className="relative border-t border-slate-100 dark:border-slate-800/60">
+        <div className="hidden relative border-t border-slate-100 sm:block dark:border-slate-800/60">
           {/* Gradient fade indicators for horizontal tab scrolling */}
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white via-white/80 to-transparent sm:hidden dark:from-slate-950 dark:via-slate-950/80 dark:to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white via-white/80 to-transparent sm:hidden dark:from-slate-950 dark:via-slate-950/80 dark:to-transparent" />
