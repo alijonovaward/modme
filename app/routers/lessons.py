@@ -11,6 +11,7 @@ from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
+from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
 from app.models.subject import Subject
@@ -45,6 +46,57 @@ def _attendance_notification_text(
     if charged_amount:
         lines.append(f"Balansdan {charged_amount:,.0f} so'm yechildi.")
     return "\n".join(lines)
+
+
+LESSON_AUTO_CREATE_HORIZON = timedelta(days=7)
+
+
+def _auto_create_scheduled_lessons(db: Session) -> None:
+    today = date.today()
+    horizon = today + LESSON_AUTO_CREATE_HORIZON
+
+    schedules = (
+        db.query(GroupSchedule, Group)
+        .join(Group, Group.id == GroupSchedule.group_id)
+        .filter(Group.status == GroupStatus.active)
+        .all()
+    )
+    if not schedules:
+        return
+
+    group_ids = {group.id for _, group in schedules}
+    existing_dates = {
+        (group_id, lesson_date)
+        for group_id, lesson_date in db.query(Lesson.group_id, Lesson.lesson_date).filter(
+            Lesson.group_id.in_(group_ids),
+            Lesson.lesson_date >= today,
+            Lesson.lesson_date <= horizon,
+        )
+    }
+
+    created = False
+    for offset in range((horizon - today).days + 1):
+        day = today + timedelta(days=offset)
+        weekday = day.weekday()
+        for schedule, group in schedules:
+            if schedule.weekday != weekday:
+                continue
+            key = (group.id, day)
+            if key in existing_dates:
+                continue
+            db.add(
+                Lesson(
+                    group_id=group.id,
+                    lesson_date=day,
+                    start_time=schedule.start_time,
+                    end_time=schedule.end_time,
+                )
+            )
+            existing_dates.add(key)
+            created = True
+
+    if created:
+        db.commit()
 
 
 def _build_lessons_query(
@@ -127,6 +179,8 @@ def list_all_lessons(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
     ),
 ):
+    _auto_create_scheduled_lessons(db)
+
     query = _build_lessons_query(
         db, current_user, group_id, teacher_id, date_from, date_to, lesson_status
     )
