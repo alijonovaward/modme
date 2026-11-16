@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
-import { getTeacherFinance, listGroups } from "../../api/endpoints";
+import { getTeacherFinance, listGroups, listSubjects } from "../../api/endpoints";
 import {
   Badge,
   Button,
@@ -17,7 +17,7 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import type { GroupListItem, TeacherTransaction } from "../../types";
+import type { GroupListItem, Subject, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
@@ -26,12 +26,14 @@ interface Filters {
   dateFrom: string;
   dateTo: string;
   type: string;
+  subjectId: string;
   groupId: string;
 }
 
 const DEFAULT_FILTERS: Filters = {
   ...currentMonthRange(),
   type: "",
+  subjectId: "",
   groupId: "",
 };
 
@@ -39,6 +41,7 @@ export function FinancePage() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<TeacherTransaction[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,6 +69,7 @@ export function FinancePage() {
 
   useEffect(() => {
     listGroups().then(setGroups).catch(() => undefined);
+    listSubjects().then(setSubjects).catch(() => undefined);
     load(appliedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,6 +100,9 @@ export function FinancePage() {
     transactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
   const totalRemaining = totalEarnings - totalPayouts;
+  const filterGroupOptions = groups.filter(
+    (g) => !draft.subjectId || String(g.subject_id) === draft.subjectId,
+  );
   const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
 
   return (
@@ -218,6 +225,20 @@ export function FinancePage() {
               </Select>
             </div>
             <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={draft.subjectId}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, subjectId: value, groupId: "" }))
+                }
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
               <Label>Guruh</Label>
               <Combobox
                 value={draft.groupId}
@@ -225,7 +246,7 @@ export function FinancePage() {
                 placeholder="Barcha guruhlar"
                 options={[
                   { value: "", label: "Barcha guruhlar" },
-                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                  ...filterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
                 ]}
               />
             </div>

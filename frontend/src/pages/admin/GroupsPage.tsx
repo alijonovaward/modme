@@ -129,6 +129,12 @@ export function GroupsPage() {
 
   const activeFilterCount = [subjectFilter, teacherFilter].filter(Boolean).length;
 
+  const filterTeacherOptions = draftSubjectFilter
+    ? teachers.filter((t) =>
+        groups.some((g) => String(g.subject_id) === draftSubjectFilter && g.teacher_id === t.id),
+      )
+    : teachers;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -238,7 +244,10 @@ export function GroupsPage() {
               <Label>Fan bo'yicha filter</Label>
               <Combobox
                 value={draftSubjectFilter}
-                onChange={setDraftSubjectFilter}
+                onChange={(value) => {
+                  setDraftSubjectFilter(value);
+                  setDraftTeacherFilter("");
+                }}
                 placeholder="Barcha fanlar"
                 options={[
                   { value: "", label: "Barcha fanlar" },
@@ -254,7 +263,7 @@ export function GroupsPage() {
                 placeholder="Barcha o'qituvchilar"
                 options={[
                   { value: "", label: "Barcha o'qituvchilar" },
-                  ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+                  ...filterTeacherOptions.map((t) => ({ value: String(t.id), label: t.full_name })),
                 ]}
               />
             </div>

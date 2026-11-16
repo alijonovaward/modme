@@ -6,6 +6,7 @@ import {
   listAllLessons,
   listGroups,
   listStaffUsers,
+  listSubjects,
 } from "../../api/endpoints";
 import {
   Badge,
@@ -25,7 +26,7 @@ import {
   Table,
   TdAction,
 } from "../../components/ui";
-import type { AttendanceDetail, GroupListItem, LessonListItem, User } from "../../types";
+import type { AttendanceDetail, GroupListItem, LessonListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange, toLocalISODate } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
@@ -35,6 +36,7 @@ interface Filters {
   dateTo: string;
   groupId: string;
   teacherId: string;
+  subjectId: string;
   status: string;
 }
 
@@ -42,6 +44,7 @@ const DEFAULT_FILTERS: Filters = {
   ...currentMonthRange(),
   groupId: "",
   teacherId: "",
+  subjectId: "",
   status: "",
 };
 
@@ -49,6 +52,7 @@ export function LessonsPage() {
   const [lessons, setLessons] = useState<LessonListItem[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +101,7 @@ export function LessonsPage() {
     load(appliedFilters, 1);
     listGroups().then(setGroups).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
+    listSubjects().then(setSubjects).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -166,6 +171,18 @@ export function LessonsPage() {
   const activeCount = [appliedFilters.groupId, appliedFilters.teacherId, appliedFilters.status].filter(
     Boolean,
   ).length;
+
+  const filterTeacherOptions = draft.subjectId
+    ? teachers.filter((t) =>
+        groups.some((g) => String(g.subject_id) === draft.subjectId && g.teacher_id === t.id),
+      )
+    : teachers;
+
+  const filterGroupOptions = groups.filter(
+    (g) =>
+      (!draft.subjectId || String(g.subject_id) === draft.subjectId) &&
+      (!draft.teacherId || String(g.teacher_id) === draft.teacherId),
+  );
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const handlePageChange = (nextPage: number) => {
@@ -298,14 +315,16 @@ export function LessonsPage() {
               </Select>
             </div>
             <div>
-              <Label>Guruh</Label>
+              <Label>Fan</Label>
               <Combobox
-                value={draft.groupId}
-                onChange={(value) => setDraft((prev) => ({ ...prev, groupId: value }))}
-                placeholder="Barcha guruhlar"
+                value={draft.subjectId}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, subjectId: value, teacherId: "", groupId: "" }))
+                }
+                placeholder="Barcha fanlar"
                 options={[
-                  { value: "", label: "Barcha guruhlar" },
-                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
                 ]}
               />
             </div>
@@ -313,11 +332,23 @@ export function LessonsPage() {
               <Label>O'qituvchi</Label>
               <Combobox
                 value={draft.teacherId}
-                onChange={(value) => setDraft((prev) => ({ ...prev, teacherId: value }))}
+                onChange={(value) => setDraft((prev) => ({ ...prev, teacherId: value, groupId: "" }))}
                 placeholder="Barcha o'qituvchilar"
                 options={[
                   { value: "", label: "Barcha o'qituvchilar" },
-                  ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+                  ...filterTeacherOptions.map((t) => ({ value: String(t.id), label: t.full_name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={draft.groupId}
+                onChange={(value) => setDraft((prev) => ({ ...prev, groupId: value }))}
+                placeholder="Barcha guruhlar"
+                options={[
+                  { value: "", label: "Barcha guruhlar" },
+                  ...filterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
                 ]}
               />
             </div>

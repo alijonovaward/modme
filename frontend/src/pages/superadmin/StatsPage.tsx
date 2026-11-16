@@ -4,6 +4,7 @@ import {
   listGroups,
   listStaffUsers,
   listStudents,
+  listSubjects,
 } from "../../api/endpoints";
 import {
   Button,
@@ -16,7 +17,7 @@ import {
   Modal,
   StatTile,
 } from "../../components/ui";
-import type { GroupListItem, StatsOverview, User } from "../../types";
+import type { GroupListItem, StatsOverview, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
 import { currentMonthRange } from "../../utils/date";
 
@@ -26,6 +27,7 @@ function formatSom(amount: number): string {
 
 const DEFAULT_FILTERS = {
   ...currentMonthRange(),
+  subjectId: "",
   groupId: "",
   teacherId: "",
   studentId: "",
@@ -36,6 +38,7 @@ export function StatsPage() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
   const [students, setStudents] = useState<User[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,6 +46,7 @@ export function StatsPage() {
 
   const [dateFrom, setDateFrom] = useState(DEFAULT_FILTERS.dateFrom);
   const [dateTo, setDateTo] = useState(DEFAULT_FILTERS.dateTo);
+  const [subjectId, setSubjectId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -72,12 +76,14 @@ export function StatsPage() {
     listGroups().then(setGroups).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
     listStudents().then(setStudents).catch(() => undefined);
+    listSubjects().then(setSubjects).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openModal = () => {
     setDateFrom(appliedFilters.dateFrom);
     setDateTo(appliedFilters.dateTo);
+    setSubjectId(appliedFilters.subjectId);
     setGroupId(appliedFilters.groupId);
     setTeacherId(appliedFilters.teacherId);
     setStudentId(appliedFilters.studentId);
@@ -85,7 +91,7 @@ export function StatsPage() {
   };
 
   const applyFilters = () => {
-    const next = { dateFrom, dateTo, groupId, teacherId, studentId };
+    const next = { dateFrom, dateTo, subjectId, groupId, teacherId, studentId };
     setAppliedFilters(next);
     setIsModalOpen(false);
     load(next);
@@ -94,6 +100,7 @@ export function StatsPage() {
   const clearFilters = () => {
     setDateFrom(DEFAULT_FILTERS.dateFrom);
     setDateTo(DEFAULT_FILTERS.dateTo);
+    setSubjectId("");
     setGroupId("");
     setTeacherId("");
     setStudentId("");
@@ -101,6 +108,18 @@ export function StatsPage() {
     setIsModalOpen(false);
     load(DEFAULT_FILTERS);
   };
+
+  const filterTeacherOptions = subjectId
+    ? teachers.filter((t) =>
+        groups.some((g) => String(g.subject_id) === subjectId && g.teacher_id === t.id),
+      )
+    : teachers;
+
+  const filterGroupOptions = groups.filter(
+    (g) =>
+      (!subjectId || String(g.subject_id) === subjectId) &&
+      (!teacherId || String(g.teacher_id) === teacherId),
+  );
 
   const activeCount = [appliedFilters.groupId, appliedFilters.teacherId, appliedFilters.studentId].filter(
     Boolean,
@@ -185,14 +204,18 @@ export function StatsPage() {
               </div>
             </div>
             <div>
-              <Label>Guruh</Label>
+              <Label>Fan</Label>
               <Combobox
-                value={groupId}
-                onChange={setGroupId}
-                placeholder="Barcha guruhlar"
+                value={subjectId}
+                onChange={(value) => {
+                  setSubjectId(value);
+                  setTeacherId("");
+                  setGroupId("");
+                }}
+                placeholder="Barcha fanlar"
                 options={[
-                  { value: "", label: "Barcha guruhlar" },
-                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
                 ]}
               />
             </div>
@@ -200,11 +223,26 @@ export function StatsPage() {
               <Label>O'qituvchi</Label>
               <Combobox
                 value={teacherId}
-                onChange={setTeacherId}
+                onChange={(value) => {
+                  setTeacherId(value);
+                  setGroupId("");
+                }}
                 placeholder="Barcha o'qituvchilar"
                 options={[
                   { value: "", label: "Barcha o'qituvchilar" },
-                  ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+                  ...filterTeacherOptions.map((t) => ({ value: String(t.id), label: t.full_name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={groupId}
+                onChange={setGroupId}
+                placeholder="Barcha guruhlar"
+                options={[
+                  { value: "", label: "Barcha guruhlar" },
+                  ...filterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
                 ]}
               />
             </div>

@@ -4,6 +4,7 @@ import {
   listGroups,
   listStaffUsers,
   listStudents,
+  listSubjects,
   listTransactions,
 } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
@@ -25,6 +26,7 @@ import {
 } from "../../components/ui";
 import type {
   GroupListItem,
+  Subject,
   TeacherTransactionGlobalListItem,
   TransactionListItem,
   User,
@@ -38,6 +40,7 @@ interface StudentFilters {
   dateTo: string;
   type: string;
   studentId: string;
+  subjectId: string;
   groupId: string;
   adminId: string;
 }
@@ -47,6 +50,7 @@ interface TeacherFilters {
   dateTo: string;
   type: string;
   teacherId: string;
+  subjectId: string;
   groupId: string;
   adminId: string;
 }
@@ -55,6 +59,7 @@ const DEFAULT_STUDENT_FILTERS: StudentFilters = {
   ...currentMonthRange(),
   type: "",
   studentId: "",
+  subjectId: "",
   groupId: "",
   adminId: "",
 };
@@ -63,6 +68,7 @@ const DEFAULT_TEACHER_FILTERS: TeacherFilters = {
   ...currentMonthRange(),
   type: "",
   teacherId: "",
+  subjectId: "",
   groupId: "",
   adminId: "",
 };
@@ -80,6 +86,7 @@ export function TransactionsPage() {
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [students, setStudents] = useState<User[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +159,7 @@ export function TransactionsPage() {
     listGroups().then(setGroups).catch(() => undefined);
     listStudents().then(setStudents).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
+    listSubjects().then(setSubjects).catch(() => undefined);
     if (isSuperadmin) {
       listStaffUsers().then(setAdmins).catch(() => undefined);
     }
@@ -218,6 +226,22 @@ export function TransactionsPage() {
 
   const studentPageCount = Math.max(1, Math.ceil(studentTotal / PAGE_SIZE));
   const teacherPageCount = Math.max(1, Math.ceil(teacherTotal / PAGE_SIZE));
+
+  const studentTabGroupOptions = groups.filter(
+    (g) => !studentDraft.subjectId || String(g.subject_id) === studentDraft.subjectId,
+  );
+
+  const teacherTabTeacherOptions = teacherDraft.subjectId
+    ? teachers.filter((t) =>
+        groups.some((g) => String(g.subject_id) === teacherDraft.subjectId && g.teacher_id === t.id),
+      )
+    : teachers;
+
+  const teacherTabGroupOptions = groups.filter(
+    (g) =>
+      (!teacherDraft.subjectId || String(g.subject_id) === teacherDraft.subjectId) &&
+      (!teacherDraft.teacherId || String(g.teacher_id) === teacherDraft.teacherId),
+  );
 
   const handleExport = () => {
     if (tab === "student") {
@@ -447,6 +471,20 @@ export function TransactionsPage() {
               />
             </div>
             <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={studentDraft.subjectId}
+                onChange={(value) =>
+                  setStudentDraft((prev) => ({ ...prev, subjectId: value, groupId: "" }))
+                }
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
               <Label>Guruh</Label>
               <Combobox
                 value={studentDraft.groupId}
@@ -454,7 +492,7 @@ export function TransactionsPage() {
                 placeholder="Barcha guruhlar"
                 options={[
                   { value: "", label: "Barcha guruhlar" },
-                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                  ...studentTabGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
                 ]}
               />
             </div>
@@ -519,14 +557,30 @@ export function TransactionsPage() {
               </Select>
             </div>
             <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={teacherDraft.subjectId}
+                onChange={(value) =>
+                  setTeacherDraft((prev) => ({ ...prev, subjectId: value, teacherId: "", groupId: "" }))
+                }
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
               <Label>O'qituvchi</Label>
               <Combobox
                 value={teacherDraft.teacherId}
-                onChange={(value) => setTeacherDraft((prev) => ({ ...prev, teacherId: value }))}
+                onChange={(value) =>
+                  setTeacherDraft((prev) => ({ ...prev, teacherId: value, groupId: "" }))
+                }
                 placeholder="Barcha o'qituvchilar"
                 options={[
                   { value: "", label: "Barcha o'qituvchilar" },
-                  ...teachers.map((t) => ({ value: String(t.id), label: t.full_name })),
+                  ...teacherTabTeacherOptions.map((t) => ({ value: String(t.id), label: t.full_name })),
                 ]}
               />
             </div>
@@ -538,7 +592,7 @@ export function TransactionsPage() {
                 placeholder="Barcha guruhlar"
                 options={[
                   { value: "", label: "Barcha guruhlar" },
-                  ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                  ...teacherTabGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
                 ]}
               />
             </div>
