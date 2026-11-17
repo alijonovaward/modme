@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getGroupDetail } from "../../api/endpoints";
+import { getGroupAttendanceGrid, getGroupAttendanceStats, getGroupDetail } from "../../api/endpoints";
 import {
   Badge,
+  Button,
   Card,
   ErrorMessage,
   extractErrorMessage,
+  Input,
+  Label,
+  Modal,
   Pagination,
   Table,
   usePagination,
 } from "../../components/ui";
-import type { GroupDetail, GroupStudentStatus } from "../../types";
+import { AttendanceGridTable, AttendanceStatsTable } from "../../components/AttendanceGridView";
+import type { AttendanceGrid, GroupDetail, GroupStudentStatus, StudentAttendanceStats } from "../../types";
 import { Layout } from "../../components/Layout";
+import { currentMonthRange } from "../../utils/date";
 
 const ROSTER_STATUS_COLOR = {
   active: "green",
@@ -35,12 +41,52 @@ export function TeacherGroupDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
 
+  const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
+  const [attendanceGrid, setAttendanceGrid] = useState<AttendanceGrid | null>(null);
+  const [attendanceFilters, setAttendanceFilters] = useState(() => currentMonthRange());
+  const [isAttendanceFilterModalOpen, setIsAttendanceFilterModalOpen] = useState(false);
+  const [attendanceFilterDraft, setAttendanceFilterDraft] = useState(attendanceFilters);
+
+  const loadAttendance = async (filters = attendanceFilters) => {
+    const params = {
+      date_from: filters.dateFrom || undefined,
+      date_to: filters.dateTo || undefined,
+    };
+    const [statsData, gridData] = await Promise.all([
+      getGroupAttendanceStats(id, params),
+      getGroupAttendanceGrid(id, params),
+    ]);
+    setAttendanceStats(statsData);
+    setAttendanceGrid(gridData);
+  };
+
   useEffect(() => {
     getGroupDetail(id)
       .then(setGroup)
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
+    loadAttendance().catch((err) => setError(extractErrorMessage(err)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const openAttendanceFilterModal = () => {
+    setAttendanceFilterDraft(attendanceFilters);
+    setIsAttendanceFilterModalOpen(true);
+  };
+
+  const applyAttendanceFilters = () => {
+    setAttendanceFilters(attendanceFilterDraft);
+    setIsAttendanceFilterModalOpen(false);
+    loadAttendance(attendanceFilterDraft).catch((err) => setError(extractErrorMessage(err)));
+  };
+
+  const clearAttendanceFilters = () => {
+    const defaults = currentMonthRange();
+    setAttendanceFilterDraft(defaults);
+    setAttendanceFilters(defaults);
+    setIsAttendanceFilterModalOpen(false);
+    loadAttendance(defaults).catch((err) => setError(extractErrorMessage(err)));
+  };
 
   const filteredStudents = useMemo(() => {
     if (!group) return [];
@@ -104,6 +150,65 @@ export function TeacherGroupDetailPage() {
           onPageChange={studentPagination.setPage}
         />
       </Card>
+
+      <div className="mt-6">
+        <Card
+          title="Davomat jadvali"
+          action={
+            <Button variant="secondary" onClick={openAttendanceFilterModal}>
+              Filterlar
+            </Button>
+          }
+        >
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {attendanceFilters.dateFrom || "..."} — {attendanceFilters.dateTo || "..."}
+          </p>
+          <AttendanceGridTable grid={attendanceGrid} />
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card title="Davomat statistikasi">
+          <AttendanceStatsTable stats={attendanceStats} />
+        </Card>
+      </div>
+
+      {isAttendanceFilterModalOpen && (
+        <Modal title="Davomat uchun filter" onClose={() => setIsAttendanceFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Dan</Label>
+                <Input
+                  type="date"
+                  value={attendanceFilterDraft.dateFrom}
+                  onChange={(e) =>
+                    setAttendanceFilterDraft((prev) => ({ ...prev, dateFrom: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Gacha</Label>
+                <Input
+                  type="date"
+                  value={attendanceFilterDraft.dateTo}
+                  onChange={(e) =>
+                    setAttendanceFilterDraft((prev) => ({ ...prev, dateTo: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={applyAttendanceFilters}>
+                Qo'llash
+              </Button>
+              <Button variant="secondary" onClick={clearAttendanceFilters}>
+                Shu oyga qaytarish
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Layout>
   );
 }

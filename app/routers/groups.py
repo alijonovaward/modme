@@ -306,6 +306,8 @@ ATTENDANCE_TREND_WINDOW = timedelta(days=14)
 @router.get("/{group_id}/attendance-stats", response_model=list[StudentAttendanceStatsOut])
 def get_group_attendance_stats(
     group_id: int,
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -337,15 +339,25 @@ def get_group_attendance_stats(
     results: list[StudentAttendanceStatsOut] = []
     for gs in roster:
         student = db.get(User, gs.student_id)
-        rows = (
+        period_query = (
+            db.query(Attendance.status, Lesson.lesson_date)
+            .join(Lesson, Lesson.id == Attendance.lesson_id)
+            .filter(Lesson.group_id == group_id, Attendance.student_id == gs.student_id)
+        )
+        if date_from is not None:
+            period_query = period_query.filter(Lesson.lesson_date >= date_from)
+        if date_to is not None:
+            period_query = period_query.filter(Lesson.lesson_date <= date_to)
+        rows = period_query.all()
+
+        trend_rows = (
             db.query(Attendance.status, Lesson.lesson_date)
             .join(Lesson, Lesson.id == Attendance.lesson_id)
             .filter(Lesson.group_id == group_id, Attendance.student_id == gs.student_id)
             .all()
         )
-
-        recent_rows = [r for r in rows if r[1] >= recent_start]
-        previous_rows = [r for r in rows if previous_start <= r[1] < recent_start]
+        recent_rows = [r for r in trend_rows if r[1] >= recent_start]
+        previous_rows = [r for r in trend_rows if previous_start <= r[1] < recent_start]
         recent_rate = _rate(recent_rows)
         previous_rate = _rate(previous_rows)
         is_declining = (
@@ -369,6 +381,8 @@ def get_group_attendance_stats(
 @router.get("/{group_id}/attendance-grid", response_model=AttendanceGridOut)
 def get_group_attendance_grid(
     group_id: int,
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -378,12 +392,12 @@ def get_group_attendance_grid(
     if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
-    lessons = (
-        db.query(Lesson)
-        .filter(Lesson.group_id == group_id)
-        .order_by(Lesson.lesson_date)
-        .all()
-    )
+    lessons_query = db.query(Lesson).filter(Lesson.group_id == group_id)
+    if date_from is not None:
+        lessons_query = lessons_query.filter(Lesson.lesson_date >= date_from)
+    if date_to is not None:
+        lessons_query = lessons_query.filter(Lesson.lesson_date <= date_to)
+    lessons = lessons_query.order_by(Lesson.lesson_date).all()
 
     roster = (
         db.query(GroupStudent)

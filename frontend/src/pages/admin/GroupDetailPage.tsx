@@ -30,6 +30,7 @@ import {
   TdAction,
   usePagination,
 } from "../../components/ui";
+import { AttendanceGridTable, AttendanceStatsTable } from "../../components/AttendanceGridView";
 import type {
   AttendanceGrid,
   GroupDetail,
@@ -70,31 +71,6 @@ const STATUS_TABS: { value: GroupStudentStatus | ""; label: string }[] = [
   { value: "dropped", label: "Arxiv" },
 ];
 
-function renderAttendanceCell(cell: AttendanceGrid["cells"][number] | undefined) {
-  if (!cell) {
-    return (
-      <span className="inline-block h-5 w-5 rounded-full border-2 border-slate-200 dark:border-slate-700" />
-    );
-  }
-  const color =
-    cell.status === "present"
-      ? "bg-green-500"
-      : cell.status === "unexcused"
-        ? "bg-rose-500"
-        : "bg-slate-300 dark:bg-slate-600";
-  const icon = cell.status === "present" ? "✓" : cell.status === "unexcused" ? "✕" : "–";
-  return (
-    <span
-      className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${color} ${
-        cell.is_trial ? "ring-2 ring-amber-400 ring-offset-1 dark:ring-offset-slate-900" : ""
-      }`}
-      title={cell.is_trial ? "Sinov darsi" : undefined}
-    >
-      {icon}
-    </span>
-  );
-}
-
 export function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const id = Number(groupId);
@@ -129,9 +105,17 @@ export function GroupDetailPage() {
   const [generateTo, setGenerateTo] = useState(() => currentMonthRange().dateTo);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const loadAll = async () => {
+  const [attendanceFilters, setAttendanceFilters] = useState(() => currentMonthRange());
+  const [isAttendanceFilterModalOpen, setIsAttendanceFilterModalOpen] = useState(false);
+  const [attendanceFilterDraft, setAttendanceFilterDraft] = useState(attendanceFilters);
+
+  const loadAll = async (filters = attendanceFilters) => {
     setIsLoading(true);
     try {
+      const attendanceParams = {
+        date_from: filters.dateFrom || undefined,
+        date_to: filters.dateTo || undefined,
+      };
       const [
         groupData,
         studentsData,
@@ -146,8 +130,8 @@ export function GroupDetailPage() {
         listSubjects(),
         listStaffUsers("teacher"),
         listGroupLessons(id),
-        getGroupAttendanceStats(id),
-        getGroupAttendanceGrid(id),
+        getGroupAttendanceStats(id, attendanceParams),
+        getGroupAttendanceGrid(id, attendanceParams),
       ]);
       setGroup(groupData);
       setAllStudents(studentsData);
@@ -167,6 +151,25 @@ export function GroupDetailPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const openAttendanceFilterModal = () => {
+    setAttendanceFilterDraft(attendanceFilters);
+    setIsAttendanceFilterModalOpen(true);
+  };
+
+  const applyAttendanceFilters = () => {
+    setAttendanceFilters(attendanceFilterDraft);
+    setIsAttendanceFilterModalOpen(false);
+    loadAll(attendanceFilterDraft);
+  };
+
+  const clearAttendanceFilters = () => {
+    const defaults = currentMonthRange();
+    setAttendanceFilterDraft(defaults);
+    setAttendanceFilters(defaults);
+    setIsAttendanceFilterModalOpen(false);
+    loadAll(defaults);
+  };
 
   const handleAddStudent = async () => {
     if (!selectedStudentId) return;
@@ -466,79 +469,64 @@ export function GroupDetailPage() {
         </div>
 
         <div className="mt-6">
-          <Card title="Davomat jadvali">
-            {!attendanceGrid || attendanceGrid.lessons.length === 0 || attendanceGrid.students.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Hali dars yoki o'quvchi yo'q.
-              </p>
-            ) : (
-              <Table headers={["O'quvchi", ...attendanceGrid.lessons.map((l) => l.lesson_date)]}>
-                {attendanceGrid.students.map((s) => (
-                  <tr key={s.student_id}>
-                    <td className="px-3.5 py-2.5 font-medium whitespace-nowrap text-slate-800 dark:text-slate-200">
-                      {s.student_name}
-                    </td>
-                    {attendanceGrid.lessons.map((l) => {
-                      const cell = attendanceGrid.cells.find(
-                        (c) => c.student_id === s.student_id && c.lesson_id === l.id,
-                      );
-                      return (
-                        <td key={l.id} className="px-3.5 py-2.5 text-center">
-                          {renderAttendanceCell(cell)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </Table>
-            )}
+          <Card
+            title="Davomat jadvali"
+            action={
+              <Button variant="secondary" onClick={openAttendanceFilterModal}>
+                Filterlar
+              </Button>
+            }
+          >
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              Davr: {attendanceFilters.dateFrom || "..."} — {attendanceFilters.dateTo || "..."}
+            </p>
+            <AttendanceGridTable grid={attendanceGrid} />
           </Card>
         </div>
 
         <div className="mt-6">
           <Card title="Davomat statistikasi">
-            {attendanceStats.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Hali o'quvchi yo'q</p>
-            ) : (
-              <Table
-                headers={[
-                  "O'quvchi",
-                  "Jami darslar",
-                  "Umumiy foiz",
-                  "Oldingi 14 kun",
-                  "So'nggi 14 kun",
-                  "Trend",
-                ]}
-              >
-                {attendanceStats.map((s) => (
-                  <tr key={s.student_id}>
-                    <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                      {s.student_name}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{s.total_lessons}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                      {s.attendance_rate}%
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                      {s.previous_attendance_rate != null ? `${s.previous_attendance_rate}%` : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                      {s.recent_attendance_rate != null ? `${s.recent_attendance_rate}%` : "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {s.is_declining ? (
-                        <Badge color="red">Pasaymoqda</Badge>
-                      ) : (
-                        <Badge color="slate">Barqaror</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            )}
+            <AttendanceStatsTable stats={attendanceStats} />
           </Card>
         </div>
       </div>
+
+      {isAttendanceFilterModalOpen && (
+        <Modal title="Davomat uchun filter" onClose={() => setIsAttendanceFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Dan</Label>
+                <Input
+                  type="date"
+                  value={attendanceFilterDraft.dateFrom}
+                  onChange={(e) =>
+                    setAttendanceFilterDraft((prev) => ({ ...prev, dateFrom: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Gacha</Label>
+                <Input
+                  type="date"
+                  value={attendanceFilterDraft.dateTo}
+                  onChange={(e) =>
+                    setAttendanceFilterDraft((prev) => ({ ...prev, dateTo: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={applyAttendanceFilters}>
+                Qo'llash
+              </Button>
+              <Button variant="secondary" onClick={clearAttendanceFilters}>
+                Shu oyga qaytarish
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {isGenerateModalOpen && (
         <Modal title="Darslarni generatsiya qilish" onClose={() => setIsGenerateModalOpen(false)}>

@@ -260,16 +260,22 @@ export async function getGroupDetail(groupId: number): Promise<GroupDetail> {
 
 export async function getGroupAttendanceStats(
   groupId: number,
+  params?: { date_from?: string; date_to?: string },
 ): Promise<StudentAttendanceStats[]> {
   const { data } = await apiClient.get<StudentAttendanceStats[]>(
     `/api/v1/groups/${groupId}/attendance-stats`,
+    { params },
   );
   return data;
 }
 
-export async function getGroupAttendanceGrid(groupId: number): Promise<AttendanceGrid> {
+export async function getGroupAttendanceGrid(
+  groupId: number,
+  params?: { date_from?: string; date_to?: string },
+): Promise<AttendanceGrid> {
   const { data } = await apiClient.get<AttendanceGrid>(
     `/api/v1/groups/${groupId}/attendance-grid`,
+    { params },
   );
   return data;
 }

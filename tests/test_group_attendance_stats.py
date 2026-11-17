@@ -50,6 +50,21 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
     assert stats["recent_attendance_rate"] == 0.0
     assert stats["is_declining"] is True
 
+    resp = client.get(
+        f"/api/v1/groups/{group['id']}/attendance-stats",
+        headers=admin_headers,
+        params={
+            "date_from": previous_dates[0].isoformat(),
+            "date_to": previous_dates[1].isoformat(),
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    filtered_stats = resp.json()[0]
+    assert filtered_stats["total_lessons"] == 2
+    assert filtered_stats["attendance_rate"] == 100.0
+    assert filtered_stats["recent_attendance_rate"] == 0.0
+    assert filtered_stats["previous_attendance_rate"] == 100.0
+
 
 def test_no_data_means_not_declining(client, superadmin_headers, admin_headers):
     teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998901000003")

@@ -47,6 +47,15 @@ def test_attendance_grid_returns_lessons_students_and_cells(client, superadmin_h
     assert cells_by_key[(student_b["id"], lesson1["id"])]["status"] == "unexcused"
     assert (student_a["id"], lesson2["id"]) not in cells_by_key
 
+    resp = client.get(
+        f"/api/v1/groups/{group['id']}/attendance-grid",
+        headers=admin_headers,
+        params={"date_from": "2026-10-10", "date_to": "2026-10-20"},
+    )
+    assert resp.status_code == 200, resp.text
+    filtered = resp.json()
+    assert [lesson["id"] for lesson in filtered["lessons"]] == [lesson2["id"]]
+
 
 def test_teacher_cannot_see_another_teachers_attendance_grid(client, superadmin_headers, admin_headers):
     teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998901100004")
