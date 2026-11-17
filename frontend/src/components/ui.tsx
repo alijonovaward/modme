@@ -129,7 +129,7 @@ export function Combobox({
 
       {isOpen && (
         <div className="absolute left-0 right-0 z-30 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1 shadow-lg dark:border-slate-700/80 dark:bg-slate-900">
-          {options.length > 6 && (
+          {options.length > 2 && (
             <div className="p-1 border-b border-slate-100 dark:border-slate-800">
               <input
                 type="text"
