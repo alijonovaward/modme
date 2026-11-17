@@ -24,7 +24,6 @@ import {
   StatTile,
   SuccessMessage,
   Table,
-  TdAction,
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -150,6 +149,7 @@ export function LessonsPage() {
     try {
       await deleteLesson(lesson.id);
       setSuccess("Dars o'chirildi");
+      setDetailLesson(null);
       await load(appliedFilters, page);
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -247,7 +247,7 @@ export function LessonsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
+          <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz"]}>
             {lessons.map((l) => (
               <tr
                 key={l.id}
@@ -266,19 +266,6 @@ export function LessonsPage() {
                 <td className="px-3.5 py-2.5 text-slate-800 dark:text-slate-200">{l.present_count}</td>
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
                 <td className="px-3.5 py-2.5 text-rose-600">{l.unexcused_count}</td>
-                <TdAction>
-                  {l.status === "planned" && (
-                    <Button
-                      variant="danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteLesson(l);
-                      }}
-                    >
-                      O'chirish
-                    </Button>
-                  )}
-                </TdAction>
               </tr>
             ))}
           </Table>
@@ -405,12 +392,19 @@ export function LessonsPage() {
           title={`${detailLesson.group_name} — ${detailLesson.lesson_date}`}
           onClose={() => setDetailLesson(null)}
         >
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            {detailLesson.subject_name} · {detailLesson.teacher_name} ·{" "}
-            <Badge color={detailLesson.status === "completed" ? "green" : "slate"}>
-              {detailLesson.status === "completed" ? "O'tildi" : "Rejada"}
-            </Badge>
-          </p>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {detailLesson.subject_name} · {detailLesson.teacher_name} ·{" "}
+              <Badge color={detailLesson.status === "completed" ? "green" : "slate"}>
+                {detailLesson.status === "completed" ? "O'tildi" : "Rejada"}
+              </Badge>
+            </p>
+            {detailLesson.status === "planned" && (
+              <Button variant="danger" onClick={() => handleDeleteLesson(detailLesson)}>
+                O'chirish
+              </Button>
+            )}
+          </div>
           {isDetailLoading ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
           ) : detailAttendance.length === 0 ? (
