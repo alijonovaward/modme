@@ -11,7 +11,7 @@ import {
   Table,
   usePagination,
 } from "../../components/ui";
-import { AttendanceGridTable, AttendanceStatsTable } from "../../components/AttendanceGridView";
+import { AttendanceCombinedTable } from "../../components/AttendanceGridView";
 import { DateRangeFilterModal } from "../../components/DateRangeFilterModal";
 import { useDateRangeFilter, type DateRange } from "../../hooks/useDateRangeFilter";
 import type { AttendanceGrid, GroupDetail, GroupStudentStatus, StudentAttendanceStats } from "../../types";
@@ -42,30 +42,20 @@ export function TeacherGroupDetailPage() {
   const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
   const [attendanceGrid, setAttendanceGrid] = useState<AttendanceGrid | null>(null);
 
-  const gridFilter = useDateRangeFilter((range) => reloadGrid(range));
-  const statsFilter = useDateRangeFilter((range) => reloadStats(range));
+  const attendanceFilter = useDateRangeFilter((range) => reloadAttendance(range));
 
-  const reloadGrid = async (range: DateRange = gridFilter.filters) => {
+  const reloadAttendance = async (range: DateRange = attendanceFilter.filters) => {
     try {
-      setAttendanceGrid(
-        await getGroupAttendanceGrid(id, {
-          date_from: range.dateFrom || undefined,
-          date_to: range.dateTo || undefined,
-        }),
-      );
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    }
-  };
-
-  const reloadStats = async (range: DateRange = statsFilter.filters) => {
-    try {
-      setAttendanceStats(
-        await getGroupAttendanceStats(id, {
-          date_from: range.dateFrom || undefined,
-          date_to: range.dateTo || undefined,
-        }),
-      );
+      const params = {
+        date_from: range.dateFrom || undefined,
+        date_to: range.dateTo || undefined,
+      };
+      const [gridData, statsData] = await Promise.all([
+        getGroupAttendanceGrid(id, params),
+        getGroupAttendanceStats(id, params),
+      ]);
+      setAttendanceGrid(gridData);
+      setAttendanceStats(statsData);
     } catch (err) {
       setError(extractErrorMessage(err));
     }
@@ -76,7 +66,7 @@ export function TeacherGroupDetailPage() {
       .then(setGroup)
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
-    Promise.all([reloadGrid(), reloadStats()]).catch((err) => setError(extractErrorMessage(err)));
+    reloadAttendance().catch((err) => setError(extractErrorMessage(err)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -156,53 +146,28 @@ export function TeacherGroupDetailPage() {
 
       <div className="mt-6">
         <Card
-          title="Davomat jadvali"
+          title="Davomat"
           action={
-            <Button variant="secondary" onClick={gridFilter.open}>
+            <Button variant="secondary" onClick={attendanceFilter.open}>
               Filterlar
             </Button>
           }
         >
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Davr: {gridFilter.filters.dateFrom || "..."} — {gridFilter.filters.dateTo || "..."}
+            Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
           </p>
-          <AttendanceGridTable grid={attendanceGrid} />
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <Card
-          title="Davomat statistikasi"
-          action={
-            <Button variant="secondary" onClick={statsFilter.open}>
-              Filterlar
-            </Button>
-          }
-        >
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Davr: {statsFilter.filters.dateFrom || "..."} — {statsFilter.filters.dateTo || "..."}
-          </p>
-          <AttendanceStatsTable stats={attendanceStats} />
+          <AttendanceCombinedTable grid={attendanceGrid} stats={attendanceStats} />
         </Card>
       </div>
 
       <DateRangeFilterModal
-        title="Davomat jadvali uchun filter"
-        isOpen={gridFilter.isOpen}
-        draft={gridFilter.draft}
-        onChangeDraft={gridFilter.setDraft}
-        onApply={gridFilter.apply}
-        onClear={gridFilter.clear}
-        onClose={gridFilter.close}
-      />
-      <DateRangeFilterModal
-        title="Davomat statistikasi uchun filter"
-        isOpen={statsFilter.isOpen}
-        draft={statsFilter.draft}
-        onChangeDraft={statsFilter.setDraft}
-        onApply={statsFilter.apply}
-        onClear={statsFilter.clear}
-        onClose={statsFilter.close}
+        title="Davomat uchun filter"
+        isOpen={attendanceFilter.isOpen}
+        draft={attendanceFilter.draft}
+        onChangeDraft={attendanceFilter.setDraft}
+        onApply={attendanceFilter.apply}
+        onClear={attendanceFilter.clear}
+        onClose={attendanceFilter.close}
       />
     </Layout>
   );
