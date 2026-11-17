@@ -10,7 +10,6 @@ import {
   Modal,
   Pagination,
   Table,
-  TdAction,
   usePagination,
 } from "../../components/ui";
 import type { Subject } from "../../types";
@@ -89,6 +88,7 @@ export function SubjectsPage() {
     setError(null);
     try {
       await deleteSubject(subject.id);
+      setIsModalOpen(false);
       await loadSubjects();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -114,20 +114,14 @@ export function SubjectsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Fan nomi", ""]}>
+          <Table headers={["Fan nomi"]}>
             {pageItems.map((s) => (
-              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+              <tr
+                key={s.id}
+                onClick={() => openEditModal(s)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
                 <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.name}</td>
-                <TdAction>
-                  <div className="flex gap-1">
-                    <Button variant="secondary" onClick={() => openEditModal(s)}>
-                      Tahrirlash
-                    </Button>
-                    <Button variant="danger" onClick={() => handleDelete(s)}>
-                      O'chirish
-                    </Button>
-                  </div>
-                </TdAction>
               </tr>
             ))}
           </Table>
@@ -147,9 +141,20 @@ export function SubjectsPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <ErrorMessage message={error} />
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Saqlanmoqda..." : editTarget ? "Saqlash" : "Qo'shish"}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? "Saqlanmoqda..." : editTarget ? "Saqlash" : "Qo'shish"}
+              </Button>
+              {editTarget && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => handleDelete(editTarget)}
+                >
+                  O'chirish
+                </Button>
+              )}
+            </div>
           </form>
         </Modal>
       )}
