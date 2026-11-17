@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { listAllLessons, listGroups } from "../../api/endpoints";
 import {
   Badge,
@@ -36,14 +36,20 @@ const DEFAULT_FILTERS: Filters = {
 
 export function AttendanceHubPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const groupIdFromUrl = searchParams.get("group_id");
+  const initialFilters: Filters = groupIdFromUrl
+    ? { dateFrom: "", dateTo: "", groupId: groupIdFromUrl, status: "" }
+    : DEFAULT_FILTERS;
+
   const [lessons, setLessons] = useState<LessonListItem[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draft, setDraft] = useState<Filters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);

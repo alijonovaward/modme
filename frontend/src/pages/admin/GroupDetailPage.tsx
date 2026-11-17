@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   addStudentToGroup,
   generateGroupLessons,
   getGroupAttendanceGrid,
   getGroupAttendanceStats,
   getGroupDetail,
-  listGroupLessons,
   listStaffUsers,
   listStudents,
   listSubjects,
@@ -39,7 +38,6 @@ import type {
   GroupRosterItem,
   GroupStatus,
   GroupStudentStatus,
-  Lesson,
   StudentAttendanceStats,
   Subject,
   User,
@@ -81,7 +79,6 @@ export function GroupDetailPage() {
   const [allStudents, setAllStudents] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
   const [attendanceGrid, setAttendanceGrid] = useState<AttendanceGrid | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -107,22 +104,8 @@ export function GroupDetailPage() {
   const [generateTo, setGenerateTo] = useState(() => currentMonthRange().dateTo);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const lessonsFilter = useDateRangeFilter((range) => reloadLessons(range));
   const gridFilter = useDateRangeFilter((range) => reloadGrid(range));
   const statsFilter = useDateRangeFilter((range) => reloadStats(range));
-
-  const reloadLessons = async (range: DateRange = lessonsFilter.filters) => {
-    try {
-      setLessons(
-        await listGroupLessons(id, {
-          date_from: range.dateFrom || undefined,
-          date_to: range.dateTo || undefined,
-        }),
-      );
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    }
-  };
 
   const reloadGrid = async (range: DateRange = gridFilter.filters) => {
     try {
@@ -163,7 +146,7 @@ export function GroupDetailPage() {
       setAllStudents(studentsData);
       setSubjects(subjectsData);
       setTeachers(teachersData);
-      await Promise.all([reloadLessons(), reloadGrid(), reloadStats()]);
+      await Promise.all([reloadGrid(), reloadStats()]);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -302,13 +285,6 @@ export function GroupDetailPage() {
   }, [group, statusFilter]);
 
   const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
-  const {
-    page: lessonsPage,
-    setPage: setLessonsPage,
-    pageCount: lessonsPageCount,
-    pageItems: lessonsPageItems,
-    total: lessonsTotal,
-  } = usePagination(lessons);
 
   if (isLoading || !group) {
     return (
@@ -433,51 +409,18 @@ export function GroupDetailPage() {
         </Card>
 
         <div className="mt-6">
-          <Card
-            title="Darslar"
-            action={
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={lessonsFilter.open}>
-                  Filterlar
-                </Button>
-                <Button variant="secondary" onClick={() => setIsGenerateModalOpen(true)}>
-                  Darslarni generatsiya qilish
-                </Button>
-              </div>
-            }
-          >
-            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              Davr: {lessonsFilter.filters.dateFrom || "..."} — {lessonsFilter.filters.dateTo || "..."}
-            </p>
-            {lessons.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Hali dars qo'shilmagan</p>
-            ) : (
-              <>
-                <Table headers={["Sana", "Vaqt", "Holat"]}>
-                  {lessonsPageItems.map((l) => (
-                    <tr key={l.id}>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                        {l.start_time && l.end_time
-                          ? `${l.start_time.slice(0, 5)}–${l.end_time.slice(0, 5)}`
-                          : "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge color={l.status === "completed" ? "green" : "slate"}>
-                          {l.status === "completed" ? "O'tildi" : "Rejada"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </Table>
-                <Pagination
-                  page={lessonsPage}
-                  pageCount={lessonsPageCount}
-                  total={lessonsTotal}
-                  onPageChange={setLessonsPage}
-                />
-              </>
-            )}
+          <Card title="Darslar">
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to={`/admin/lessons?group_id=${id}`}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300/80 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-150 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Darslar ro'yxatini ko'rish
+              </Link>
+              <Button variant="secondary" onClick={() => setIsGenerateModalOpen(true)}>
+                Darslarni generatsiya qilish
+              </Button>
+            </div>
           </Card>
         </div>
 
@@ -514,15 +457,6 @@ export function GroupDetailPage() {
         </div>
       </div>
 
-      <DateRangeFilterModal
-        title="Darslar uchun filter"
-        isOpen={lessonsFilter.isOpen}
-        draft={lessonsFilter.draft}
-        onChangeDraft={lessonsFilter.setDraft}
-        onApply={lessonsFilter.apply}
-        onClear={lessonsFilter.clear}
-        onClose={lessonsFilter.close}
-      />
       <DateRangeFilterModal
         title="Davomat jadvali uchun filter"
         isOpen={gridFilter.isOpen}

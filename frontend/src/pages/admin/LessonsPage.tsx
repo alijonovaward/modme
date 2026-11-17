@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   createLesson,
   deleteLesson,
@@ -48,6 +49,12 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 export function LessonsPage() {
+  const [searchParams] = useSearchParams();
+  const groupIdFromUrl = searchParams.get("group_id");
+  const initialFilters: Filters = groupIdFromUrl
+    ? { dateFrom: "", dateTo: "", groupId: groupIdFromUrl, teacherId: "", subjectId: "", status: "" }
+    : DEFAULT_FILTERS;
+
   const [lessons, setLessons] = useState<LessonListItem[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
@@ -57,8 +64,8 @@ export function LessonsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draft, setDraft] = useState<Filters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newGroupId, setNewGroupId] = useState("");
