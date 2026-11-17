@@ -151,7 +151,7 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
   const hasEmptyLastHeader = headers.length > 0 && headers[headers.length - 1] === "";
 
   return (
-    <div className="relative w-full overflow-x-auto rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+    <div className="relative w-full overflow-x-auto touch-pan-x rounded-xl border border-slate-200/60 dark:border-slate-800/60">
       <table className="w-full text-left text-xs sm:text-sm">
         <thead>
           <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-semibold tracking-wider text-slate-500 sm:text-xs dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-400">
@@ -318,8 +318,8 @@ export function Modal({
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4 dark:bg-slate-950/80">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3 sm:p-4 dark:bg-slate-950/80">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
           <button

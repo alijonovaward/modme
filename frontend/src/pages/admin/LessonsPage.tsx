@@ -227,7 +227,7 @@ export function LessonsPage() {
       <Card
         title="Darslar"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               onClick={() => {
@@ -388,7 +388,7 @@ export function LessonsPage() {
                 ]}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button className="flex-1" onClick={applyFilters}>
                 Qo'llash
               </Button>

@@ -112,7 +112,7 @@ export function StudentTransactionsPage() {
       <Card
         title="Tranzaksiyalar"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               onClick={() =>
@@ -232,7 +232,7 @@ export function StudentTransactionsPage() {
                 options={[{ value: "", label: "Barcha guruhlar" }, ...groupOptions]}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button className="flex-1" onClick={applyFilters}>
                 Qo'llash
               </Button>
