@@ -447,6 +447,8 @@ def get_group_attendance_grid(
 @router.get("/{group_id}/lessons", response_model=list[LessonOut])
 def list_group_lessons(
     group_id: int,
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
@@ -456,12 +458,12 @@ def list_group_lessons(
     if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
-    return (
-        db.query(Lesson)
-        .filter(Lesson.group_id == group_id)
-        .order_by(Lesson.lesson_date.desc())
-        .all()
-    )
+    query = db.query(Lesson).filter(Lesson.group_id == group_id)
+    if date_from is not None:
+        query = query.filter(Lesson.lesson_date >= date_from)
+    if date_to is not None:
+        query = query.filter(Lesson.lesson_date <= date_to)
+    return query.order_by(Lesson.lesson_date.desc()).all()
 
 
 @router.post("/{group_id}/lessons/generate", response_model=LessonGenerateResult)

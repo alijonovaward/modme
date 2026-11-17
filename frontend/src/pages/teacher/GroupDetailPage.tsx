@@ -1,23 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getGroupAttendanceGrid, getGroupAttendanceStats, getGroupDetail } from "../../api/endpoints";
+import {
+  getGroupAttendanceGrid,
+  getGroupAttendanceStats,
+  getGroupDetail,
+  listGroupLessons,
+} from "../../api/endpoints";
 import {
   Badge,
   Button,
   Card,
   ErrorMessage,
   extractErrorMessage,
-  Input,
-  Label,
-  Modal,
   Pagination,
   Table,
   usePagination,
 } from "../../components/ui";
 import { AttendanceGridTable, AttendanceStatsTable } from "../../components/AttendanceGridView";
-import type { AttendanceGrid, GroupDetail, GroupStudentStatus, StudentAttendanceStats } from "../../types";
+import { DateRangeFilterModal } from "../../components/DateRangeFilterModal";
+import { useDateRangeFilter, type DateRange } from "../../hooks/useDateRangeFilter";
+import type {
+  AttendanceGrid,
+  GroupDetail,
+  GroupStudentStatus,
+  Lesson,
+  StudentAttendanceStats,
+} from "../../types";
 import { Layout } from "../../components/Layout";
-import { currentMonthRange } from "../../utils/date";
 
 const ROSTER_STATUS_COLOR = {
   active: "green",
@@ -41,23 +50,51 @@ export function TeacherGroupDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
 
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
   const [attendanceGrid, setAttendanceGrid] = useState<AttendanceGrid | null>(null);
-  const [attendanceFilters, setAttendanceFilters] = useState(() => currentMonthRange());
-  const [isAttendanceFilterModalOpen, setIsAttendanceFilterModalOpen] = useState(false);
-  const [attendanceFilterDraft, setAttendanceFilterDraft] = useState(attendanceFilters);
 
-  const loadAttendance = async (filters = attendanceFilters) => {
-    const params = {
-      date_from: filters.dateFrom || undefined,
-      date_to: filters.dateTo || undefined,
-    };
-    const [statsData, gridData] = await Promise.all([
-      getGroupAttendanceStats(id, params),
-      getGroupAttendanceGrid(id, params),
-    ]);
-    setAttendanceStats(statsData);
-    setAttendanceGrid(gridData);
+  const lessonsFilter = useDateRangeFilter((range) => reloadLessons(range));
+  const gridFilter = useDateRangeFilter((range) => reloadGrid(range));
+  const statsFilter = useDateRangeFilter((range) => reloadStats(range));
+
+  const reloadLessons = async (range: DateRange = lessonsFilter.filters) => {
+    try {
+      setLessons(
+        await listGroupLessons(id, {
+          date_from: range.dateFrom || undefined,
+          date_to: range.dateTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const reloadGrid = async (range: DateRange = gridFilter.filters) => {
+    try {
+      setAttendanceGrid(
+        await getGroupAttendanceGrid(id, {
+          date_from: range.dateFrom || undefined,
+          date_to: range.dateTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const reloadStats = async (range: DateRange = statsFilter.filters) => {
+    try {
+      setAttendanceStats(
+        await getGroupAttendanceStats(id, {
+          date_from: range.dateFrom || undefined,
+          date_to: range.dateTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
   };
 
   useEffect(() => {
@@ -65,28 +102,11 @@ export function TeacherGroupDetailPage() {
       .then(setGroup)
       .catch((err) => setError(extractErrorMessage(err)))
       .finally(() => setIsLoading(false));
-    loadAttendance().catch((err) => setError(extractErrorMessage(err)));
+    Promise.all([reloadLessons(), reloadGrid(), reloadStats()]).catch((err) =>
+      setError(extractErrorMessage(err)),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  const openAttendanceFilterModal = () => {
-    setAttendanceFilterDraft(attendanceFilters);
-    setIsAttendanceFilterModalOpen(true);
-  };
-
-  const applyAttendanceFilters = () => {
-    setAttendanceFilters(attendanceFilterDraft);
-    setIsAttendanceFilterModalOpen(false);
-    loadAttendance(attendanceFilterDraft).catch((err) => setError(extractErrorMessage(err)));
-  };
-
-  const clearAttendanceFilters = () => {
-    const defaults = currentMonthRange();
-    setAttendanceFilterDraft(defaults);
-    setAttendanceFilters(defaults);
-    setIsAttendanceFilterModalOpen(false);
-    loadAttendance(defaults).catch((err) => setError(extractErrorMessage(err)));
-  };
 
   const filteredStudents = useMemo(() => {
     if (!group) return [];
@@ -95,6 +115,7 @@ export function TeacherGroupDetailPage() {
   }, [group, statusFilter]);
 
   const studentPagination = usePagination(filteredStudents);
+  const lessonsPagination = usePagination(lessons);
 
   if (isLoading || !group) {
     return (
@@ -153,62 +174,107 @@ export function TeacherGroupDetailPage() {
 
       <div className="mt-6">
         <Card
-          title="Davomat jadvali"
+          title="Darslar"
           action={
-            <Button variant="secondary" onClick={openAttendanceFilterModal}>
+            <Button variant="secondary" onClick={lessonsFilter.open}>
               Filterlar
             </Button>
           }
         >
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Davr: {attendanceFilters.dateFrom || "..."} — {attendanceFilters.dateTo || "..."}
+            Davr: {lessonsFilter.filters.dateFrom || "..."} — {lessonsFilter.filters.dateTo || "..."}
+          </p>
+          {lessons.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Hali dars qo'shilmagan</p>
+          ) : (
+            <>
+              <Table headers={["Sana", "Vaqt", "Holat"]}>
+                {lessonsPagination.pageItems.map((l) => (
+                  <tr key={l.id}>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                      {l.start_time && l.end_time
+                        ? `${l.start_time.slice(0, 5)}–${l.end_time.slice(0, 5)}`
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge color={l.status === "completed" ? "green" : "slate"}>
+                        {l.status === "completed" ? "O'tildi" : "Rejada"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+              <Pagination
+                page={lessonsPagination.page}
+                pageCount={lessonsPagination.pageCount}
+                total={lessonsPagination.total}
+                onPageChange={lessonsPagination.setPage}
+              />
+            </>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card
+          title="Davomat jadvali"
+          action={
+            <Button variant="secondary" onClick={gridFilter.open}>
+              Filterlar
+            </Button>
+          }
+        >
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {gridFilter.filters.dateFrom || "..."} — {gridFilter.filters.dateTo || "..."}
           </p>
           <AttendanceGridTable grid={attendanceGrid} />
         </Card>
       </div>
 
       <div className="mt-6">
-        <Card title="Davomat statistikasi">
+        <Card
+          title="Davomat statistikasi"
+          action={
+            <Button variant="secondary" onClick={statsFilter.open}>
+              Filterlar
+            </Button>
+          }
+        >
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {statsFilter.filters.dateFrom || "..."} — {statsFilter.filters.dateTo || "..."}
+          </p>
           <AttendanceStatsTable stats={attendanceStats} />
         </Card>
       </div>
 
-      {isAttendanceFilterModalOpen && (
-        <Modal title="Davomat uchun filter" onClose={() => setIsAttendanceFilterModalOpen(false)}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Dan</Label>
-                <Input
-                  type="date"
-                  value={attendanceFilterDraft.dateFrom}
-                  onChange={(e) =>
-                    setAttendanceFilterDraft((prev) => ({ ...prev, dateFrom: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Gacha</Label>
-                <Input
-                  type="date"
-                  value={attendanceFilterDraft.dateTo}
-                  onChange={(e) =>
-                    setAttendanceFilterDraft((prev) => ({ ...prev, dateTo: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={applyAttendanceFilters}>
-                Qo'llash
-              </Button>
-              <Button variant="secondary" onClick={clearAttendanceFilters}>
-                Shu oyga qaytarish
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <DateRangeFilterModal
+        title="Darslar uchun filter"
+        isOpen={lessonsFilter.isOpen}
+        draft={lessonsFilter.draft}
+        onChangeDraft={lessonsFilter.setDraft}
+        onApply={lessonsFilter.apply}
+        onClear={lessonsFilter.clear}
+        onClose={lessonsFilter.close}
+      />
+      <DateRangeFilterModal
+        title="Davomat jadvali uchun filter"
+        isOpen={gridFilter.isOpen}
+        draft={gridFilter.draft}
+        onChangeDraft={gridFilter.setDraft}
+        onApply={gridFilter.apply}
+        onClear={gridFilter.clear}
+        onClose={gridFilter.close}
+      />
+      <DateRangeFilterModal
+        title="Davomat statistikasi uchun filter"
+        isOpen={statsFilter.isOpen}
+        draft={statsFilter.draft}
+        onChangeDraft={statsFilter.setDraft}
+        onApply={statsFilter.apply}
+        onClear={statsFilter.clear}
+        onClose={statsFilter.close}
+      />
     </Layout>
   );
 }

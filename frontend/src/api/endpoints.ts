@@ -335,8 +335,11 @@ export async function updateGroupStudentStatus(
   return data;
 }
 
-export async function listGroupLessons(groupId: number): Promise<Lesson[]> {
-  const { data } = await apiClient.get<Lesson[]>(`/api/v1/groups/${groupId}/lessons`);
+export async function listGroupLessons(
+  groupId: number,
+  params?: { date_from?: string; date_to?: string },
+): Promise<Lesson[]> {
+  const { data } = await apiClient.get<Lesson[]>(`/api/v1/groups/${groupId}/lessons`, { params });
   return data;
 }
 
