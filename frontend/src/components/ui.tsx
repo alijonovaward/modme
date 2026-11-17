@@ -71,75 +71,95 @@ export function Combobox({
   placeholder?: string;
   className?: string;
 }) {
-  const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedLabel = useMemo(
-    () => options.find((o) => o.value === value)?.label ?? "",
+  const selectedOption = useMemo(
+    () => options.find((o) => o.value === value),
     [options, value],
   );
 
   useEffect(() => {
-    if (!isOpen) {
-      setQuery(selectedLabel);
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearchQuery("");
+      }
     }
-  }, [selectedLabel, isOpen]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const filteredOptions = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term || term === selectedLabel.toLowerCase()) return options;
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return options;
     return options.filter((o) => o.label.toLowerCase().includes(term));
-  }, [options, query, selectedLabel]);
+  }, [options, searchQuery]);
 
-  const handleSelect = (option: ComboboxOption) => {
-    onChange(option.value);
-    setQuery(option.label);
+  const handleSelect = (optionValue: string) => {
+    onChange(optionValue);
     setIsOpen(false);
+    setSearchQuery("");
   };
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <input
-        className="w-full rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
-        placeholder={placeholder ?? "Qidirish..."}
-        value={query}
-        onFocus={() => {
-          setIsOpen(true);
-        }}
-        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setIsOpen(true);
-        }}
-      />
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex w-full select-none items-center justify-between rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-left text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
+      >
+        <span className={selectedOption ? "font-medium text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}>
+          {selectedOption ? selectedOption.label : (placeholder ?? "Tanlang...")}
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
       {isOpen && (
-        <div className="absolute z-20 mt-1.5 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1 shadow-lg dark:border-slate-700/80 dark:bg-slate-900">
-          {filteredOptions.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 select-none">Topilmadi</p>
-          ) : (
-            filteredOptions.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(o);
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleSelect(o);
-                }}
-                className={`block w-full select-none rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 ${
-                  o.value === value
-                    ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400"
-                    : "text-slate-700 dark:text-slate-300"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))
+        <div className="absolute left-0 right-0 z-30 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1 shadow-lg dark:border-slate-700/80 dark:bg-slate-900">
+          {options.length > 6 && (
+            <div className="p-1 border-b border-slate-100 dark:border-slate-800">
+              <input
+                type="text"
+                placeholder="Qidirish..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </div>
           )}
+          <div className="py-1">
+            {filteredOptions.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 select-none">Topilmadi</p>
+            ) : (
+              filteredOptions.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => handleSelect(o.value)}
+                  className={`block w-full select-none rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 ${
+                    o.value === value
+                      ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400"
+                      : "text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
