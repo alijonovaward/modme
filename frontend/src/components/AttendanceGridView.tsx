@@ -38,7 +38,7 @@ export function AttendanceCombinedTable({
   const statsByStudent = new Map(stats.map((s) => [s.student_id, s]));
 
   return (
-    <div className="relative w-full overflow-x-auto touch-pan-x rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+    <div className="relative w-full overflow-x-auto rounded-xl border border-slate-200/60 dark:border-slate-800/60">
       <table className="w-full text-left text-xs sm:text-sm">
         <thead>
           <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-semibold tracking-wider text-slate-500 sm:text-xs dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-400">
