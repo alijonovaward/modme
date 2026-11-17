@@ -191,7 +191,7 @@ export function StudentsPage() {
           />
           <button
             onClick={() => setDebtorsOnly((prev) => !prev)}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-all active:scale-95 ${
+            className={`flex select-none items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-all active:scale-95 ${
               debtorsOnly ? "bg-rose-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             }`}
           >

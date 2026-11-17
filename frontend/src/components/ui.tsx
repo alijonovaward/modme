@@ -29,7 +29,7 @@ export function Button({
   }[variant];
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${styles} ${className}`}
+      className={`inline-flex select-none items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${styles} ${className}`}
       {...props}
     />
   );
@@ -47,7 +47,7 @@ export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInpu
 export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20 ${className}`}
+      className={`w-full select-none rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20 ${className}`}
       {...props}
     />
   );
@@ -101,14 +101,13 @@ export function Combobox({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <input
-        className="w-full rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
+        className="w-full rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-sm text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
         placeholder={placeholder ?? "Qidirish..."}
         value={query}
-        onFocus={(e) => {
+        onFocus={() => {
           setIsOpen(true);
-          e.target.select();
         }}
-        onBlur={() => setTimeout(() => setIsOpen(false), 120)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
         onChange={(e) => {
           setQuery(e.target.value);
           setIsOpen(true);
@@ -117,7 +116,7 @@ export function Combobox({
       {isOpen && (
         <div className="absolute z-20 mt-1.5 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1 shadow-lg dark:border-slate-700/80 dark:bg-slate-900">
           {filteredOptions.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">Topilmadi</p>
+            <p className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 select-none">Topilmadi</p>
           ) : (
             filteredOptions.map((o) => (
               <button
@@ -127,7 +126,11 @@ export function Combobox({
                   e.preventDefault();
                   handleSelect(o);
                 }}
-                className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleSelect(o);
+                }}
+                className={`block w-full select-none rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 ${
                   o.value === value
                     ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400"
                     : "text-slate-700 dark:text-slate-300"
@@ -144,7 +147,7 @@ export function Combobox({
 }
 
 export function Label({ children }: { children: ReactNode }) {
-  return <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">{children}</label>;
+  return <label className="mb-1.5 block select-none text-xs font-semibold text-slate-700 dark:text-slate-300">{children}</label>;
 }
 
 export function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
@@ -280,7 +283,7 @@ export function Badge({ children, color = "slate" }: { children: ReactNode; colo
     red: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60",
     amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/60",
   }[color];
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${styles}`}>{children}</span>;
+  return <span className={`inline-flex select-none items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${styles}`}>{children}</span>;
 }
 
 export function StatTile({
