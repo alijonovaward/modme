@@ -135,7 +135,7 @@ export function AttendanceHubPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Guruh", "Fan", "Holat", "Keldi", "Sababli", "Sababsiz"]}>
+          <Table headers={["Sana", "Guruh", "Fan", "Holat"]}>
             {lessons.map((l) => (
               <tr
                 key={l.id}
@@ -149,29 +149,6 @@ export function AttendanceHubPage() {
                   <Badge color={l.status === "completed" ? "green" : "slate"}>
                     {l.status === "completed" ? "O'tildi" : "Rejada"}
                   </Badge>
-                </td>
-                <td className="px-3.5 py-2.5">
-                  <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/80 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400">
-                    🟢 {l.present_count}
-                  </span>
-                </td>
-                <td className="px-3.5 py-2.5">
-                  <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-semibold ${
-                    l.excused_count > 0
-                      ? "border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-400"
-                      : "border-slate-200/60 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500"
-                  }`}>
-                    🟡 {l.excused_count}
-                  </span>
-                </td>
-                <td className="px-3.5 py-2.5">
-                  <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-semibold ${
-                    l.unexcused_count > 0
-                      ? "border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-400"
-                      : "border-slate-200/60 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500"
-                  }`}>
-                    🔴 {l.unexcused_count}
-                  </span>
                 </td>
               </tr>
             ))}

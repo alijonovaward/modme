@@ -196,6 +196,9 @@ export function AttendancePage() {
   }
 
   const activeStudents = group.students.filter((s) => s.status !== "dropped");
+  const presentCount = Object.values(rows).filter((r) => r.status === "present").length;
+  const excusedCount = Object.values(rows).filter((r) => r.status === "excused").length;
+  const unexcusedCount = Object.values(rows).filter((r) => r.status === "unexcused").length;
 
   return (
     <Layout>
@@ -221,6 +224,21 @@ export function AttendancePage() {
       <Card>
         <ErrorMessage message={error} />
         <SuccessMessage message={success} />
+
+        <div className="mb-4 grid grid-cols-3 gap-2.5 text-center">
+          <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-2.5 dark:border-emerald-900/60 dark:bg-emerald-950/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Keldi</p>
+            <p className="mt-0.5 text-base font-bold text-emerald-800 dark:text-emerald-300">🟢 {presentCount}</p>
+          </div>
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-2.5 dark:border-amber-900/60 dark:bg-amber-950/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Sababli</p>
+            <p className="mt-0.5 text-base font-bold text-amber-800 dark:text-amber-300">🟡 {excusedCount}</p>
+          </div>
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/80 p-2.5 dark:border-rose-900/60 dark:bg-rose-950/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Sababsiz</p>
+            <p className="mt-0.5 text-base font-bold text-rose-800 dark:text-rose-300">🔴 {unexcusedCount}</p>
+          </div>
+        </div>
 
         <Table headers={["O'quvchi", "Holat", "Test natijasi", "Sinov darsi"]}>
           {activeStudents.map((s) => {
