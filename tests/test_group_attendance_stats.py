@@ -50,6 +50,8 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
     assert stats["recent_attendance_rate"] == 0.0
     assert stats["is_declining"] is True
 
+    # Narrowing the filter to just the two "present" lessons means the chosen
+    # range's own first/second half are both "present" -> no decline within it.
     resp = client.get(
         f"/api/v1/groups/{group['id']}/attendance-stats",
         headers=admin_headers,
@@ -62,8 +64,26 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
     filtered_stats = resp.json()[0]
     assert filtered_stats["total_lessons"] == 2
     assert filtered_stats["attendance_rate"] == 100.0
-    assert filtered_stats["recent_attendance_rate"] == 0.0
+    assert filtered_stats["recent_attendance_rate"] == 100.0
     assert filtered_stats["previous_attendance_rate"] == 100.0
+    assert filtered_stats["is_declining"] is False
+
+    # Filtering to the full span still splits into a declining first/second half.
+    resp = client.get(
+        f"/api/v1/groups/{group['id']}/attendance-stats",
+        headers=admin_headers,
+        params={
+            "date_from": previous_dates[0].isoformat(),
+            "date_to": recent_dates[1].isoformat(),
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    full_span_stats = resp.json()[0]
+    assert full_span_stats["total_lessons"] == 4
+    assert full_span_stats["attendance_rate"] == 50.0
+    assert full_span_stats["previous_attendance_rate"] == 100.0
+    assert full_span_stats["recent_attendance_rate"] == 0.0
+    assert full_span_stats["is_declining"] is True
 
 
 def test_no_data_means_not_declining(client, superadmin_headers, admin_headers):

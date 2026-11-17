@@ -326,9 +326,11 @@ def get_group_attendance_stats(
         .all()
     )
 
-    today = date.today()
-    recent_start = today - ATTENDANCE_TREND_WINDOW
-    previous_start = today - (ATTENDANCE_TREND_WINDOW * 2)
+    if date_from is not None and date_to is not None:
+        total_days = (date_to - date_from).days + 1
+        midpoint = date_from + timedelta(days=total_days // 2)
+    else:
+        midpoint = date.today() - ATTENDANCE_TREND_WINDOW
 
     def _rate(records: list) -> Optional[float]:
         if not records:
@@ -350,14 +352,8 @@ def get_group_attendance_stats(
             period_query = period_query.filter(Lesson.lesson_date <= date_to)
         rows = period_query.all()
 
-        trend_rows = (
-            db.query(Attendance.status, Lesson.lesson_date)
-            .join(Lesson, Lesson.id == Attendance.lesson_id)
-            .filter(Lesson.group_id == group_id, Attendance.student_id == gs.student_id)
-            .all()
-        )
-        recent_rows = [r for r in trend_rows if r[1] >= recent_start]
-        previous_rows = [r for r in trend_rows if previous_start <= r[1] < recent_start]
+        previous_rows = [r for r in rows if r[1] < midpoint]
+        recent_rows = [r for r in rows if r[1] >= midpoint]
         recent_rate = _rate(recent_rows)
         previous_rate = _rate(previous_rows)
         is_declining = (

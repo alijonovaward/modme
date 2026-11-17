@@ -30,8 +30,8 @@ const STICKY_COLUMNS = [
   { key: "name", label: "O'quvchi", width: 150 },
   { key: "total", label: "Jami darslar", width: 90 },
   { key: "overall", label: "Umumiy foiz", width: 90 },
-  { key: "previous", label: "Oldingi 14 kun", width: 105 },
-  { key: "recent", label: "So'nggi 14 kun", width: 105 },
+  { key: "previous", label: "Oldingi davr", width: 100 },
+  { key: "recent", label: "So'nggi davr", width: 100 },
   { key: "trend", label: "Trend", width: 100 },
 ] as const;
 
