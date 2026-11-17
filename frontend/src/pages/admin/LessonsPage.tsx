@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   createLesson,
   deleteLesson,
+  generateGroupLessons,
   getLessonAttendance,
   listAllLessons,
   listGroups,
@@ -71,6 +72,12 @@ export function LessonsPage() {
   const [newGroupId, setNewGroupId] = useState("");
   const [newLessonDate, setNewLessonDate] = useState(() => toLocalISODate(new Date()));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [generateGroupId, setGenerateGroupId] = useState("");
+  const [generateFrom, setGenerateFrom] = useState(() => currentMonthRange().dateFrom);
+  const [generateTo, setGenerateTo] = useState(() => currentMonthRange().dateTo);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [detailLesson, setDetailLesson] = useState<LessonListItem | null>(null);
   const [detailAttendance, setDetailAttendance] = useState<AttendanceDetail[]>([]);
@@ -147,6 +154,25 @@ export function LessonsPage() {
     }
   };
 
+  const handleGenerateLessons = async () => {
+    if (!generateGroupId) return;
+    setError(null);
+    setSuccess(null);
+    setIsGenerating(true);
+    try {
+      const result = await generateGroupLessons(Number(generateGroupId), generateFrom, generateTo);
+      setSuccess(
+        `${result.created_count} ta dars yaratildi, ${result.skipped_count} ta allaqachon mavjud edi`,
+      );
+      setIsGenerateModalOpen(false);
+      await load(appliedFilters, page);
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleDeleteLesson = async (lesson: LessonListItem) => {
     if (!window.confirm(`${lesson.lesson_date} (${lesson.group_name}) darsini o'chirishni tasdiqlaysizmi?`)) {
       return;
@@ -211,6 +237,17 @@ export function LessonsPage() {
               }}
             >
               + Dars qo'shish
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setGenerateGroupId("");
+                setGenerateFrom(currentMonthRange().dateFrom);
+                setGenerateTo(currentMonthRange().dateTo);
+                setIsGenerateModalOpen(true);
+              }}
+            >
+              Darslarni generatsiya qilish
             </Button>
             <Button onClick={openModal}>
               Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
@@ -389,6 +426,47 @@ export function LessonsPage() {
               onClick={handleCreateLesson}
             >
               {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {isGenerateModalOpen && (
+        <Modal title="Darslarni generatsiya qilish" onClose={() => setIsGenerateModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={generateGroupId}
+                onChange={setGenerateGroupId}
+                placeholder="Guruh qidirish..."
+                options={groups.map((g) => ({ value: String(g.id), label: g.name }))}
+              />
+            </div>
+            <div>
+              <Label>Boshlanish sanasi</Label>
+              <Input
+                type="date"
+                value={generateFrom}
+                onChange={(e) => setGenerateFrom(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label>Tugash sanasi</Label>
+              <Input
+                type="date"
+                value={generateTo}
+                onChange={(e) => setGenerateTo(e.target.value)}
+                required
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!generateGroupId || isGenerating}
+              onClick={handleGenerateLessons}
+            >
+              {isGenerating ? "Yaratilmoqda..." : "Generatsiya qilish"}
             </Button>
           </div>
         </Modal>

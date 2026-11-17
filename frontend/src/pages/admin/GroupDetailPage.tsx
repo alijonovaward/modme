@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
-  generateGroupLessons,
   getGroupAttendanceGrid,
   getGroupAttendanceStats,
   getGroupDetail,
@@ -43,7 +42,6 @@ import type {
   User,
 } from "../../types";
 import { Layout } from "../../components/Layout";
-import { currentMonthRange } from "../../utils/date";
 import { formatSchedule, WEEKDAYS } from "../../utils/weekdays";
 
 const ROSTER_STATUS_COLOR = {
@@ -98,11 +96,6 @@ export function GroupDetailPage() {
   const [editScheduleDays, setEditScheduleDays] = useState<number[]>([]);
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
-
-  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
-  const [generateFrom, setGenerateFrom] = useState(() => currentMonthRange().dateFrom);
-  const [generateTo, setGenerateTo] = useState(() => currentMonthRange().dateTo);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const gridFilter = useDateRangeFilter((range) => reloadGrid(range));
   const statsFilter = useDateRangeFilter((range) => reloadStats(range));
@@ -234,23 +227,6 @@ export function GroupDetailPage() {
     }
   };
 
-  const handleGenerateLessons = async () => {
-    setError(null);
-    setSuccess(null);
-    setIsGenerating(true);
-    try {
-      const result = await generateGroupLessons(id, generateFrom, generateTo);
-      setSuccess(
-        `${result.created_count} ta dars yaratildi, ${result.skipped_count} ta allaqachon mavjud edi`,
-      );
-      setIsGenerateModalOpen(false);
-      await loadAll();
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleStatusChange = async (studentId: number, status: GroupStudentStatus) => {
     setError(null);
@@ -409,22 +385,6 @@ export function GroupDetailPage() {
         </Card>
 
         <div className="mt-6">
-          <Card title="Darslar">
-            <div className="flex flex-wrap gap-2">
-              <Link
-                to={`/admin/lessons?group_id=${id}`}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-300/80 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-150 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                Darslar ro'yxatini ko'rish
-              </Link>
-              <Button variant="secondary" onClick={() => setIsGenerateModalOpen(true)}>
-                Darslarni generatsiya qilish
-              </Button>
-            </div>
-          </Card>
-        </div>
-
-        <div className="mt-6">
           <Card
             title="Davomat jadvali"
             action={
@@ -475,24 +435,6 @@ export function GroupDetailPage() {
         onClear={statsFilter.clear}
         onClose={statsFilter.close}
       />
-
-      {isGenerateModalOpen && (
-        <Modal title="Darslarni generatsiya qilish" onClose={() => setIsGenerateModalOpen(false)}>
-          <div className="space-y-4">
-            <div>
-              <Label>Boshlanish sanasi</Label>
-              <Input type="date" value={generateFrom} onChange={(e) => setGenerateFrom(e.target.value)} required />
-            </div>
-            <div>
-              <Label>Tugash sanasi</Label>
-              <Input type="date" value={generateTo} onChange={(e) => setGenerateTo(e.target.value)} required />
-            </div>
-            <Button className="w-full" onClick={handleGenerateLessons} disabled={isGenerating}>
-              {isGenerating ? "Yaratilmoqda..." : "Generatsiya qilish"}
-            </Button>
-          </div>
-        </Modal>
-      )}
 
       {dropTarget && (
         <Modal title={`${dropTarget.student_name} ni guruhdan chiqarish`} onClose={() => setDropTarget(null)}>
