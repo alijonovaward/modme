@@ -12,10 +12,12 @@ import {
   Label,
   Modal,
   Pagination,
+  PrivacyToggle,
   Select,
   StatTile,
   Table,
   usePagination,
+  usePrivacyMode,
 } from "../../components/ui";
 import type { GroupListItem, Subject, TeacherTransaction } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -105,19 +107,22 @@ export function FinancePage() {
   );
   const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
 
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
+
   return (
     <Layout>
       <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950/40">
         <p className="text-sm text-emerald-700 dark:text-emerald-400">Yechib olish mumkin bo'lgan pul (joriy balans)</p>
         <p className="text-2xl font-semibold text-emerald-800 dark:text-emerald-300">
-          {(user?.balance ?? 0).toLocaleString("uz-UZ")} so'm
+          {isPrivate ? "••••••••" : `${(user?.balance ?? 0).toLocaleString("uz-UZ")} so'm`}
         </p>
       </div>
 
       <Card
         title="Moliyam"
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
             <Button
               variant="secondary"
               onClick={() =>
@@ -151,16 +156,19 @@ export function FinancePage() {
             label="Jami kirim (dars daromadi)"
             value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
             color="green"
+            isPrivate={isPrivate}
           />
           <StatTile
             label="Jami qolgan"
             value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
             color="indigo"
+            isPrivate={isPrivate}
           />
           <StatTile
             label="Jami yechilgan (admin bergan)"
             value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
             color="red"
+            isPrivate={isPrivate}
           />
         </div>
         {isLoading ? (

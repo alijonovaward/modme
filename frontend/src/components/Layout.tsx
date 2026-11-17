@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeContext";
 import { InstallPWA } from "./InstallPWA";
 import { BottomNav } from "./BottomNav";
+import { PrivacyToggle, usePrivacyMode } from "./ui";
 
 interface NavItem {
   to: string;
@@ -50,6 +51,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
+
   if (!user) return null;
 
   const navItems = NAV_BY_ROLE[user.role] ?? [];
@@ -66,8 +69,11 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
             {(user.role === "teacher" || user.role === "student") && (
-              <div className="rounded-xl border border-emerald-200/60 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400">
-                Balans: {user.balance.toLocaleString("uz-UZ")} so'm
+              <div className="flex items-center gap-1.5">
+                <div className="rounded-xl border border-emerald-200/60 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400">
+                  Balans: {isPrivate ? "••••••••" : `${user.balance.toLocaleString("uz-UZ")} so'm`}
+                </div>
+                <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
               </div>
             )}
             <button

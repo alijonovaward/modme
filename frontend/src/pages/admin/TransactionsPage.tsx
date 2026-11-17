@@ -20,9 +20,11 @@ import {
   Modal,
   PAGE_SIZE,
   Pagination,
+  PrivacyToggle,
   Select,
   StatTile,
   Table,
+  usePrivacyMode,
 } from "../../components/ui";
 import type {
   GroupListItem,
@@ -275,12 +277,15 @@ export function TransactionsPage() {
     }
   };
 
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
+
   return (
     <Layout>
       <Card
         title="Tranzaksiyalar tarixi"
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
             <Button variant="secondary" onClick={handleExport}>
               Excel'ga chiqarish
             </Button>
@@ -329,16 +334,19 @@ export function TransactionsPage() {
               label="Jami to'ldirilgan"
               value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
               color="green"
+              isPrivate={isPrivate}
             />
             <StatTile
               label="Jami qolgan"
               value={`${totalStudentRemaining.toLocaleString("uz-UZ")} so'm`}
               color="indigo"
+              isPrivate={isPrivate}
             />
             <StatTile
               label="Jami yechilgan"
               value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
               color="red"
+              isPrivate={isPrivate}
             />
           </div>
         )}
@@ -348,16 +356,19 @@ export function TransactionsPage() {
               label="Jami dars daromadi"
               value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
               color="green"
+              isPrivate={isPrivate}
             />
             <StatTile
               label="Jami qolgan"
               value={`${totalTeacherRemaining.toLocaleString("uz-UZ")} so'm`}
               color="indigo"
+              isPrivate={isPrivate}
             />
             <StatTile
               label="Jami pul berilgan"
               value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
               color="red"
+              isPrivate={isPrivate}
             />
           </div>
         )}

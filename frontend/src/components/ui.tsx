@@ -306,14 +306,67 @@ export function Badge({ children, color = "slate" }: { children: ReactNode; colo
   return <span className={`inline-flex select-none items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${styles}`}>{children}</span>;
 }
 
+export function usePrivacyMode() {
+  const [isPrivate, setIsPrivate] = useState<boolean>(() => {
+    return localStorage.getItem("modme_privacy_mode") === "true";
+  });
+
+  const togglePrivacy = () => {
+    setIsPrivate((prev) => {
+      const next = !prev;
+      localStorage.setItem("modme_privacy_mode", String(next));
+      return next;
+    });
+  };
+
+  return { isPrivate, togglePrivacy };
+}
+
+export function PrivacyToggle({
+  isPrivate,
+  onToggle,
+}: {
+  isPrivate: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={isPrivate ? "Summalarni ko'rsatish" : "Summalarni yashirish"}
+      className="inline-flex h-8 select-none items-center gap-1.5 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-700 shadow-sm transition-all hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/80 dark:bg-indigo-950/60 dark:text-indigo-300"
+    >
+      {isPrivate ? (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0">
+            <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+            <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.186A10.004 10.004 0 0 1 10 3c4.257 0 7.893 2.66 9.336 6.41.147.381.147.804 0 1.186A10.004 10.004 0 0 1 10 17c-4.257 0-7.893-2.66-9.336-6.41ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clipRule="evenodd" />
+          </svg>
+          <span>***</span>
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0">
+            <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 0 0-1.06 1.06l14.5 14.5a.75.75 0 1 0 1.06-1.06l-1.745-1.745a10.029 10.029 0 0 0 3.3-4.38.828.828 0 0 0 0-.59A10.004 10.004 0 0 0 10 3c-1.895 0-3.665.526-5.18 1.442L3.28 2.22ZM11.91 10.85l-1.06-1.06a1.5 1.5 0 0 0-1.06-1.06L8.73 7.67A2.5 2.5 0 0 1 12.33 11.27l-.42-.42Z" clipRule="evenodd" />
+            <path d="M6.208 9.27 4.79 7.852A9.972 9.972 0 0 0 1.336 10c.147.381.147.804 0 1.186A10.004 10.004 0 0 0 10 17c1.782 0 3.453-.48 4.887-1.319l-1.503-1.503a8.5 8.5 0 0 1-3.384.822c-3.568 0-6.666-2.186-7.898-5.322a8.552 8.552 0 0 1 2.106-2.408Z" />
+          </svg>
+          <span>***</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function StatTile({
   label,
   value,
   color,
+  isPrivate = false,
 }: {
   label: string;
   value: string;
   color: "green" | "red" | "amber" | "indigo" | "slate" | "violet";
+  isPrivate?: boolean;
 }) {
   const styles = {
     green: "bg-emerald-50/70 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/80",
@@ -323,10 +376,14 @@ export function StatTile({
     slate: "bg-slate-50/70 text-slate-800 border-slate-200/80 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700/80",
     violet: "bg-violet-50/70 text-violet-800 border-violet-200/80 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/80",
   }[color];
+
+  const isMoneyValue = value.includes("so'm") || value.includes("UZS");
+  const displayValue = isPrivate && isMoneyValue ? "••••••••" : value;
+
   return (
     <div className={`rounded-2xl border p-3.5 shadow-sm transition-all hover:-translate-y-0.5 sm:p-6 ${styles}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80 sm:text-xs">{label}</p>
-      <p className="mt-1 break-words text-lg font-bold tracking-tight sm:text-3xl">{value}</p>
+      <p className="mt-1 break-words text-lg font-bold tracking-tight sm:text-3xl">{displayValue}</p>
     </div>
   );
 }

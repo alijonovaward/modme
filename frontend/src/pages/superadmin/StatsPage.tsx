@@ -15,7 +15,9 @@ import {
   Input,
   Label,
   Modal,
+  PrivacyToggle,
   StatTile,
+  usePrivacyMode,
 } from "../../components/ui";
 import type { GroupListItem, StatsOverview, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -125,14 +127,19 @@ export function StatsPage() {
     Boolean,
   ).length;
 
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
+
   return (
     <Layout>
       <Card
         title="Statistika"
         action={
-          <Button onClick={openModal}>
-            Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
-          </Button>
+          <div className="flex items-center gap-2">
+            <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
+            <Button onClick={openModal}>
+              Filterlar{activeCount > 0 ? ` (${activeCount})` : ""}
+            </Button>
+          </div>
         }
       >
         <ErrorMessage message={error} />
@@ -150,16 +157,19 @@ export function StatsPage() {
                 label="O'quvchilardan jami tushgani"
                 value={formatSom(stats.total_deposits)}
                 color="green"
+                isPrivate={isPrivate}
               />
               <StatTile
                 label="O'quvchilar balansida qolgani"
                 value={formatSom(stats.total_student_balance)}
                 color="indigo"
+                isPrivate={isPrivate}
               />
               <StatTile
                 label="Darslar uchun yechilgani"
                 value={formatSom(stats.total_deductions)}
                 color="red"
+                isPrivate={isPrivate}
               />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -167,16 +177,19 @@ export function StatsPage() {
                 label="O'qituvchilarga jami tushgani"
                 value={formatSom(stats.total_teacher_earnings)}
                 color="green"
+                isPrivate={isPrivate}
               />
               <StatTile
                 label="O'qituvchilarga qolgani"
                 value={formatSom(stats.total_teacher_earnings - stats.total_teacher_payouts)}
                 color="indigo"
+                isPrivate={isPrivate}
               />
               <StatTile
                 label="O'qituvchilarga berib yuborilgani"
                 value={formatSom(stats.total_teacher_payouts)}
                 color="red"
+                isPrivate={isPrivate}
               />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -184,6 +197,7 @@ export function StatsPage() {
                 label="Markazga qolgan pul"
                 value={formatSom(stats.total_center_revenue)}
                 color="violet"
+                isPrivate={isPrivate}
               />
             </div>
           </div>
