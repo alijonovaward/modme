@@ -15,6 +15,10 @@ from app.models.lesson import Lesson
 from app.models.subject import Subject
 from app.models.user import User, UserRole
 from app.schemas.group import (
+    AttendanceGridCellOut,
+    AttendanceGridLessonOut,
+    AttendanceGridOut,
+    AttendanceGridStudentOut,
     GroupCreate,
     GroupDetailOut,
     GroupListItemOut,
@@ -360,6 +364,70 @@ def get_group_attendance_stats(
             )
         )
     return results
+
+
+@router.get("/{group_id}/attendance-grid", response_model=AttendanceGridOut)
+def get_group_attendance_grid(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
+):
+    group = _get_group_or_404(db, group_id)
+    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
+
+    lessons = (
+        db.query(Lesson)
+        .filter(Lesson.group_id == group_id)
+        .order_by(Lesson.lesson_date)
+        .all()
+    )
+
+    roster = (
+        db.query(GroupStudent)
+        .filter(
+            GroupStudent.group_id == group_id,
+            GroupStudent.status != GroupStudentStatus.dropped,
+        )
+        .all()
+    )
+    student_ids = [gs.student_id for gs in roster]
+    students_by_id = (
+        {u.id: u for u in db.query(User).filter(User.id.in_(student_ids))} if student_ids else {}
+    )
+
+    lesson_ids = [lesson.id for lesson in lessons]
+    attendance_rows = (
+        db.query(Attendance).filter(Attendance.lesson_id.in_(lesson_ids)).all()
+        if lesson_ids
+        else []
+    )
+
+    return AttendanceGridOut(
+        lessons=[
+            AttendanceGridLessonOut(id=lesson.id, lesson_date=lesson.lesson_date, status=lesson.status)
+            for lesson in lessons
+        ],
+        students=[
+            AttendanceGridStudentOut(
+                student_id=gs.student_id,
+                student_name=students_by_id[gs.student_id].full_name,
+            )
+            for gs in roster
+            if gs.student_id in students_by_id
+        ],
+        cells=[
+            AttendanceGridCellOut(
+                student_id=att.student_id,
+                lesson_id=att.lesson_id,
+                status=att.status,
+                is_trial=att.is_trial,
+            )
+            for att in attendance_rows
+        ],
+    )
 
 
 @router.get("/{group_id}/lessons", response_model=list[LessonOut])

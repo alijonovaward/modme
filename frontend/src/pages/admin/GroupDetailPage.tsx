@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
   generateGroupLessons,
+  getGroupAttendanceGrid,
   getGroupAttendanceStats,
   getGroupDetail,
   listGroupLessons,
@@ -30,6 +31,7 @@ import {
   usePagination,
 } from "../../components/ui";
 import type {
+  AttendanceGrid,
   GroupDetail,
   GroupRosterItem,
   GroupStatus,
@@ -68,6 +70,31 @@ const STATUS_TABS: { value: GroupStudentStatus | ""; label: string }[] = [
   { value: "dropped", label: "Arxiv" },
 ];
 
+function renderAttendanceCell(cell: AttendanceGrid["cells"][number] | undefined) {
+  if (!cell) {
+    return (
+      <span className="inline-block h-5 w-5 rounded-full border-2 border-slate-200 dark:border-slate-700" />
+    );
+  }
+  const color =
+    cell.status === "present"
+      ? "bg-green-500"
+      : cell.status === "unexcused"
+        ? "bg-rose-500"
+        : "bg-slate-300 dark:bg-slate-600";
+  const icon = cell.status === "present" ? "✓" : cell.status === "unexcused" ? "✕" : "–";
+  return (
+    <span
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${color} ${
+        cell.is_trial ? "ring-2 ring-amber-400 ring-offset-1 dark:ring-offset-slate-900" : ""
+      }`}
+      title={cell.is_trial ? "Sinov darsi" : undefined}
+    >
+      {icon}
+    </span>
+  );
+}
+
 export function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const id = Number(groupId);
@@ -78,6 +105,7 @@ export function GroupDetailPage() {
   const [teachers, setTeachers] = useState<User[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<StudentAttendanceStats[]>([]);
+  const [attendanceGrid, setAttendanceGrid] = useState<AttendanceGrid | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -104,21 +132,30 @@ export function GroupDetailPage() {
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [groupData, studentsData, subjectsData, teachersData, lessonsData, attendanceStatsData] =
-        await Promise.all([
-          getGroupDetail(id),
-          listStudents(),
-          listSubjects(),
-          listStaffUsers("teacher"),
-          listGroupLessons(id),
-          getGroupAttendanceStats(id),
-        ]);
+      const [
+        groupData,
+        studentsData,
+        subjectsData,
+        teachersData,
+        lessonsData,
+        attendanceStatsData,
+        attendanceGridData,
+      ] = await Promise.all([
+        getGroupDetail(id),
+        listStudents(),
+        listSubjects(),
+        listStaffUsers("teacher"),
+        listGroupLessons(id),
+        getGroupAttendanceStats(id),
+        getGroupAttendanceGrid(id),
+      ]);
       setGroup(groupData);
       setAllStudents(studentsData);
       setSubjects(subjectsData);
       setTeachers(teachersData);
       setLessons(lessonsData);
       setAttendanceStats(attendanceStatsData);
+      setAttendanceGrid(attendanceGridData);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -424,6 +461,36 @@ export function GroupDetailPage() {
                   onPageChange={setLessonsPage}
                 />
               </>
+            )}
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card title="Davomat jadvali">
+            {!attendanceGrid || attendanceGrid.lessons.length === 0 || attendanceGrid.students.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Hali dars yoki o'quvchi yo'q.
+              </p>
+            ) : (
+              <Table headers={["O'quvchi", ...attendanceGrid.lessons.map((l) => l.lesson_date)]}>
+                {attendanceGrid.students.map((s) => (
+                  <tr key={s.student_id}>
+                    <td className="px-3.5 py-2.5 font-medium whitespace-nowrap text-slate-800 dark:text-slate-200">
+                      {s.student_name}
+                    </td>
+                    {attendanceGrid.lessons.map((l) => {
+                      const cell = attendanceGrid.cells.find(
+                        (c) => c.student_id === s.student_id && c.lesson_id === l.id,
+                      );
+                      return (
+                        <td key={l.id} className="px-3.5 py-2.5 text-center">
+                          {renderAttendanceCell(cell)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </Table>
             )}
           </Card>
         </div>

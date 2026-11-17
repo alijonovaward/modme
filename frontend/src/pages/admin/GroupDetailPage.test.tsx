@@ -12,6 +12,7 @@ vi.mock("../../components/Layout", () => ({
 vi.mock("../../api/endpoints", () => ({
   addStudentToGroup: vi.fn(),
   generateGroupLessons: vi.fn(),
+  getGroupAttendanceGrid: vi.fn(),
   getGroupAttendanceStats: vi.fn(),
   getGroupDetail: vi.fn(),
   listGroupLessons: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("../../api/endpoints", () => ({
 }));
 
 import {
+  getGroupAttendanceGrid,
   getGroupAttendanceStats,
   getGroupDetail,
   listGroupLessons,
@@ -66,6 +68,9 @@ beforeEach(() => {
   vi.mocked(listStaffUsers).mockReset().mockResolvedValue([]);
   vi.mocked(listGroupLessons).mockReset().mockResolvedValue([]);
   vi.mocked(getGroupAttendanceStats).mockReset().mockResolvedValue([]);
+  vi.mocked(getGroupAttendanceGrid)
+    .mockReset()
+    .mockResolvedValue({ lessons: [], students: [], cells: [] });
   vi.mocked(updateGroupStatus).mockReset();
 });
 

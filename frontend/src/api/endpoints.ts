@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type {
   Attendance,
   AttendanceDetail,
+  AttendanceGrid,
   AttendanceStatus,
   GroupDetail,
   GroupListItem,
@@ -262,6 +263,13 @@ export async function getGroupAttendanceStats(
 ): Promise<StudentAttendanceStats[]> {
   const { data } = await apiClient.get<StudentAttendanceStats[]>(
     `/api/v1/groups/${groupId}/attendance-stats`,
+  );
+  return data;
+}
+
+export async function getGroupAttendanceGrid(groupId: number): Promise<AttendanceGrid> {
+  const { data } = await apiClient.get<AttendanceGrid>(
+    `/api/v1/groups/${groupId}/attendance-grid`,
   );
   return data;
 }

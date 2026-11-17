@@ -231,6 +231,30 @@ export interface StudentAttendanceStats {
   is_declining: boolean;
 }
 
+export interface AttendanceGridLesson {
+  id: number;
+  lesson_date: string;
+  status: LessonStatus;
+}
+
+export interface AttendanceGridStudent {
+  student_id: number;
+  student_name: string;
+}
+
+export interface AttendanceGridCell {
+  student_id: number;
+  lesson_id: number;
+  status: AttendanceStatus;
+  is_trial: boolean;
+}
+
+export interface AttendanceGrid {
+  lessons: AttendanceGridLesson[];
+  students: AttendanceGridStudent[];
+  cells: AttendanceGridCell[];
+}
+
 export interface StudentListPage extends Page<User> {
   debtor_count: number;
 }

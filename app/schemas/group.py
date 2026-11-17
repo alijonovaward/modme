@@ -1,10 +1,12 @@
-from datetime import time
+from datetime import date, time
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.models.attendance import AttendanceStatus
 from app.models.group import GroupStatus
 from app.models.group_student import GroupStudentStatus
+from app.models.lesson import LessonStatus
 
 
 class GroupScheduleItem(BaseModel):
@@ -107,3 +109,27 @@ class StudentGroupStatsOut(BaseModel):
     status: GroupStudentStatus
     attendance_rate: float
     total_spent: float
+
+
+class AttendanceGridLessonOut(BaseModel):
+    id: int
+    lesson_date: date
+    status: LessonStatus
+
+
+class AttendanceGridStudentOut(BaseModel):
+    student_id: int
+    student_name: str
+
+
+class AttendanceGridCellOut(BaseModel):
+    student_id: int
+    lesson_id: int
+    status: AttendanceStatus
+    is_trial: bool
+
+
+class AttendanceGridOut(BaseModel):
+    lessons: list[AttendanceGridLessonOut]
+    students: list[AttendanceGridStudentOut]
+    cells: list[AttendanceGridCellOut]
