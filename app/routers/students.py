@@ -28,13 +28,21 @@ from app.schemas.user import ActiveStatusUpdate, StudentListOut, StudentUpdate, 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 
-def _build_students_query(db: Session, search: Optional[str], debtors_only: bool):
+def _build_students_query(
+    db: Session, search: Optional[str], debtors_only: bool, group_id: Optional[int] = None
+):
     query = db.query(User).filter(User.role == UserRole.student)
     if search:
         term = f"%{search}%"
         query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
     if debtors_only:
         query = query.filter(User.balance < 0)
+    if group_id is not None:
+        query = query.filter(
+            User.id.in_(
+                db.query(GroupStudent.student_id).filter(GroupStudent.group_id == group_id)
+            )
+        )
     return query
 
 
@@ -42,12 +50,13 @@ def _build_students_query(db: Session, search: Optional[str], debtors_only: bool
 def list_students(
     search: Optional[str] = Query(default=None),
     debtors_only: bool = Query(default=False),
+    group_id: Optional[int] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    query = _build_students_query(db, search, debtors_only)
+    query = _build_students_query(db, search, debtors_only, group_id)
 
     total = query.count()
     debtor_count = (
@@ -66,10 +75,15 @@ def list_students(
 def export_students(
     search: Optional[str] = Query(default=None),
     debtors_only: bool = Query(default=False),
+    group_id: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    students = _build_students_query(db, search, debtors_only).order_by(User.created_at.desc()).all()
+    students = (
+        _build_students_query(db, search, debtors_only, group_id)
+        .order_by(User.created_at.desc())
+        .all()
+    )
     rows = [
         [s.full_name, s.phone, s.balance, "Faol" if s.is_active else "Bloklangan"]
         for s in students

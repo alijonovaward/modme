@@ -1,11 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { createStudent, listStudentsPage } from "../../api/endpoints";
+import {
+  createStudent,
+  listGroups,
+  listStaffUsers,
+  listStudentsPage,
+  listSubjects,
+} from "../../api/endpoints";
 import { downloadXlsx } from "../../utils/download";
 import {
   Badge,
   Button,
   Card,
+  Combobox,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -16,7 +23,7 @@ import {
   SuccessMessage,
   Table,
 } from "../../components/ui";
-import type { User } from "../../types";
+import type { GroupListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
 
 export function StudentsPage() {
@@ -36,6 +43,18 @@ export function StudentsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debtorsOnly, setDebtorsOnly] = useState(false);
 
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [teachers, setTeachers] = useState<User[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [subjectId, setSubjectId] = useState("");
+  const [teacherId, setTeacherId] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [draftSubjectId, setDraftSubjectId] = useState("");
+  const [draftTeacherId, setDraftTeacherId] = useState("");
+  const [draftGroupId, setDraftGroupId] = useState("");
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [debtorCount, setDebtorCount] = useState(0);
@@ -45,12 +64,18 @@ export function StudentsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const load = async (pageArg: number, searchArg: string, debtorsOnlyArg: boolean) => {
+  const load = async (
+    pageArg: number,
+    searchArg: string,
+    debtorsOnlyArg: boolean,
+    groupIdArg: string,
+  ) => {
     setIsLoading(true);
     try {
       const data = await listStudentsPage({
         search: searchArg || undefined,
         debtors_only: debtorsOnlyArg || undefined,
+        group_id: groupIdArg ? Number(groupIdArg) : undefined,
         page: pageArg,
         page_size: PAGE_SIZE,
       });
@@ -66,9 +91,53 @@ export function StudentsPage() {
   };
 
   useEffect(() => {
-    load(1, debouncedSearch, debtorsOnly);
+    load(1, debouncedSearch, debtorsOnly, groupId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, debtorsOnly]);
+  }, [debouncedSearch, debtorsOnly, groupId]);
+
+  useEffect(() => {
+    listGroups().then(setGroups).catch(() => undefined);
+    listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
+    listSubjects().then(setSubjects).catch(() => undefined);
+  }, []);
+
+  const openFilterModal = () => {
+    setDraftSubjectId(subjectId);
+    setDraftTeacherId(teacherId);
+    setDraftGroupId(groupId);
+    setIsFilterModalOpen(true);
+  };
+
+  const applyFilters = () => {
+    setSubjectId(draftSubjectId);
+    setTeacherId(draftTeacherId);
+    setGroupId(draftGroupId);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftSubjectId("");
+    setDraftTeacherId("");
+    setDraftGroupId("");
+    setSubjectId("");
+    setTeacherId("");
+    setGroupId("");
+    setIsFilterModalOpen(false);
+  };
+
+  const activeFilterCount = [subjectId, teacherId, groupId].filter(Boolean).length;
+
+  const filterTeacherOptions = draftSubjectId
+    ? teachers.filter((t) =>
+        groups.some((g) => String(g.subject_id) === draftSubjectId && g.teacher_id === t.id),
+      )
+    : teachers;
+
+  const filterGroupOptions = groups.filter(
+    (g) =>
+      (!draftSubjectId || String(g.subject_id) === draftSubjectId) &&
+      (!draftTeacherId || String(g.teacher_id) === draftTeacherId),
+  );
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -89,7 +158,7 @@ export function StudentsPage() {
       setSuccess("O'quvchi muvaffaqiyatli qo'shildi ✨");
       setIsModalOpen(false);
       resetForm();
-      await load(page, debouncedSearch, debtorsOnly);
+      await load(page, debouncedSearch, debtorsOnly, groupId);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -131,12 +200,19 @@ export function StudentsPage() {
               <Badge color={debtorsOnly ? "slate" : "red"}>{debtorCount}</Badge>
             )}
           </button>
+          <Button variant="secondary" onClick={openFilterModal}>
+            Filterlar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
           <Button
             variant="secondary"
             onClick={() =>
               downloadXlsx(
                 "/api/v1/students/export",
-                { search: debouncedSearch || undefined, debtors_only: debtorsOnly || undefined },
+                {
+                  search: debouncedSearch || undefined,
+                  debtors_only: debtorsOnly || undefined,
+                  group_id: groupId ? Number(groupId) : undefined,
+                },
                 "oquvchilar.xlsx",
               )
             }
@@ -178,11 +254,69 @@ export function StudentsPage() {
             page={page}
             pageCount={pageCount}
             total={total}
-            onPageChange={(next) => load(next, debouncedSearch, debtorsOnly)}
+            onPageChange={(next) => load(next, debouncedSearch, debtorsOnly, groupId)}
           />
           </>
         )}
       </Card>
+
+      {isFilterModalOpen && (
+        <Modal title="Filterlar" onClose={() => setIsFilterModalOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <Label>Fan</Label>
+              <Combobox
+                value={draftSubjectId}
+                onChange={(value) => {
+                  setDraftSubjectId(value);
+                  setDraftTeacherId("");
+                  setDraftGroupId("");
+                }}
+                placeholder="Barcha fanlar"
+                options={[
+                  { value: "", label: "Barcha fanlar" },
+                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>O'qituvchi</Label>
+              <Combobox
+                value={draftTeacherId}
+                onChange={(value) => {
+                  setDraftTeacherId(value);
+                  setDraftGroupId("");
+                }}
+                placeholder="Barcha o'qituvchilar"
+                options={[
+                  { value: "", label: "Barcha o'qituvchilar" },
+                  ...filterTeacherOptions.map((t) => ({ value: String(t.id), label: t.full_name })),
+                ]}
+              />
+            </div>
+            <div>
+              <Label>Guruh</Label>
+              <Combobox
+                value={draftGroupId}
+                onChange={setDraftGroupId}
+                placeholder="Barcha guruhlar"
+                options={[
+                  { value: "", label: "Barcha guruhlar" },
+                  ...filterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
+                ]}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={applyFilters}>
+                Qo'llash
+              </Button>
+              <Button variant="secondary" onClick={clearFilters}>
+                Tozalash
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {isModalOpen && (
         <Modal title="Yangi o'quvchi qo'shish" onClose={() => setIsModalOpen(false)}>

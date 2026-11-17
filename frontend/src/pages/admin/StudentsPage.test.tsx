@@ -20,9 +20,12 @@ vi.mock("../../components/Layout", () => ({
 vi.mock("../../api/endpoints", () => ({
   listStudentsPage: vi.fn(),
   createStudent: vi.fn(),
+  listGroups: vi.fn(),
+  listStaffUsers: vi.fn(),
+  listSubjects: vi.fn(),
 }));
 
-import { listStudentsPage } from "../../api/endpoints";
+import { listGroups, listStaffUsers, listStudentsPage, listSubjects } from "../../api/endpoints";
 
 function makeStudent(overrides: Partial<User> = {}): User {
   return {
@@ -41,6 +44,9 @@ function makeStudent(overrides: Partial<User> = {}): User {
 
 beforeEach(() => {
   vi.mocked(listStudentsPage).mockReset();
+  vi.mocked(listGroups).mockReset().mockResolvedValue([]);
+  vi.mocked(listStaffUsers).mockReset().mockResolvedValue([]);
+  vi.mocked(listSubjects).mockReset().mockResolvedValue([]);
 });
 
 describe("StudentsPage", () => {

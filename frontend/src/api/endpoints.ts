@@ -106,6 +106,7 @@ export async function listStudents(): Promise<User[]> {
 export async function listStudentsPage(params: {
   search?: string;
   debtors_only?: boolean;
+  group_id?: number;
   page: number;
   page_size: number;
 }): Promise<StudentListPage> {
