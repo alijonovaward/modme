@@ -13,6 +13,7 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
 from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
+from app.models.app_state import AppState
 from app.models.lesson import Lesson, LessonStatus
 from app.models.pending_charge import PendingCharge
 from app.models.subject import Subject
@@ -63,11 +64,22 @@ def _attendance_notification_text(
     return "\n".join(lines)
 
 
-LESSON_AUTO_CREATE_HORIZON = timedelta(days=7)
+LESSON_AUTO_CREATE_HORIZON = timedelta(days=30)
+LESSON_AUTO_CREATE_STATE_KEY = "lesson_auto_create_last_run"
 
 
 def _auto_create_scheduled_lessons(db: Session) -> None:
     today = date.today()
+
+    state = db.get(AppState, LESSON_AUTO_CREATE_STATE_KEY)
+    if state is not None and state.value == today.isoformat():
+        return
+    if state is None:
+        state = AppState(key=LESSON_AUTO_CREATE_STATE_KEY)
+        db.add(state)
+    state.value = today.isoformat()
+    db.commit()
+
     horizon = today + LESSON_AUTO_CREATE_HORIZON
 
     schedules = (

@@ -8,6 +8,7 @@ from app.models.teacher_transaction import TeacherTransaction, TeacherTransactio
 from app.models.lesson import Lesson, LessonStatus
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.pending_charge import PendingCharge
+from app.models.app_state import AppState
 
 __all__ = [
     "User",
@@ -27,4 +28,5 @@ __all__ = [
     "Attendance",
     "AttendanceStatus",
     "PendingCharge",
+    "AppState",
 ]
