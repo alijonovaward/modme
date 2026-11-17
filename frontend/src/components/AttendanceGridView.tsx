@@ -1,4 +1,3 @@
-import { Badge } from "./ui";
 import type { AttendanceGrid, AttendanceGridStudent, StudentAttendanceStats } from "../types";
 
 function renderAttendanceCell(cell: AttendanceGrid["cells"][number] | undefined) {
@@ -30,9 +29,6 @@ const STICKY_COLUMNS = [
   { key: "name", label: "O'quvchi", width: 150 },
   { key: "total", label: "Jami darslar", width: 90 },
   { key: "overall", label: "Umumiy foiz", width: 90 },
-  { key: "previous", label: "Oldingi davr", width: 100 },
-  { key: "recent", label: "So'nggi davr", width: 100 },
-  { key: "trend", label: "Trend", width: 100 },
 ] as const;
 
 function stickyOffset(index: number): number {
@@ -51,16 +47,6 @@ function stickyContent(
       return stat?.total_lessons ?? 0;
     case "overall":
       return stat ? `${stat.attendance_rate}%` : "-";
-    case "previous":
-      return stat?.previous_attendance_rate != null ? `${stat.previous_attendance_rate}%` : "-";
-    case "recent":
-      return stat?.recent_attendance_rate != null ? `${stat.recent_attendance_rate}%` : "-";
-    case "trend":
-      return stat?.is_declining ? (
-        <Badge color="red">Pasaymoqda</Badge>
-      ) : (
-        <Badge color="slate">Barqaror</Badge>
-      );
   }
 }
 

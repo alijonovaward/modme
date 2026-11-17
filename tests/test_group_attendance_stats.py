@@ -3,7 +3,9 @@ from datetime import date, timedelta
 from tests.conftest import add_student_to_group, auth_headers, login, make_group, make_lesson, make_staff, make_student, make_subject
 
 
-def test_declining_attendance_is_flagged(client, superadmin_headers, admin_headers):
+def test_attendance_stats_computes_overall_rate_and_respects_date_filter(
+    client, superadmin_headers, admin_headers
+):
     teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998901000001")
     subject = make_subject(client, admin_headers, "Attendance-Stats")
     group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
@@ -17,10 +19,10 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
     teacher_headers = auth_headers(login(client, teacher["phone"], "pass123"))
 
     today = date.today()
-    previous_dates = [today - timedelta(days=20), today - timedelta(days=16)]
-    recent_dates = [today - timedelta(days=7), today - timedelta(days=2)]
+    older_dates = [today - timedelta(days=20), today - timedelta(days=16)]
+    newer_dates = [today - timedelta(days=7), today - timedelta(days=2)]
 
-    for lesson_date in previous_dates:
+    for lesson_date in older_dates:
         lesson = make_lesson(client, admin_headers, group_id=group["id"], lesson_date=lesson_date.isoformat())
         resp = client.post(
             f"/api/v1/lessons/{lesson['id']}/attendance",
@@ -29,7 +31,7 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
         )
         assert resp.status_code == 201, resp.text
 
-    for lesson_date in recent_dates:
+    for lesson_date in newer_dates:
         lesson = make_lesson(client, admin_headers, group_id=group["id"], lesson_date=lesson_date.isoformat())
         resp = client.post(
             f"/api/v1/lessons/{lesson['id']}/attendance",
@@ -46,47 +48,22 @@ def test_declining_attendance_is_flagged(client, superadmin_headers, admin_heade
     assert stats["student_id"] == student["id"]
     assert stats["total_lessons"] == 4
     assert stats["attendance_rate"] == 50.0
-    assert stats["previous_attendance_rate"] == 100.0
-    assert stats["recent_attendance_rate"] == 0.0
-    assert stats["is_declining"] is True
 
-    # Narrowing the filter to just the two "present" lessons means the chosen
-    # range's own first/second half are both "present" -> no decline within it.
     resp = client.get(
         f"/api/v1/groups/{group['id']}/attendance-stats",
         headers=admin_headers,
         params={
-            "date_from": previous_dates[0].isoformat(),
-            "date_to": previous_dates[1].isoformat(),
+            "date_from": older_dates[0].isoformat(),
+            "date_to": older_dates[1].isoformat(),
         },
     )
     assert resp.status_code == 200, resp.text
     filtered_stats = resp.json()[0]
     assert filtered_stats["total_lessons"] == 2
     assert filtered_stats["attendance_rate"] == 100.0
-    assert filtered_stats["recent_attendance_rate"] == 100.0
-    assert filtered_stats["previous_attendance_rate"] == 100.0
-    assert filtered_stats["is_declining"] is False
-
-    # Filtering to the full span still splits into a declining first/second half.
-    resp = client.get(
-        f"/api/v1/groups/{group['id']}/attendance-stats",
-        headers=admin_headers,
-        params={
-            "date_from": previous_dates[0].isoformat(),
-            "date_to": recent_dates[1].isoformat(),
-        },
-    )
-    assert resp.status_code == 200, resp.text
-    full_span_stats = resp.json()[0]
-    assert full_span_stats["total_lessons"] == 4
-    assert full_span_stats["attendance_rate"] == 50.0
-    assert full_span_stats["previous_attendance_rate"] == 100.0
-    assert full_span_stats["recent_attendance_rate"] == 0.0
-    assert full_span_stats["is_declining"] is True
 
 
-def test_no_data_means_not_declining(client, superadmin_headers, admin_headers):
+def test_attendance_stats_with_no_lessons(client, superadmin_headers, admin_headers):
     teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998901000003")
     subject = make_subject(client, admin_headers, "Attendance-Stats-Empty")
     group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
@@ -99,6 +76,3 @@ def test_no_data_means_not_declining(client, superadmin_headers, admin_headers):
     assert len(data) == 1
     assert data[0]["total_lessons"] == 0
     assert data[0]["attendance_rate"] == 0.0
-    assert data[0]["recent_attendance_rate"] is None
-    assert data[0]["previous_attendance_rate"] is None
-    assert data[0]["is_declining"] is False

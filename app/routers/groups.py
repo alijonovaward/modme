@@ -300,9 +300,6 @@ def get_group_detail(
     return GroupDetailOut(**base.model_dump(), students=students)
 
 
-ATTENDANCE_TREND_WINDOW = timedelta(days=14)
-
-
 @router.get("/{group_id}/attendance-stats", response_model=list[StudentAttendanceStatsOut])
 def get_group_attendance_stats(
     group_id: int,
@@ -326,12 +323,6 @@ def get_group_attendance_stats(
         .all()
     )
 
-    if date_from is not None and date_to is not None:
-        total_days = (date_to - date_from).days + 1
-        midpoint = date_from + timedelta(days=total_days // 2)
-    else:
-        midpoint = date.today() - ATTENDANCE_TREND_WINDOW
-
     def _rate(records: list) -> Optional[float]:
         if not records:
             return None
@@ -352,23 +343,12 @@ def get_group_attendance_stats(
             period_query = period_query.filter(Lesson.lesson_date <= date_to)
         rows = period_query.all()
 
-        previous_rows = [r for r in rows if r[1] < midpoint]
-        recent_rows = [r for r in rows if r[1] >= midpoint]
-        recent_rate = _rate(recent_rows)
-        previous_rate = _rate(previous_rows)
-        is_declining = (
-            recent_rate is not None and previous_rate is not None and recent_rate < previous_rate
-        )
-
         results.append(
             StudentAttendanceStatsOut(
                 student_id=gs.student_id,
                 student_name=student.full_name if student else "",
                 total_lessons=len(rows),
                 attendance_rate=_rate(rows) or 0.0,
-                recent_attendance_rate=recent_rate,
-                previous_attendance_rate=previous_rate,
-                is_declining=is_declining,
             )
         )
     return results

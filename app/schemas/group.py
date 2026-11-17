@@ -96,9 +96,6 @@ class StudentAttendanceStatsOut(BaseModel):
     student_name: str
     total_lessons: int
     attendance_rate: float
-    recent_attendance_rate: Optional[float] = None
-    previous_attendance_rate: Optional[float] = None
-    is_declining: bool
 
 
 class StudentGroupStatsOut(BaseModel):

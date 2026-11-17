@@ -226,9 +226,6 @@ export interface StudentAttendanceStats {
   student_name: string;
   total_lessons: number;
   attendance_rate: number;
-  recent_attendance_rate: number | null;
-  previous_attendance_rate: number | null;
-  is_declining: boolean;
 }
 
 export interface AttendanceGridLesson {
