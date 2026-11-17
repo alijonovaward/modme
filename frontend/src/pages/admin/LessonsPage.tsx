@@ -249,7 +249,11 @@ export function LessonsPage() {
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat", "Keldi", "Sababli", "Sababsiz", ""]}>
             {lessons.map((l) => (
-              <tr key={l.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+              <tr
+                key={l.id}
+                onClick={() => openDetail(l)}
+                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+              >
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
                 <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
@@ -263,16 +267,17 @@ export function LessonsPage() {
                 <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.excused_count}</td>
                 <td className="px-3.5 py-2.5 text-rose-600">{l.unexcused_count}</td>
                 <TdAction>
-                  <div className="flex gap-1">
-                    <Button variant="secondary" onClick={() => openDetail(l)}>
-                      Batafsil
+                  {l.status === "planned" && (
+                    <Button
+                      variant="danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLesson(l);
+                      }}
+                    >
+                      O'chirish
                     </Button>
-                    {l.status === "planned" && (
-                      <Button variant="danger" onClick={() => handleDeleteLesson(l)}>
-                        O'chirish
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </TdAction>
               </tr>
             ))}
