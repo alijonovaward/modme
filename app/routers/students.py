@@ -345,7 +345,7 @@ def get_student_pending_charges(
         .join(Lesson, Lesson.id == PendingCharge.lesson_id)
         .join(Group, Group.id == Lesson.group_id)
         .join(Subject, Subject.id == Group.subject_id)
-        .join(User, User.id == Group.teacher_id)
+        .join(User, User.id == PendingCharge.teacher_id)
         .filter(PendingCharge.student_id == student.id, PendingCharge.resolved_at.is_(None))
         .order_by(PendingCharge.created_at.asc())
         .all()
@@ -360,7 +360,7 @@ def get_student_pending_charges(
             teacher_name=teacher.full_name,
             lesson_date=lesson.lesson_date,
             amount=charge.amount,
-            original_amount=charge.original_amount or charge.amount,
+            original_amount=getattr(charge, "original_amount", None) or charge.amount,
             created_at=charge.created_at,
         )
         for charge, lesson, group, subject, teacher in rows

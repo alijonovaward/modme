@@ -7,6 +7,9 @@ from app.core.security import hash_password
 
 
 REQUIRED_COLUMNS = {
+    "pending_charges": {
+        "original_amount": "FLOAT",
+    },
     "transactions": {
         "created_by_id": "INTEGER",
         "lesson_id": "INTEGER",
