@@ -79,6 +79,53 @@ def _migrate_money_columns_to_numeric() -> None:
                 )
 
 
+def _ensure_lesson_unique_index() -> None:
+    """Guards against a group ever having two lesson rows for the same calendar day
+    (the double-click / slow-network duplicate-lesson bug). `Base.metadata.create_all`
+    only creates brand-new tables, so an existing `lessons` table needs this added by
+    hand. If duplicate (group_id, lesson_date) rows already exist from before this
+    fix, creating the index would fail outright - so this skips (and logs) instead of
+    crashing app startup; an operator can clean up those rows and the index will be
+    created automatically on the next restart.
+    """
+    inspector = inspect(engine)
+    if "lessons" not in inspector.get_table_names():
+        return
+
+    already_unique = any(
+        set(idx["column_names"]) == {"group_id", "lesson_date"} and idx.get("unique")
+        for idx in inspector.get_indexes("lessons")
+    )
+    if already_unique:
+        return
+
+    with engine.connect() as conn:
+        duplicate_count = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM ("
+                "SELECT group_id, lesson_date FROM lessons "
+                "GROUP BY group_id, lesson_date HAVING COUNT(*) > 1"
+                ") AS dupes"
+            )
+        ).scalar()
+
+    if duplicate_count:
+        print(
+            f"[init_db] OGOHLANTIRISH: {duplicate_count} ta guruh+sana uchun takroriy "
+            "dars (lessons) qatori topildi - ularni qo'lda tozalamaguningizcha "
+            "unique indeks o'rnatilmaydi."
+        )
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_lessons_group_date "
+                "ON lessons (group_id, lesson_date)"
+            )
+        )
+
+
 REQUIRED_INDEXES = {
     "groups": ["subject_id", "teacher_id"],
     "group_students": ["group_id", "student_id"],
@@ -135,6 +182,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _run_migrations()
     _migrate_money_columns_to_numeric()
+    _ensure_lesson_unique_index()
 
     db = SessionLocal()
     try:

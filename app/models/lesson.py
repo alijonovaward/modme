@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, ForeignKey, Enum, Date, Time
+from sqlalchemy import Column, Integer, ForeignKey, Enum, Date, Time, UniqueConstraint
 
 from app.db.session import Base
 
@@ -12,6 +12,9 @@ class LessonStatus(str, enum.Enum):
 
 class Lesson(Base):
     __tablename__ = "lessons"
+    __table_args__ = (
+        UniqueConstraint("group_id", "lesson_date", name="uq_lessons_group_date"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)

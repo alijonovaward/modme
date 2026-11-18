@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import case, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -266,7 +267,14 @@ def _auto_create_scheduled_lessons(db: Session) -> None:
             created = True
 
     if created:
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # A manually-created lesson could have raced this batch for the same
+            # (group_id, day). This runs as a side effect of the lessons list
+            # endpoint for any user, so it must never 500 that unrelated request -
+            # just drop today's auto-created batch and let the next trigger retry.
+            db.rollback()
 
 
 def _build_lessons_query(
@@ -463,9 +471,27 @@ def create_lesson(
             status_code=400, detail="Faol bo'lmagan guruh uchun dars ochib bo'lmaydi"
         )
 
+    existing = (
+        db.query(Lesson)
+        .filter(Lesson.group_id == payload.group_id, Lesson.lesson_date == payload.lesson_date)
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=400, detail="Bu guruh uchun shu sanada dars allaqachon mavjud"
+        )
+
     lesson = Lesson(group_id=payload.group_id, lesson_date=payload.lesson_date)
     db.add(lesson)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Closes the race a pre-check alone can't: two near-simultaneous requests
+        # (double-click, slow-network retry) both passing the check above.
+        db.rollback()
+        raise HTTPException(
+            status_code=400, detail="Bu guruh uchun shu sanada dars allaqachon mavjud"
+        )
     db.refresh(lesson)
     return lesson
 
