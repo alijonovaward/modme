@@ -199,9 +199,6 @@ export function StudentDetailPage() {
     );
   }
 
-  const totalPendingAmount = pendingCharges.reduce((sum, p) => sum + p.amount, 0);
-  const netBalance = student ? Math.min(student.balance, student.balance - totalPendingAmount) : 0;
-
   return (
     <Layout>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -220,12 +217,12 @@ export function StudentDetailPage() {
             Balans:{" "}
             <span
               className={`font-semibold ${
-                netBalance < 0
+                student.balance < 0
                   ? "font-bold text-rose-600 dark:text-rose-400"
                   : "text-slate-800 dark:text-slate-200"
               }`}
             >
-              {netBalance.toLocaleString("uz-UZ")} so'm
+              {student.balance.toLocaleString("uz-UZ")} so'm
             </span>
           </p>
         </div>
@@ -239,11 +236,11 @@ export function StudentDetailPage() {
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
-      {(netBalance < 0 || pendingCharges.length > 0) && (
+      {(student.balance < 0 || pendingCharges.length > 0) && (
         <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm dark:border-rose-900/80 dark:bg-rose-950/50">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-sm font-bold text-rose-800 dark:text-rose-300">
-              🔴 Qarzdorlik (Balans): {netBalance.toLocaleString("uz-UZ")} so'm
+              🔴 Qarzdorlik (Balans): {student.balance.toLocaleString("uz-UZ")} so'm
             </p>
             {pendingCharges.length > 0 && (
               <Badge color="red">{pendingCharges.length} ta dars kutilmoqda</Badge>
