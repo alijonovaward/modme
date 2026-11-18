@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_roles
@@ -17,7 +18,22 @@ def create_subject(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    subject = Subject(name=payload.name)
+    clean_name = payload.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Fan nomi bo'sh bo'lishi mumkin emas")
+
+    existing = (
+        db.query(Subject)
+        .filter(func.lower(Subject.name) == clean_name.lower())
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ushbu nomdagi fan allaqachon mavjud ('{existing.name}')",
+        )
+
+    subject = Subject(name=clean_name)
     db.add(subject)
     db.commit()
     db.refresh(subject)
@@ -43,7 +59,25 @@ def update_subject(
     if subject is None:
         raise HTTPException(status_code=404, detail="Fan topilmadi")
 
-    subject.name = payload.name
+    clean_name = payload.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Fan nomi bo'sh bo'lishi mumkin emas")
+
+    existing = (
+        db.query(Subject)
+        .filter(
+            func.lower(Subject.name) == clean_name.lower(),
+            Subject.id != subject_id,
+        )
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ushbu nomdagi fan allaqachon mavjud ('{existing.name}')",
+        )
+
+    subject.name = clean_name
     db.commit()
     db.refresh(subject)
     return subject
