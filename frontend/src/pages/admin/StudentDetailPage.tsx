@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
   depositToStudent,
@@ -31,6 +31,7 @@ import type {
   StudentGroupStats,
   StudentPendingCharge,
   StudentTransactionListItem,
+  TransactionType,
   User,
 } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -166,6 +167,8 @@ export function StudentDetailPage() {
     }
   };
 
+  const [txFilterTab, setTxFilterTab] = useState<"all" | "deposit" | "deduction" | "pending_charge">("all");
+
   const totalDeposits = transactions
     .filter((t) => t.type === "deposit")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -174,6 +177,41 @@ export function StudentDetailPage() {
   );
   const totalRemaining = totalDeposits - totalDeductions;
 
+  const mappedPendingTransactions: StudentTransactionListItem[] = useMemo(() => {
+    return pendingCharges.map((p) => {
+      const orig = p.original_amount || p.amount;
+      const rem = p.amount;
+      const paid = Math.max(0, orig - rem);
+
+      return {
+        id: -p.id,
+        amount: -p.amount,
+        type: "pending_charge" as TransactionType,
+        comment:
+          paid > 0
+            ? `Kutilayotgan qarz dars puli (${orig.toLocaleString("uz-UZ")} so'mdan ${paid.toLocaleString("uz-UZ")} so'm to'langan, ${rem.toLocaleString("uz-UZ")} so'm qolgan)`
+            : "Kutilayotgan qarz dars puli",
+        created_at: p.created_at,
+        group_id: null,
+        group_name: p.group_name,
+        teacher_name: p.teacher_name,
+        lesson_date: p.lesson_date,
+      };
+    });
+  }, [pendingCharges]);
+
+  const allUnifiedTransactions = useMemo<StudentTransactionListItem[]>(() => {
+    const combined = [...transactions, ...mappedPendingTransactions];
+    return combined.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }, [transactions, mappedPendingTransactions]);
+
+  const filteredTransactions = useMemo<StudentTransactionListItem[]>(() => {
+    if (txFilterTab === "all") return allUnifiedTransactions;
+    return allUnifiedTransactions.filter((t: StudentTransactionListItem) => t.type === txFilterTab);
+  }, [allUnifiedTransactions, txFilterTab]);
+
   const [selectedTx, setSelectedTx] = useState<StudentTransactionListItem | null>(null);
   const {
     page: transactionsPage,
@@ -181,7 +219,7 @@ export function StudentDetailPage() {
     pageCount: transactionsPageCount,
     pageItems: transactionsPageItems,
     total: transactionsTotal,
-  } = usePagination(transactions);
+  } = usePagination<StudentTransactionListItem>(filteredTransactions);
   const {
     page: attendancePage,
     setPage: setAttendancePage,
@@ -237,58 +275,6 @@ export function StudentDetailPage() {
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
-
-      {(displayBalance < 0 || pendingCharges.length > 0) && (
-        <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm dark:border-rose-900/80 dark:bg-rose-950/50">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-rose-800 dark:text-rose-300">
-              🔴 Qarzdorlik (Balans): {displayBalance.toLocaleString("uz-UZ")} so'm
-            </p>
-            {pendingCharges.length > 0 && (
-              <Badge color="red">{pendingCharges.length} ta dars kutilmoqda</Badge>
-            )}
-          </div>
-          {pendingCharges.length > 0 && (
-            <>
-              <p className="mb-2 text-xs font-semibold text-rose-700 dark:text-rose-400">
-                Qarzdorlik darslar tafsiloti ({pendingCharges.length} ta dars):
-              </p>
-              <ul className="space-y-1.5 text-xs text-rose-800 dark:text-rose-300">
-                {pendingCharges.map((p) => {
-                  const original = p.original_amount || p.amount;
-                  const remaining = p.amount;
-                  const paid = Math.max(0, original - remaining);
-                  const paidPercent = original > 0 ? Math.round((paid / original) * 100) : 0;
-
-                  return (
-                    <li key={p.id} className="flex flex-col gap-1.5 rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/80">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span>
-                          📅 <strong>{p.lesson_date}</strong> — {p.subject_name} ({p.group_name}, 👤 {p.teacher_name})
-                        </span>
-                        <span className="font-bold text-rose-700 dark:text-rose-400">
-                          {remaining.toLocaleString("uz-UZ")} so'm qolgan
-                        </span>
-                      </div>
-                      {paid > 0 && (
-                        <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                          <span>✓ {paid.toLocaleString("uz-UZ")} so'm to'landi ({paidPercent}%)</span>
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div className="h-full bg-emerald-500" style={{ width: `${paidPercent}%` }} />
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
-          <p className="mt-2.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
-            💡 Balans to'ldirilgach, ushbu manfiy qarzdorlik avtomatik yopiladi va o'qituvchiga hisoblanadi.
-          </p>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Ma'lumotlarni tahrirlash">
@@ -408,7 +394,66 @@ export function StudentDetailPage() {
               color="red"
             />
           </div>
-          <Table headers={["Sana", "Turi", "Guruh", "Summa"]}>
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 select-none">
+            <button
+              type="button"
+              onClick={() => {
+                setTxFilterTab("all");
+                setTransactionsPage(1);
+              }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                txFilterTab === "all"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              Barchasi ({allUnifiedTransactions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTxFilterTab("deposit");
+                setTransactionsPage(1);
+              }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                txFilterTab === "deposit"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              To'lovlar ({transactions.filter((t) => t.type === "deposit").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTxFilterTab("deduction");
+                setTransactionsPage(1);
+              }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                txFilterTab === "deduction"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              Yechimlar ({transactions.filter((t) => t.type === "deduction").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTxFilterTab("pending_charge");
+                setTransactionsPage(1);
+              }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                txFilterTab === "pending_charge"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"
+              }`}
+            >
+              Kutilayotgan qarzlar ({pendingCharges.length})
+            </button>
+          </div>
+
+          <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
             {transactionsPageItems.map((t) => (
               <tr
                 key={t.id}
@@ -416,17 +461,40 @@ export function StudentDetailPage() {
                 className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
               >
                 <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                  {t.lesson_date || new Date(t.created_at).toLocaleDateString("uz-UZ")}
                 </td>
                 <td className="px-2.5 py-2.5">
-                  <Badge color={t.type === "deposit" ? "green" : "red"}>
-                    {t.type === "deposit" ? "To'ldirish" : "Yechim"}
+                  <Badge
+                    color={
+                      t.type === "deposit"
+                        ? "green"
+                        : t.type === "pending_charge"
+                          ? "amber"
+                          : "red"
+                    }
+                  >
+                    {t.type === "deposit"
+                      ? "To'ldirish"
+                      : t.type === "pending_charge"
+                        ? "Kutilayotgan qarz"
+                        : "Yechim"}
                   </Badge>
                 </td>
                 <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
-                  {t.amount.toLocaleString("uz-UZ")} so'm
+                <td className="px-2.5 py-2.5 font-semibold">
+                  <span
+                    className={
+                      t.type === "deposit"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : t.type === "pending_charge"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-slate-800 dark:text-slate-200"
+                    }
+                  >
+                    {t.amount > 0 ? `+${t.amount.toLocaleString("uz-UZ")}` : `${t.amount.toLocaleString("uz-UZ")}`} so'm
+                  </span>
                 </td>
+                <td className="px-2.5 py-2.5 text-xs text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
               </tr>
             ))}
           </Table>

@@ -19,7 +19,7 @@ export interface User {
   telegram_linked: boolean;
 }
 
-export type TransactionType = "deposit" | "deduction";
+export type TransactionType = "deposit" | "deduction" | "pending_charge";
 
 export interface Transaction {
   id: number;
