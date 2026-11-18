@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -11,7 +12,7 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
 from app.models.group_schedule import GroupSchedule
 from app.models.group_student import GroupStudent, GroupStudentStatus
-from app.models.lesson import Lesson
+from app.models.lesson import Lesson, LessonStatus
 from app.models.subject import Subject
 from app.models.user import User, UserRole
 from app.schemas.group import (
@@ -439,7 +440,13 @@ def list_group_lessons(
         query = query.filter(Lesson.lesson_date >= date_from)
     if date_to is not None:
         query = query.filter(Lesson.lesson_date <= date_to)
-    return query.order_by(Lesson.lesson_date.desc()).all()
+
+    status_order = case(
+        (Lesson.status == LessonStatus.planned, 0),
+        (Lesson.status == LessonStatus.completed, 1),
+        else_=2,
+    )
+    return query.order_by(status_order, Lesson.lesson_date.asc()).all()
 
 
 @router.post("/{group_id}/lessons/generate", response_model=LessonGenerateResult)

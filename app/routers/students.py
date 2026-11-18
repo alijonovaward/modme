@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
 from app.models.group_student import GroupStudent
-from app.models.lesson import Lesson
+from app.models.lesson import Lesson, LessonStatus
 from app.models.pending_charge import PendingCharge
 from app.models.subject import Subject
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
@@ -477,7 +477,12 @@ def _student_attendance_rows(
     if date_to is not None:
         query = query.filter(Lesson.lesson_date <= date_to)
 
-    rows = query.order_by(Lesson.lesson_date.desc()).all()
+    status_order = case(
+        (Lesson.status == LessonStatus.planned, 0),
+        (Lesson.status == LessonStatus.completed, 1),
+        else_=2,
+    )
+    rows = query.order_by(status_order, Lesson.lesson_date.asc()).all()
 
     if current_user.role == UserRole.teacher:
         rows = [row for row in rows if row[2].teacher_id == current_user.id]

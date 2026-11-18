@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -192,6 +192,15 @@ def _build_lesson_items(db: Session, rows: list) -> list[LessonListItemOut]:
     ]
 
 
+def _lesson_order_expression():
+    status_order = case(
+        (Lesson.status == LessonStatus.planned, 0),
+        (Lesson.status == LessonStatus.completed, 1),
+        else_=2,
+    )
+    return (status_order, Lesson.lesson_date.asc())
+
+
 @router.get("", response_model=LessonListOut)
 def list_all_lessons(
     group_id: Optional[int] = Query(default=None),
@@ -217,7 +226,7 @@ def list_all_lessons(
     planned_count = query.filter(Lesson.status == LessonStatus.planned).count()
 
     rows = (
-        query.order_by(Lesson.lesson_date.desc())
+        query.order_by(*_lesson_order_expression())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -251,7 +260,7 @@ def export_lessons(
     query = _build_lessons_query(
         db, current_user, group_id, teacher_id, date_from, date_to, lesson_status
     )
-    rows = query.order_by(Lesson.lesson_date.desc()).all()
+    rows = query.order_by(*_lesson_order_expression()).all()
     items = _build_lesson_items(db, rows)
     xlsx_rows = [
         [
