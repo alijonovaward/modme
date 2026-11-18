@@ -142,6 +142,11 @@ def _build_lessons_query(
     )
     if current_user.role == UserRole.teacher:
         query = query.filter(Group.teacher_id == current_user.id)
+    elif current_user.role == UserRole.student:
+        query = query.join(GroupStudent, GroupStudent.group_id == Lesson.group_id).filter(
+            GroupStudent.student_id == current_user.id,
+            GroupStudent.status != GroupStudentStatus.dropped,
+        )
     elif teacher_id is not None:
         query = query.filter(Group.teacher_id == teacher_id)
     if group_id is not None:
@@ -218,7 +223,7 @@ def list_all_lessons(
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
     ),
 ):
     _auto_create_scheduled_lessons(db)
@@ -260,7 +265,7 @@ def export_lessons(
     lesson_status: Optional[LessonStatus] = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher, UserRole.student)
     ),
 ):
     query = _build_lessons_query(

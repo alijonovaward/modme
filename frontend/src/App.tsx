@@ -18,10 +18,8 @@ import { TransactionsPage } from "./pages/admin/TransactionsPage";
 import { MyGroupsPage } from "./pages/teacher/MyGroupsPage";
 import { TeacherGroupDetailPage } from "./pages/teacher/GroupDetailPage";
 import { AttendancePage } from "./pages/teacher/AttendancePage";
-import { AttendanceHubPage } from "./pages/teacher/AttendanceHubPage";
 import { FinancePage } from "./pages/teacher/FinancePage";
 import { StudentTransactionsPage } from "./pages/student/TransactionsPage";
-import { StudentAttendancePage } from "./pages/student/AttendancePage";
 
 function App() {
   return (
@@ -100,7 +98,7 @@ function App() {
           <Route
             path="/admin/lessons"
             element={
-              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+              <ProtectedRoute allowedRoles={["superadmin", "admin", "teacher", "student"]}>
                 <LessonsPage />
               </ProtectedRoute>
             }
@@ -140,11 +138,7 @@ function App() {
           />
           <Route
             path="/teacher/attendance"
-            element={
-              <ProtectedRoute allowedRoles={["teacher"]}>
-                <AttendanceHubPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/admin/lessons" replace />}
           />
           <Route
             path="/teacher/finance"
@@ -155,7 +149,7 @@ function App() {
             }
           />
 
-          <Route path="/student" element={<Navigate to="/student/attendance" replace />} />
+          <Route path="/student" element={<Navigate to="/admin/lessons" replace />} />
           <Route
             path="/student/transactions"
             element={
@@ -166,11 +160,7 @@ function App() {
           />
           <Route
             path="/student/attendance"
-            element={
-              <ProtectedRoute allowedRoles={["student"]}>
-                <StudentAttendancePage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/admin/lessons" replace />}
           />
         </Routes>
         <InstallPWA />

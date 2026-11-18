@@ -28,11 +28,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
   ],
   teacher: [
     { to: "/teacher/groups", label: "Guruhlarim" },
-    { to: "/teacher/attendance", label: "Davomat" },
+    { to: "/admin/lessons", label: "Darslar" },
     { to: "/teacher/finance", label: "Moliyam" },
   ],
   student: [
-    { to: "/student/attendance", label: "Davomat" },
+    { to: "/admin/lessons", label: "Darslar" },
     { to: "/student/transactions", label: "Tranzaksiyalar" },
   ],
 };
