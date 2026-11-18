@@ -236,21 +236,37 @@ export function StudentDetailPage() {
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
-      {pendingCharges.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
-          <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
-            Balans yetmagani uchun {pendingCharges.length} ta dars puli kutilmoqda
-          </p>
-          <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
-            {pendingCharges.map((p) => (
-              <li key={p.id}>
-                {p.lesson_date} — {p.subject_name} ({p.group_name}, {p.teacher_name}):{" "}
-                {p.amount.toLocaleString("uz-UZ")} so'm
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
-            Balans to'ldirilgach, bu summalar avtomatik yechilib o'qituvchiga o'tkaziladi.
+      {(student.balance < 0 || pendingCharges.length > 0) && (
+        <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm dark:border-rose-900/80 dark:bg-rose-950/50">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-rose-800 dark:text-rose-300">
+              🔴 Qarzdorlik (Balans): {student.balance.toLocaleString("uz-UZ")} so'm
+            </p>
+            {pendingCharges.length > 0 && (
+              <Badge color="red">{pendingCharges.length} ta dars kutilmoqda</Badge>
+            )}
+          </div>
+          {pendingCharges.length > 0 && (
+            <>
+              <p className="mb-2 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                Qarzdorlik darslar tafsiloti ({pendingCharges.length} ta dars):
+              </p>
+              <ul className="space-y-1.5 text-xs text-rose-800 dark:text-rose-300">
+                {pendingCharges.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2 dark:bg-slate-900/70">
+                    <span>
+                      📅 <strong>{p.lesson_date}</strong> — {p.subject_name} ({p.group_name}, 👤 {p.teacher_name})
+                    </span>
+                    <span className="font-bold text-rose-700 dark:text-rose-400">
+                      {p.amount.toLocaleString("uz-UZ")} so'm
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="mt-2.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+            💡 Balans to'ldirilgach, ushbu manfiy qarzdorlik avtomatik yopiladi va o'qituvchiga hisoblanadi.
           </p>
         </div>
       )}

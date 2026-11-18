@@ -30,7 +30,7 @@ import {
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
-import { currentMonthRange, getWeekDays, toLocalISODate } from "../../utils/date";
+import { currentMonthRange, currentWeekRange, getWeekDays, toLocalISODate } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
 
 const WEEKDAY_SHORT = ["Dush", "Sesh", "Chor", "Pay", "Juma", "Shan", "Yak"];
@@ -60,7 +60,7 @@ interface Filters {
 }
 
 const DEFAULT_FILTERS: Filters = {
-  ...currentMonthRange(),
+  ...currentWeekRange(),
   groupId: "",
   teacherId: "",
   subjectId: "",

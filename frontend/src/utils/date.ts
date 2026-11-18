@@ -26,6 +26,11 @@ export function getStartAndEndOfWeek(d: Date): { weekStart: Date; weekEnd: Date 
   return { weekStart: monday, weekEnd: sunday };
 }
 
+export function currentWeekRange(): { dateFrom: string; dateTo: string } {
+  const { weekStart, weekEnd } = getStartAndEndOfWeek(new Date());
+  return { dateFrom: toLocalISODate(weekStart), dateTo: toLocalISODate(weekEnd) };
+}
+
 export function getWeekDays(d: Date): Date[] {
   const { weekStart } = getStartAndEndOfWeek(d);
   const days: Date[] = [];
