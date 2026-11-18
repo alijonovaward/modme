@@ -252,16 +252,33 @@ export function StudentDetailPage() {
                 Qarzdorlik darslar tafsiloti ({pendingCharges.length} ta dars):
               </p>
               <ul className="space-y-1.5 text-xs text-rose-800 dark:text-rose-300">
-                {pendingCharges.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 p-2 dark:bg-slate-900/70">
-                    <span>
-                      📅 <strong>{p.lesson_date}</strong> — {p.subject_name} ({p.group_name}, 👤 {p.teacher_name})
-                    </span>
-                    <span className="font-bold text-rose-700 dark:text-rose-400">
-                      {p.amount.toLocaleString("uz-UZ")} so'm
-                    </span>
-                  </li>
-                ))}
+                {pendingCharges.map((p) => {
+                  const original = p.original_amount || p.amount;
+                  const remaining = p.amount;
+                  const paid = Math.max(0, original - remaining);
+                  const paidPercent = original > 0 ? Math.round((paid / original) * 100) : 0;
+
+                  return (
+                    <li key={p.id} className="flex flex-col gap-1.5 rounded-xl bg-white/80 p-2.5 dark:bg-slate-900/80">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          📅 <strong>{p.lesson_date}</strong> — {p.subject_name} ({p.group_name}, 👤 {p.teacher_name})
+                        </span>
+                        <span className="font-bold text-rose-700 dark:text-rose-400">
+                          {remaining.toLocaleString("uz-UZ")} so'm qolgan
+                        </span>
+                      </div>
+                      {paid > 0 && (
+                        <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          <span>✓ {paid.toLocaleString("uz-UZ")} so'm to'landi ({paidPercent}%)</span>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div className="h-full bg-emerald-500" style={{ width: `${paidPercent}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}

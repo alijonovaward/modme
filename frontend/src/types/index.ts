@@ -130,6 +130,7 @@ export interface StudentPendingCharge {
   teacher_name: string;
   lesson_date: string;
   amount: number;
+  original_amount?: number;
   created_at: string;
 }
 

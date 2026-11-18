@@ -360,6 +360,7 @@ def get_student_pending_charges(
             teacher_name=teacher.full_name,
             lesson_date=lesson.lesson_date,
             amount=charge.amount,
+            original_amount=charge.original_amount or charge.amount,
             created_at=charge.created_at,
         )
         for charge, lesson, group, subject, teacher in rows

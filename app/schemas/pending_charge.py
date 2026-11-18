@@ -1,4 +1,5 @@
 from datetime import date as date_type, datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -11,4 +12,5 @@ class StudentPendingChargeOut(BaseModel):
     teacher_name: str
     lesson_date: date_type
     amount: float
+    original_amount: Optional[float] = None
     created_at: datetime

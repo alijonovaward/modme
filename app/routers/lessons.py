@@ -536,6 +536,7 @@ def mark_attendance(
                         lesson_id=lesson.id,
                         teacher_id=teacher_id,
                         amount=pending_amount,
+                        original_amount=pending_amount,
                         teacher_share=pending_teacher_share,
                     )
                 )
