@@ -144,12 +144,14 @@ export function GroupDetailPage() {
 
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [pendingConflictStudentId, setPendingConflictStudentId] = useState<number | null>(null);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   const handleAddStudent = async (force: boolean = false) => {
     const studentId = force ? pendingConflictStudentId : Number(selectedStudentId);
-    if (!studentId) return;
+    if (!studentId || isAddingStudent) return;
     setError(null);
     setSuccess(null);
+    setIsAddingStudent(true);
     try {
       await addStudentToGroup(id, studentId, force);
       setSuccess("O'quvchi guruhga qo'shildi");
@@ -165,6 +167,8 @@ export function GroupDetailPage() {
       } else {
         setError(errMsg);
       }
+    } finally {
+      setIsAddingStudent(false);
     }
   };
 
@@ -325,7 +329,9 @@ export function GroupDetailPage() {
               placeholder="O'quvchi qidirish..."
               options={addableStudents.map((s) => ({ value: String(s.id), label: s.full_name }))}
             />
-            <Button onClick={() => handleAddStudent(false)}>Qo'shish</Button>
+            <Button onClick={() => handleAddStudent(false)} disabled={isAddingStudent}>
+              {isAddingStudent ? "Qo'shilmoqda..." : "Qo'shish"}
+            </Button>
           </div>
 
           <div className="mb-3 flex gap-1">
