@@ -512,6 +512,61 @@ def generate_group_lessons(
     )
 
 
+WEEKDAY_NAMES = [
+    "Dushanba",
+    "Seshanba",
+    "Chorshanba",
+    "Payshanba",
+    "Juma",
+    "Shanba",
+    "Yakshanba",
+]
+
+
+def _check_schedule_conflict(db: Session, student_id: int, target_group_id: int) -> Optional[str]:
+    target_schedules = db.query(GroupSchedule).filter(GroupSchedule.group_id == target_group_id).all()
+    if not target_schedules:
+        return None
+
+    active_memberships = (
+        db.query(GroupStudent, Group)
+        .join(Group, Group.id == GroupStudent.group_id)
+        .filter(
+            GroupStudent.student_id == student_id,
+            GroupStudent.group_id != target_group_id,
+            GroupStudent.status.in_([GroupStudentStatus.active, GroupStudentStatus.frozen]),
+            Group.status == GroupStatus.active,
+        )
+        .all()
+    )
+
+    for _, existing_group in active_memberships:
+        existing_schedules = (
+            db.query(GroupSchedule).filter(GroupSchedule.group_id == existing_group.id).all()
+        )
+        for ts in target_schedules:
+            for es in existing_schedules:
+                if ts.weekday == es.weekday:
+                    if ts.start_time < es.end_time and es.start_time < ts.end_time:
+                        day_name = (
+                            WEEKDAY_NAMES[ts.weekday]
+                            if 0 <= ts.weekday < 7
+                            else f"{ts.weekday}-kun"
+                        )
+                        existing_time = (
+                            f"{es.start_time.strftime('%H:%M')}–{es.end_time.strftime('%H:%M')}"
+                        )
+                        target_time = (
+                            f"{ts.start_time.strftime('%H:%M')}–{ts.end_time.strftime('%H:%M')}"
+                        )
+                        return (
+                            f"Dars vaqti to'qnashuvi! O'quvchining '{existing_group.name}' guruhida "
+                            f"{day_name} kuni soat {existing_time} darsi bor. "
+                            f"Yangi guruh dars vaqti: {target_time}."
+                        )
+    return None
+
+
 @router.post(
     "/{group_id}/students",
     response_model=GroupStudentOut,
@@ -546,6 +601,11 @@ def add_student_to_group(
     )
     if existing is not None:
         raise HTTPException(status_code=400, detail="O'quvchi allaqachon ushbu guruhda")
+
+    if not payload.force:
+        conflict_msg = _check_schedule_conflict(db, student.id, group.id)
+        if conflict_msg:
+            raise HTTPException(status_code=400, detail=conflict_msg)
 
     group_student = GroupStudent(group_id=group.id, student_id=student.id)
     db.add(group_student)

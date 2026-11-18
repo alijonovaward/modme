@@ -306,9 +306,10 @@ export async function updateGroup(
   return data;
 }
 
-export async function addStudentToGroup(groupId: number, studentId: number) {
+export async function addStudentToGroup(groupId: number, studentId: number, force: boolean = false) {
   const { data } = await apiClient.post(`/api/v1/groups/${groupId}/students`, {
     student_id: studentId,
+    force,
   });
   return data;
 }

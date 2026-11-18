@@ -77,3 +77,56 @@ def test_student_cannot_view_another_students_groups(client, admin_headers):
 
     resp = client.get(f"/api/v1/students/{student_b['id']}/groups", headers=student_headers)
     assert resp.status_code == 403, resp.text
+
+
+def test_schedule_conflict_detection_when_adding_student(client, superadmin_headers, admin_headers):
+    teacher_a = make_staff(client, superadmin_headers, role="teacher", phone="+998900700010")
+    teacher_b = make_staff(client, superadmin_headers, role="teacher", phone="+998900700012")
+    subject = make_subject(client, admin_headers, "Conflict-Test")
+    student = make_student(client, admin_headers, phone="+998900700011")
+
+    # Group A: Mon, Wed 18:00 - 20:00
+    group_a = make_group(
+        client,
+        admin_headers,
+        name="Group-A",
+        subject_id=subject["id"],
+        teacher_id=teacher_a["id"],
+        schedule=[
+            {"weekday": 0, "start_time": "18:00:00", "end_time": "20:00:00"},
+            {"weekday": 2, "start_time": "18:00:00", "end_time": "20:00:00"},
+        ],
+    )
+
+    # Group B: Mon, Wed 17:00 - 19:00 (overlaps between 18:00 and 19:00)
+    group_b = make_group(
+        client,
+        admin_headers,
+        name="Group-B",
+        subject_id=subject["id"],
+        teacher_id=teacher_b["id"],
+        schedule=[
+            {"weekday": 0, "start_time": "17:00:00", "end_time": "19:00:00"},
+            {"weekday": 2, "start_time": "17:00:00", "end_time": "19:00:00"},
+        ],
+    )
+
+    # Add student to group A
+    add_student_to_group(client, admin_headers, group_id=group_a["id"], student_id=student["id"])
+
+    # Adding student to group B without force fails with Conflict error
+    resp = client.post(
+        f"/api/v1/groups/{group_b['id']}/students",
+        headers=admin_headers,
+        json={"student_id": student["id"], "force": False},
+    )
+    assert resp.status_code == 400, resp.text
+    assert "Dars vaqti to'qnashuvi" in resp.json()["detail"]
+
+    # Adding student to group B with force=True succeeds
+    resp_force = client.post(
+        f"/api/v1/groups/{group_b['id']}/students",
+        headers=admin_headers,
+        json={"student_id": student["id"], "force": True},
+    )
+    assert resp_force.status_code == 201, resp_force.text

@@ -142,17 +142,29 @@ export function GroupDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleAddStudent = async () => {
-    if (!selectedStudentId) return;
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  const [pendingConflictStudentId, setPendingConflictStudentId] = useState<number | null>(null);
+
+  const handleAddStudent = async (force: boolean = false) => {
+    const studentId = force ? pendingConflictStudentId : Number(selectedStudentId);
+    if (!studentId) return;
     setError(null);
     setSuccess(null);
     try {
-      await addStudentToGroup(id, Number(selectedStudentId));
+      await addStudentToGroup(id, studentId, force);
       setSuccess("O'quvchi guruhga qo'shildi");
       setSelectedStudentId("");
+      setConflictMessage(null);
+      setPendingConflictStudentId(null);
       await loadAll();
     } catch (err) {
-      setError(extractErrorMessage(err));
+      const errMsg = extractErrorMessage(err);
+      if (!force && errMsg.includes("Dars vaqti to'qnashuvi")) {
+        setConflictMessage(errMsg);
+        setPendingConflictStudentId(studentId);
+      } else {
+        setError(errMsg);
+      }
     }
   };
 
@@ -313,7 +325,7 @@ export function GroupDetailPage() {
               placeholder="O'quvchi qidirish..."
               options={addableStudents.map((s) => ({ value: String(s.id), label: s.full_name }))}
             />
-            <Button onClick={handleAddStudent}>Qo'shish</Button>
+            <Button onClick={() => handleAddStudent(false)}>Qo'shish</Button>
           </div>
 
           <div className="mb-3 flex gap-1">
@@ -503,6 +515,27 @@ export function GroupDetailPage() {
             <Button className="w-full" onClick={handleEditSubmit}>
               Saqlash
             </Button>
+          </div>
+        </Modal>
+      )}
+
+      {conflictMessage && (
+        <Modal title="⚠️ Dars vaqti to'qnashuvi!" onClose={() => setConflictMessage(null)}>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3.5 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-200">
+              <p className="font-semibold">{conflictMessage}</p>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Ushbu vaqt to'qnashuviga qaramay, o'quvchini baribir ushbu guruhga qo'shishni xohlaysizmi?
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setConflictMessage(null)}>
+                Bekor qilish
+              </Button>
+              <Button variant="danger" onClick={() => handleAddStudent(true)}>
+                Baribir qo'shish
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

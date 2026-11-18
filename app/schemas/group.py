@@ -49,6 +49,7 @@ class GroupStatusUpdate(BaseModel):
 
 class GroupStudentCreate(BaseModel):
     student_id: int
+    force: bool = False
 
 
 class GroupStudentStatusUpdate(BaseModel):
