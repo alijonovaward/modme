@@ -99,7 +99,7 @@ export function AttendancePage() {
   };
 
   const handleSubmit = async () => {
-    if (!group) return;
+    if (!group || isSubmitting) return;
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
@@ -127,7 +127,7 @@ export function AttendancePage() {
   };
 
   const handleSaveCorrections = async () => {
-    if (!group) return;
+    if (!group || isSubmitting) return;
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);

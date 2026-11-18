@@ -179,6 +179,33 @@ def test_teacher_blocked_after_24h_but_admin_can_still_correct(client, superadmi
     )
     assert resp.status_code == 403, resp.text
 
+
+def test_double_submit_attendance_does_not_deduct_twice(client, superadmin_headers, admin_headers, db_session):
+    teacher, group, lesson, students, teacher_headers = _setup_lesson_with_attendance(
+        client, superadmin_headers, admin_headers, teacher_phone="+998900500050", student_phones=["+998900500051"], lesson_price=50000
+    )
+    student = students[0]
+
+    # First attendance submit (500000 deposit - 50000 = 450000)
+    resp1 = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp1.status_code == 201, resp1.text
+    assert _balance(db_session, student["id"]) == 450000.0
+
+    # Second attendance submit 1 sec later (double submit)
+    resp2 = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp2.status_code in (200, 201), resp2.text
+
+    # Balance MUST remain 450000.0 (NOT deducted twice!)
+    assert _balance(db_session, student["id"]) == 450000.0
+
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
         headers=admin_headers,

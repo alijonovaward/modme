@@ -476,7 +476,26 @@ def mark_attendance(
         student = db.get(User, item.student_id)
         is_pending = False
 
-        if should_charge and student is not None:
+        already_charged = (
+            db.query(Transaction)
+            .filter(
+                Transaction.lesson_id == lesson.id,
+                Transaction.student_id == item.student_id,
+                Transaction.type == TransactionType.deduction,
+            )
+            .first()
+            is not None
+        ) or (
+            db.query(PendingCharge)
+            .filter(
+                PendingCharge.lesson_id == lesson.id,
+                PendingCharge.student_id == item.student_id,
+            )
+            .first()
+            is not None
+        )
+
+        if should_charge and student is not None and not already_charged:
             teacher_share = group.lesson_price * (teacher_percentage / 100)
             if student.balance >= group.lesson_price:
                 student.balance -= group.lesson_price

@@ -109,7 +109,7 @@ export function AttendanceCombinedTable({
   };
 
   const handleSave = async () => {
-    if (modifiedLessonIds.length === 0) return;
+    if (modifiedLessonIds.length === 0 || isSaving) return;
     setIsSaving(true);
     setErrorMsg(null);
     setSuccessMsg(null);
