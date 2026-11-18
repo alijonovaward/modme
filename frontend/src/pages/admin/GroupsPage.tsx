@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { createGroup, listGroups, listStaffUsers, listSubjects } from "../../api/endpoints";
+import {
+  createGroup,
+  createSubject,
+  deleteSubject,
+  listGroups,
+  listStaffUsers,
+  listSubjects,
+  updateSubject,
+} from "../../api/endpoints";
 import { downloadXlsx } from "../../utils/download";
 import {
   Badge,
@@ -13,6 +21,7 @@ import {
   Label,
   Modal,
   Pagination,
+  SuccessMessage,
   Table,
   usePagination,
 } from "../../components/ui";
@@ -51,6 +60,74 @@ export function GroupsPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [draftSubjectFilter, setDraftSubjectFilter] = useState("");
   const [draftTeacherFilter, setDraftTeacherFilter] = useState("");
+
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null);
+  const [editingSubjectName, setEditingSubjectName] = useState("");
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [subjectSuccess, setSubjectSuccess] = useState<string | null>(null);
+  const [isSubjectSubmitting, setIsSubjectSubmitting] = useState(false);
+
+  const reloadSubjects = async () => {
+    try {
+      const data = await listSubjects();
+      setSubjects(data);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCreateSubjectSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newSubjectName.trim() || isSubjectSubmitting) return;
+    setSubjectError(null);
+    setSubjectSuccess(null);
+    setIsSubjectSubmitting(true);
+    try {
+      await createSubject(newSubjectName.trim());
+      setSubjectSuccess("Yangi fan qo'shildi");
+      setNewSubjectName("");
+      await reloadSubjects();
+    } catch (err) {
+      setSubjectError(extractErrorMessage(err));
+    } finally {
+      setIsSubjectSubmitting(false);
+    }
+  };
+
+  const handleUpdateSubjectSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingSubjectId || !editingSubjectName.trim() || isSubjectSubmitting) return;
+    setSubjectError(null);
+    setSubjectSuccess(null);
+    setIsSubjectSubmitting(true);
+    try {
+      await updateSubject(editingSubjectId, editingSubjectName.trim());
+      setSubjectSuccess("Fan nomi yangilandi");
+      setEditingSubjectId(null);
+      await reloadSubjects();
+    } catch (err) {
+      setSubjectError(extractErrorMessage(err));
+    } finally {
+      setIsSubjectSubmitting(false);
+    }
+  };
+
+  const handleDeleteSubjectClick = async (subjectId: number) => {
+    setSubjectError(null);
+    setSubjectSuccess(null);
+    setIsSubjectSubmitting(true);
+    try {
+      await deleteSubject(subjectId);
+      setSubjectSuccess("Fan o'chirildi");
+      await reloadSubjects();
+    } catch (err) {
+      setSubjectError(extractErrorMessage(err));
+    } finally {
+      setIsSubjectSubmitting(false);
+    }
+  };
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -174,14 +251,26 @@ export function GroupsPage() {
       <Card
         title="Guruhlar ro'yxati"
         action={
-          <Button
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
-            }}
-          >
-            + Yangi guruh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSubjectError(null);
+                setSubjectSuccess(null);
+                setIsSubjectModalOpen(true);
+              }}
+            >
+              Fanlar ({subjects.length})
+            </Button>
+            <Button
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+            >
+              + Yangi guruh
+            </Button>
+          </div>
         }
       >
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -351,6 +440,93 @@ export function GroupsPage() {
               {isSubmitting ? "Saqlanmoqda..." : "Yaratish"}
             </Button>
           </form>
+        </Modal>
+      )}
+
+      {isSubjectModalOpen && (
+        <Modal
+          title="Fanlarni boshqarish"
+          onClose={() => {
+            setIsSubjectModalOpen(false);
+            setEditingSubjectId(null);
+            setSubjectError(null);
+            setSubjectSuccess(null);
+          }}
+        >
+          <div className="space-y-4">
+            <ErrorMessage message={subjectError} />
+            <SuccessMessage message={subjectSuccess} />
+
+            <form onSubmit={handleCreateSubjectSubmit} className="flex gap-2">
+              <Input
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                placeholder="Yangi fan nomi..."
+                required
+                className="flex-1"
+              />
+              <Button type="submit" disabled={isSubjectSubmitting}>
+                Qo'shish
+              </Button>
+            </form>
+
+            <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200/80 divide-y divide-slate-100 p-1 dark:border-slate-800 dark:divide-slate-800">
+              {subjects.length === 0 ? (
+                <p className="p-3 text-center text-xs text-slate-400">Hali fanlar yo'q</p>
+              ) : (
+                subjects.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-2">
+                    {editingSubjectId === s.id ? (
+                      <form onSubmit={handleUpdateSubjectSubmit} className="flex flex-1 items-center gap-2 pr-1">
+                        <Input
+                          value={editingSubjectName}
+                          onChange={(e) => setEditingSubjectName(e.target.value)}
+                          required
+                          className="flex-1 py-1 text-xs"
+                        />
+                        <Button type="submit" disabled={isSubjectSubmitting} className="px-2.5 py-1 text-xs">
+                          Saqlash
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => setEditingSubjectId(null)}
+                          className="px-2.5 py-1 text-xs"
+                        >
+                          ✕
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{s.name}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingSubjectId(s.id);
+                              setEditingSubjectName(s.name);
+                            }}
+                            className="rounded-lg p-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                            title="Tahrirlash"
+                          >
+                            ✏️ Tahrirlash
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSubjectClick(s.id)}
+                            className="rounded-lg p-1.5 text-xs text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                            title="O'chirish"
+                          >
+                            🗑️ O'chirish
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </Modal>
       )}
     </Layout>

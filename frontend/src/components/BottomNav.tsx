@@ -58,16 +58,6 @@ const BOTTOM_NAV_BY_ROLE: Record<string, BottomNavItem[]> = {
       ),
     },
     {
-      to: "/admin/subjects",
-      label: "Fanlar",
-      icon: (active) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "0" : "1.8"} className="h-5 w-5">
-          <path d="M11.25 4.5A3.75 3.75 0 0 0 7.5 8.25v10.5a3.75 3.75 0 0 1 3.75-3.75h9.75V4.5h-9.75Z" />
-          <path d="M12.75 4.5A3.75 3.75 0 0 1 16.5 8.25v10.5a3.75 3.75 0 0 0-3.75-3.75H3V4.5h9.75Z" />
-        </svg>
-      ),
-    },
-    {
       to: "/admin/groups",
       label: "Guruhlar",
       icon: (active) => (
