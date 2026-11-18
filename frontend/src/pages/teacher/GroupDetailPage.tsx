@@ -156,7 +156,11 @@ export function TeacherGroupDetailPage() {
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
           </p>
-          <AttendanceCombinedTable grid={attendanceGrid} stats={attendanceStats} />
+          <AttendanceCombinedTable
+            grid={attendanceGrid}
+            stats={attendanceStats}
+            onReload={reloadAttendance}
+          />
         </Card>
       </div>
 
