@@ -146,10 +146,12 @@ export async function depositToStudent(
   studentId: number,
   amount: number,
   comment?: string,
+  idempotencyKey?: string,
 ): Promise<Transaction> {
   const { data } = await apiClient.post<Transaction>(
     `/api/v1/students/${studentId}/deposit`,
     { amount, comment },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
   );
   return data;
 }
@@ -503,10 +505,12 @@ export async function payoutTeacher(
   teacherId: number,
   amount: number,
   comment?: string,
+  idempotencyKey?: string,
 ): Promise<TeacherTransaction> {
   const { data } = await apiClient.post<TeacherTransaction>(
     `/api/v1/teachers/${teacherId}/payout`,
     { amount, comment },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
   );
   return data;
 }

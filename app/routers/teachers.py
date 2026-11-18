@@ -1,12 +1,20 @@
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session, aliased
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.idempotency import (
+    IdempotencyInProgress,
+    abort_idempotent_request,
+    begin_idempotent_request,
+    finish_idempotent_request,
+)
+from app.core.money import lock_user_for_update, round_som
 from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
@@ -400,35 +408,50 @@ def create_teacher_payout(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
-    teacher = db.get(User, teacher_id)
-    if teacher is None or teacher.role != UserRole.teacher:
-        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    try:
+        replay = begin_idempotent_request(db, "teachers.payout", idempotency_key)
+    except IdempotencyInProgress:
+        raise HTTPException(
+            status_code=409, detail="So'rov hali bajarilmoqda, biroz kutib qayta urinib ko'ring"
+        )
+    if replay is not None:
+        return JSONResponse(status_code=replay.status_code, content=replay.body)
 
-    if payload.amount <= 0:
-        raise HTTPException(status_code=400, detail="Summa musbat bo'lishi kerak")
-    if payload.amount > teacher.balance:
-        raise HTTPException(status_code=400, detail="O'qituvchi balansida yetarli mablag' yo'q")
+    try:
+        teacher = lock_user_for_update(db, teacher_id)
+        if teacher is None or teacher.role != UserRole.teacher:
+            raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
 
-    teacher.balance -= payload.amount
-    payout = TeacherTransaction(
-        teacher_id=teacher.id,
-        amount=-payload.amount,
-        type=TeacherTransactionType.payout,
-        comment=payload.comment,
-        created_by_id=current_user.id,
-    )
-    db.add(payout)
-    db.commit()
-    db.refresh(payout)
+        if payload.amount <= 0:
+            raise HTTPException(status_code=400, detail="Summa musbat bo'lishi kerak")
+        amount = round_som(payload.amount)
+        if amount > teacher.balance:
+            raise HTTPException(status_code=400, detail="O'qituvchi balansida yetarli mablag' yo'q")
+
+        teacher.balance -= amount
+        payout = TeacherTransaction(
+            teacher_id=teacher.id,
+            amount=-amount,
+            type=TeacherTransactionType.payout,
+            comment=payload.comment,
+            created_by_id=current_user.id,
+        )
+        db.add(payout)
+        db.commit()
+        db.refresh(payout)
+    except Exception:
+        abort_idempotent_request(db, idempotency_key)
+        raise
 
     if teacher.telegram_chat_id:
-        text = f"Balansingizdan {payload.amount:,.0f} so'm yechib berildi."
+        text = f"Balansingizdan {amount:,.0f} so'm yechib berildi."
         if payload.comment:
             text += f" Izoh: {payload.comment}"
         background_tasks.add_task(send_telegram_message, teacher.telegram_chat_id, text)
 
-    return TeacherTransactionListItemOut(
+    result = TeacherTransactionListItemOut(
         id=payout.id,
         teacher_id=payout.teacher_id,
         amount=payout.amount,
@@ -438,3 +461,5 @@ def create_teacher_payout(
         group_name=None,
         lesson_date=None,
     )
+    finish_idempotent_request(db, idempotency_key, status.HTTP_201_CREATED, result)
+    return result

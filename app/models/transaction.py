@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Enum, DateTime
 from sqlalchemy.sql import func
 
 from app.db.session import Base
@@ -16,7 +16,7 @@ class Transaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(14, 0), nullable=False)
     type = Column(Enum(TransactionType), nullable=False)
     comment = Column(String, nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)

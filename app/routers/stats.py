@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
+from app.core.money import ZERO, to_decimal
 from app.db.session import get_db
 from app.models.group import Group
 from app.models.group_student import GroupStudent
@@ -13,7 +14,11 @@ from app.models.lesson import Lesson
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
-from app.schemas.stats import StatsOverviewOut
+from app.schemas.stats import (
+    ReconciliationMismatchOut,
+    ReconciliationReportOut,
+    StatsOverviewOut,
+)
 
 router = APIRouter(prefix="/api/v1/stats", tags=["stats"])
 
@@ -122,3 +127,64 @@ def get_stats_overview(
     current_user: User = Depends(require_roles(UserRole.superadmin)),
 ):
     return _compute_stats_overview(db, date_from, date_to, group_id, teacher_id, student_id)
+
+
+@router.get("/reconciliation", response_model=ReconciliationReportOut)
+def get_reconciliation_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin)),
+):
+    """Recomputes every student's and teacher's balance from their own transaction
+    history and compares it against the stored `User.balance`. In a correct system
+    the two must always match exactly; any mismatch here means a bug (or a direct DB
+    edit) broke that invariant somewhere and needs investigating."""
+    student_sums = dict(
+        db.query(Transaction.student_id, func.sum(Transaction.amount))
+        .group_by(Transaction.student_id)
+        .all()
+    )
+    teacher_sums = dict(
+        db.query(TeacherTransaction.teacher_id, func.sum(TeacherTransaction.amount))
+        .group_by(TeacherTransaction.teacher_id)
+        .all()
+    )
+
+    mismatches: list[ReconciliationMismatchOut] = []
+
+    students = db.query(User).filter(User.role == UserRole.student).all()
+    for student in students:
+        expected = to_decimal(student_sums.get(student.id, ZERO))
+        stored = to_decimal(student.balance)
+        if expected != stored:
+            mismatches.append(
+                ReconciliationMismatchOut(
+                    user_id=student.id,
+                    user_name=student.full_name,
+                    role="student",
+                    stored_balance=float(stored),
+                    computed_balance=float(expected),
+                    difference=float(stored - expected),
+                )
+            )
+
+    teachers = db.query(User).filter(User.role == UserRole.teacher).all()
+    for teacher in teachers:
+        expected = to_decimal(teacher_sums.get(teacher.id, ZERO))
+        stored = to_decimal(teacher.balance)
+        if expected != stored:
+            mismatches.append(
+                ReconciliationMismatchOut(
+                    user_id=teacher.id,
+                    user_name=teacher.full_name,
+                    role="teacher",
+                    stored_balance=float(stored),
+                    computed_balance=float(expected),
+                    difference=float(stored - expected),
+                )
+            )
+
+    return ReconciliationReportOut(
+        checked_students=len(students),
+        checked_teachers=len(teachers),
+        mismatches=mismatches,
+    )

@@ -1,12 +1,20 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.idempotency import (
+    IdempotencyInProgress,
+    abort_idempotent_request,
+    begin_idempotent_request,
+    finish_idempotent_request,
+)
+from app.core.money import ZERO, lock_user_for_update, round_som, to_decimal
 from app.core.security import hash_password
 from app.core.telegram import send_telegram_message
 from app.db.session import get_db
@@ -163,7 +171,8 @@ def update_student_status(
     return student
 
 
-def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -> list[PendingCharge]:
+def _settle_pending_charges(db: Session, student: User, deposit_amount) -> list[PendingCharge]:
+    deposit_amount = to_decimal(deposit_amount)
     if deposit_amount <= 0:
         return []
 
@@ -171,6 +180,7 @@ def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -
         db.query(PendingCharge)
         .filter(PendingCharge.student_id == student.id, PendingCharge.resolved_at.is_(None))
         .order_by(PendingCharge.created_at.asc())
+        .with_for_update()
         .all()
     )
     settled: list[PendingCharge] = []
@@ -183,11 +193,11 @@ def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -
         pay_amount = min(remaining_deposit, charge.amount)
 
         if charge.amount > 0 and charge.teacher_share > 0:
-            teacher_pay_share = charge.teacher_share * (pay_amount / charge.amount)
+            teacher_pay_share = round_som(charge.teacher_share * (pay_amount / charge.amount))
         else:
-            teacher_pay_share = 0.0
+            teacher_pay_share = ZERO
 
-        teacher = db.get(User, charge.teacher_id)
+        teacher = lock_user_for_update(db, charge.teacher_id)
         if teacher is not None and teacher_pay_share > 0:
             teacher.balance += teacher_pay_share
             db.add(
@@ -205,9 +215,9 @@ def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -
         charge.teacher_share -= teacher_pay_share
         remaining_deposit -= pay_amount
 
-        if charge.amount <= 0.01:
-            charge.amount = 0.0
-            charge.teacher_share = 0.0
+        if charge.amount <= 0:
+            charge.amount = ZERO
+            charge.teacher_share = ZERO
             charge.resolved_at = datetime.now(timezone.utc)
             settled.append(charge)
 
@@ -221,30 +231,48 @@ def deposit_to_student(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
 ):
+    try:
+        replay = begin_idempotent_request(db, "students.deposit", idempotency_key)
+    except IdempotencyInProgress:
+        raise HTTPException(
+            status_code=409, detail="So'rov hali bajarilmoqda, biroz kutib qayta urinib ko'ring"
+        )
+    if replay is not None:
+        return JSONResponse(status_code=replay.status_code, content=replay.body)
+
     if payload.amount <= 0:
+        abort_idempotent_request(db, idempotency_key)
         raise HTTPException(status_code=400, detail="Summa musbat bo'lishi kerak")
 
-    student = _get_student_or_404(db, student_id)
+    amount = round_som(payload.amount)
 
-    transaction = Transaction(
-        student_id=student.id,
-        amount=payload.amount,
-        type=TransactionType.deposit,
-        comment=payload.comment,
-        created_by_id=current_user.id,
-    )
-    student.balance += payload.amount
-    db.add(transaction)
+    try:
+        student = _get_student_or_404(db, student_id)
+        student = lock_user_for_update(db, student.id) or student
 
-    settled = _settle_pending_charges(db, student, payload.amount)
+        transaction = Transaction(
+            student_id=student.id,
+            amount=amount,
+            type=TransactionType.deposit,
+            comment=payload.comment,
+            created_by_id=current_user.id,
+        )
+        student.balance += amount
+        db.add(transaction)
 
-    db.commit()
-    db.refresh(transaction)
+        settled = _settle_pending_charges(db, student, amount)
+
+        db.commit()
+        db.refresh(transaction)
+    except Exception:
+        abort_idempotent_request(db, idempotency_key)
+        raise
 
     if student.telegram_chat_id:
         message = (
-            f"Balansingiz {payload.amount:,.0f} so'mga to'ldirildi. "
+            f"Balansingiz {amount:,.0f} so'mga to'ldirildi. "
             f"Joriy balans: {student.balance:,.0f} so'm"
         )
         if settled:
@@ -255,7 +283,9 @@ def deposit_to_student(
             )
         background_tasks.add_task(send_telegram_message, student.telegram_chat_id, message)
 
-    return transaction
+    result = TransactionOut.model_validate(transaction)
+    finish_idempotent_request(db, idempotency_key, status.HTTP_201_CREATED, result)
+    return result
 
 
 def _build_student_transactions_query(

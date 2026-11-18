@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Enum
 
 from app.db.session import Base
 
@@ -18,5 +18,5 @@ class Group(Base):
     name = Column(String, nullable=False)
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False, index=True)
     teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    lesson_price = Column(Float, nullable=False)
+    lesson_price = Column(Numeric(14, 0), nullable=False)
     status = Column(Enum(GroupStatus), default=GroupStatus.active, nullable=False)

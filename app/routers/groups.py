@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.money import round_som
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group, GroupStatus
@@ -150,7 +151,7 @@ def create_group(
         name=payload.name,
         subject_id=payload.subject_id,
         teacher_id=payload.teacher_id,
-        lesson_price=payload.lesson_price,
+        lesson_price=round_som(payload.lesson_price),
     )
     db.add(group)
     db.flush()
@@ -195,7 +196,7 @@ def update_group(
     group.name = payload.name
     group.subject_id = payload.subject_id
     group.teacher_id = payload.teacher_id
-    group.lesson_price = payload.lesson_price
+    group.lesson_price = round_som(payload.lesson_price)
     _replace_group_schedule(db, group.id, payload.schedule)
     db.commit()
     db.refresh(group)

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
+from app.core.money import lock_user_for_update, pct_of, to_decimal
 from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
@@ -85,7 +86,8 @@ def _apply_lesson_fee(
 
     Returns True if part of the fee is still pending (uncollected).
     """
-    collected_amount = max(0.0, min(lesson_fee, student.balance))
+    lesson_fee = to_decimal(lesson_fee)
+    collected_amount = max(to_decimal(0), min(lesson_fee, to_decimal(student.balance)))
     pending_amount = lesson_fee - collected_amount
 
     student.balance -= lesson_fee
@@ -101,7 +103,7 @@ def _apply_lesson_fee(
     )
 
     if teacher is not None and collected_amount > 0:
-        immediate_teacher_share = collected_amount * (teacher_percentage / 100)
+        immediate_teacher_share = pct_of(collected_amount, teacher_percentage)
         if immediate_teacher_share > 0:
             teacher.balance += immediate_teacher_share
             db.add(
@@ -117,7 +119,7 @@ def _apply_lesson_fee(
             )
 
     if pending_amount > 0:
-        pending_teacher_share = pending_amount * (teacher_percentage / 100)
+        pending_teacher_share = pct_of(pending_amount, teacher_percentage)
         db.add(
             PendingCharge(
                 student_id=student.id,
@@ -552,11 +554,7 @@ def mark_attendance(
     if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
-    teacher_user = (
-        current_user
-        if current_user.role == UserRole.teacher
-        else db.get(User, group.teacher_id)
-    )
+    teacher_user = lock_user_for_update(db, group.teacher_id)
     teacher_percentage = (
         teacher_user.teacher_percentage if teacher_user else 0.0
     ) or 0.0
@@ -619,7 +617,7 @@ def mark_attendance(
             and not item.is_trial
         )
 
-        student = db.get(User, item.student_id)
+        student = lock_user_for_update(db, item.student_id)
         is_pending = False
 
         already_charged = (
@@ -732,6 +730,13 @@ def update_attendance(
     )
     is_frozen = group_student is not None and group_student.status == GroupStudentStatus.frozen
 
+    # Lock the student/teacher rows BEFORE reading old_deduction/old_pending below, so a
+    # second concurrent correction request blocks here (on Postgres) until the first one
+    # commits, instead of both requests reading the "not charged yet" state and double-
+    # charging the student.
+    student = lock_user_for_update(db, student_id)
+    teacher = lock_user_for_update(db, group.teacher_id)
+
     old_deduction = (
         db.query(Transaction)
         .filter(
@@ -758,9 +763,6 @@ def update_attendance(
         and not is_frozen
         and not payload.is_trial
     )
-
-    student = db.get(User, student_id)
-    teacher = db.get(User, group.teacher_id)
 
     if was_pending and not should_charge and not was_charged:
         db.delete(old_pending)

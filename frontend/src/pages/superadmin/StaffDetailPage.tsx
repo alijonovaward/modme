@@ -29,6 +29,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, Subject, TeacherStats, TeacherTransaction, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { useIdempotencyKey } from "../../hooks/useIdempotencyKey";
 import { currentMonthRange } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
 
@@ -71,6 +72,7 @@ export function StaffDetailPage() {
   const [newPassword, setNewPassword] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutComment, setPayoutComment] = useState("");
+  const payoutIdempotencyKey = useIdempotencyKey();
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editPercentage, setEditPercentage] = useState("");
@@ -203,7 +205,8 @@ export function StaffDetailPage() {
     setSuccess(null);
     setIsSubmitting(true);
     try {
-      await payoutTeacher(id, amount, payoutComment || undefined);
+      await payoutTeacher(id, amount, payoutComment || undefined, payoutIdempotencyKey.get());
+      payoutIdempotencyKey.renew();
       setSuccess("Pul o'qituvchi balansidan yechildi");
       setPayoutAmount("");
       setPayoutComment("");

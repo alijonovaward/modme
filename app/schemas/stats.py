@@ -19,3 +19,18 @@ class TeacherStatsOut(BaseModel):
 class TeacherPendingCommissionOut(BaseModel):
     total_amount: float
     charge_count: int
+
+
+class ReconciliationMismatchOut(BaseModel):
+    user_id: int
+    user_name: str
+    role: str
+    stored_balance: float
+    computed_balance: float
+    difference: float
+
+
+class ReconciliationReportOut(BaseModel):
+    checked_students: int
+    checked_teachers: int
+    mismatches: list[ReconciliationMismatchOut]

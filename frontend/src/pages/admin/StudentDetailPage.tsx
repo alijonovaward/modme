@@ -35,6 +35,7 @@ import type {
   User,
 } from "../../types";
 import { Layout } from "../../components/Layout";
+import { useIdempotencyKey } from "../../hooks/useIdempotencyKey";
 import { downloadXlsx } from "../../utils/download";
 
 const ATTENDANCE_LABEL: Record<string, string> = {
@@ -70,6 +71,7 @@ export function StudentDetailPage() {
 
   const [depositAmount, setDepositAmount] = useState("");
   const [depositComment, setDepositComment] = useState("");
+  const depositIdempotencyKey = useIdempotencyKey();
   const [newPassword, setNewPassword] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -109,7 +111,13 @@ export function StudentDetailPage() {
     setSuccess(null);
     setIsSubmitting(true);
     try {
-      await depositToStudent(id, amount, depositComment || undefined);
+      await depositToStudent(
+        id,
+        amount,
+        depositComment || undefined,
+        depositIdempotencyKey.get(),
+      );
+      depositIdempotencyKey.renew();
       setSuccess("Balans to'ldirildi");
       setDepositAmount("");
       setDepositComment("");
