@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import case, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -121,7 +122,13 @@ def create_student(
         role=UserRole.student,
     )
     db.add(student)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Closes the race a pre-check alone can't: two near-simultaneous requests
+        # with the same new phone number both passing the check above.
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
     db.refresh(student)
     return student
 
