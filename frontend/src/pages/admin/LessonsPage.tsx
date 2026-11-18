@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createLesson,
@@ -29,8 +29,24 @@ import {
 } from "../../components/ui";
 import type { AttendanceDetail, GroupListItem, LessonListItem, Subject, User } from "../../types";
 import { Layout } from "../../components/Layout";
-import { currentMonthRange, toLocalISODate } from "../../utils/date";
+import { currentMonthRange, getWeekDays, toLocalISODate } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
+
+const WEEKDAY_SHORT = ["Dush", "Sesh", "Chor", "Pay", "Juma", "Shan", "Yak"];
+const MONTH_NAMES_UZ = [
+  "Yanvar",
+  "Fevral",
+  "Mart",
+  "Aprel",
+  "May",
+  "Iyun",
+  "Iyul",
+  "Avgust",
+  "Sentabr",
+  "Oktabr",
+  "Noyabr",
+  "Dekabr",
+];
 
 interface Filters {
   dateFrom: string;
@@ -87,6 +103,57 @@ export function LessonsPage() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ completed: 0, planned: 0 });
 
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
+  const [weekBaseDate, setWeekBaseDate] = useState<Date>(() => new Date());
+
+  const weekDays = useMemo(() => getWeekDays(weekBaseDate), [weekBaseDate]);
+  const weekStartStr = useMemo(() => toLocalISODate(weekDays[0]), [weekDays]);
+  const weekEndStr = useMemo(() => toLocalISODate(weekDays[6]), [weekDays]);
+  const todayStr = useMemo(() => toLocalISODate(new Date()), []);
+
+  const [weeklyLessons, setWeeklyLessons] = useState<LessonListItem[]>([]);
+
+  const loadWeeklyLessons = async (filters: Filters) => {
+    setIsLoading(true);
+    try {
+      const data = await listAllLessons({
+        group_id: filters.groupId ? Number(filters.groupId) : undefined,
+        teacher_id: filters.teacherId ? Number(filters.teacherId) : undefined,
+        date_from: weekStartStr,
+        date_to: weekEndStr,
+        status: filters.status ? (filters.status as "planned" | "completed") : undefined,
+        page: 1,
+        page_size: 100,
+      });
+      setWeeklyLessons(data.items);
+      setSummary({ completed: data.completed_count, planned: data.planned_count });
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrevWeek = () => {
+    setWeekBaseDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() - 7);
+      return next;
+    });
+  };
+
+  const handleNextWeek = () => {
+    setWeekBaseDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + 7);
+      return next;
+    });
+  };
+
+  const handleTodayWeek = () => {
+    setWeekBaseDate(new Date());
+  };
+
   const load = async (filters: Filters, pageArg: number) => {
     setIsLoading(true);
     try {
@@ -111,12 +178,16 @@ export function LessonsPage() {
   };
 
   useEffect(() => {
-    load(appliedFilters, 1);
+    if (viewMode === "calendar") {
+      loadWeeklyLessons(appliedFilters);
+    } else {
+      load(appliedFilters, 1);
+    }
     listGroups().then(setGroups).catch(() => undefined);
     listStaffUsers("teacher").then(setTeachers).catch(() => undefined);
     listSubjects().then(setSubjects).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [viewMode, weekStartStr, weekEndStr]);
 
   const openModal = () => {
     setDraft(appliedFilters);
@@ -126,14 +197,22 @@ export function LessonsPage() {
   const applyFilters = () => {
     setAppliedFilters(draft);
     setIsModalOpen(false);
-    load(draft, 1);
+    if (viewMode === "calendar") {
+      loadWeeklyLessons(draft);
+    } else {
+      load(draft, 1);
+    }
   };
 
   const clearFilters = () => {
     setDraft(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
     setIsModalOpen(false);
-    load(DEFAULT_FILTERS, 1);
+    if (viewMode === "calendar") {
+      loadWeeklyLessons(DEFAULT_FILTERS);
+    } else {
+      load(DEFAULT_FILTERS, 1);
+    }
   };
 
   const handleCreateLesson = async () => {
@@ -287,8 +366,150 @@ export function LessonsPage() {
           <StatTile label="Rejalashtirilgan" value={String(summary.planned)} color="amber" />
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex select-none rounded-xl border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => setViewMode("calendar")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                viewMode === "calendar"
+                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-800 dark:text-indigo-400"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              }`}
+            >
+              📅 Haftalik jadval
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                viewMode === "list"
+                  ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-800 dark:text-indigo-400"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              }`}
+            >
+              📋 Ro'yxat
+            </button>
+          </div>
+
+          {viewMode === "calendar" && (
+            <div className="flex select-none items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePrevWeek}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                title="O'tgan hafta"
+              >
+                ◀
+              </button>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                {weekDays[0].getDate()}-{MONTH_NAMES_UZ[weekDays[0].getMonth()]} – {weekDays[6].getDate()}-{MONTH_NAMES_UZ[weekDays[6].getMonth()]}, {weekDays[0].getFullYear()}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextWeek}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                title="Keyingi hafta"
+              >
+                ▶
+              </button>
+              <button
+                type="button"
+                onClick={handleTodayWeek}
+                className="rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 active:scale-95 dark:border-indigo-900/60 dark:bg-indigo-950/50 dark:text-indigo-300"
+              >
+                Joriy hafta
+              </button>
+            </div>
+          )}
+        </div>
+
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
+        ) : viewMode === "calendar" ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+            {weekDays.map((dayDate: Date, idx: number) => {
+              const dayStr = toLocalISODate(dayDate);
+              const isToday = dayStr === todayStr;
+              const dayLessons = weeklyLessons
+                .filter((l) => l.lesson_date === dayStr)
+                .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+
+              return (
+                <div
+                  key={dayStr}
+                  className={`flex flex-col rounded-2xl border p-2.5 transition-all ${
+                    isToday
+                      ? "border-indigo-500 bg-indigo-50/40 ring-1 ring-indigo-500/30 dark:border-indigo-500/80 dark:bg-indigo-950/20"
+                      : "border-slate-200/70 bg-slate-50/50 dark:border-slate-800/70 dark:bg-slate-900/50"
+                  }`}
+                >
+                  <div className="mb-2 flex items-center justify-between border-b border-slate-200/60 pb-2 dark:border-slate-800/60">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {WEEKDAY_SHORT[idx]}
+                      </p>
+                      <p className={`text-sm font-bold ${isToday ? "text-indigo-600 dark:text-indigo-400" : "text-slate-800 dark:text-slate-200"}`}>
+                        {dayDate.getDate()} {MONTH_NAMES_UZ[dayDate.getMonth()].slice(0, 3)}
+                      </p>
+                    </div>
+                    {isToday && (
+                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        Bugun
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-1 flex-col gap-2">
+                    {dayLessons.length === 0 ? (
+                      <div className="flex flex-1 items-center justify-center py-6 text-center">
+                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Dars yo'q</p>
+                      </div>
+                    ) : (
+                      dayLessons.map((l) => {
+                        const isCompleted = l.status === "completed";
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => openDetail(l)}
+                            className={`flex flex-col rounded-xl border p-2 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${
+                              isCompleted
+                                ? "border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40"
+                                : "border-indigo-200 bg-white hover:bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-slate-900 dark:hover:bg-indigo-950/40"
+                            }`}
+                          >
+                            <div className="mb-1 flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                ⏰ {l.start_time ? l.start_time.slice(0, 5) : "--:--"}–{l.end_time ? l.end_time.slice(0, 5) : "--:--"}
+                              </span>
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                  isCompleted ? "bg-emerald-500" : "bg-amber-400"
+                                }`}
+                                title={isCompleted ? "O'tildi" : "Rejada"}
+                              />
+                            </div>
+                            <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
+                              {l.group_name}
+                            </p>
+                            <p className="truncate text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                              {l.subject_name}
+                            </p>
+                            {l.teacher_name && (
+                              <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">
+                                👤 {l.teacher_name}
+                              </p>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat"]}>
