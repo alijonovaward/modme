@@ -20,6 +20,7 @@ import type {
   StudentPendingCharge,
   StudentTransactionListItem,
   Subject,
+  TeacherPendingCommission,
   TeacherStats,
   TeacherTransaction,
   TeacherTransactionListPage,
@@ -462,6 +463,22 @@ export async function getTeacherStats(
   const { data } = await apiClient.get<TeacherStats>(`/api/v1/teachers/${teacherId}/stats`, {
     params,
   });
+  return data;
+}
+
+export async function getTeacherPendingCommission(): Promise<TeacherPendingCommission> {
+  const { data } = await apiClient.get<TeacherPendingCommission>(
+    "/api/v1/teachers/pending-commission",
+  );
+  return data;
+}
+
+export async function getTeacherPendingCommissionById(
+  teacherId: number,
+): Promise<TeacherPendingCommission> {
+  const { data } = await apiClient.get<TeacherPendingCommission>(
+    `/api/v1/teachers/${teacherId}/pending-commission`,
+  );
   return data;
 }
 

@@ -65,6 +65,11 @@ export interface TeacherStats {
   attendance_rate: number;
 }
 
+export interface TeacherPendingCommission {
+  total_amount: number;
+  charge_count: number;
+}
+
 export interface TeacherTransactionGlobalListItem {
   id: number;
   teacher_id: number;

@@ -13,9 +13,10 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
 from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
+from app.models.pending_charge import PendingCharge
 from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
 from app.models.user import User, UserRole
-from app.schemas.stats import TeacherStatsOut
+from app.schemas.stats import TeacherPendingCommissionOut, TeacherStatsOut
 from app.schemas.transaction import (
     TeacherPayoutCreate,
     TeacherTransactionGlobalListItemOut,
@@ -92,6 +93,38 @@ def get_teacher_finance_by_id(
     if teacher is None or teacher.role != UserRole.teacher:
         raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
+
+
+def _pending_commission_for(db: Session, teacher_id: int) -> TeacherPendingCommissionOut:
+    rows = (
+        db.query(PendingCharge)
+        .filter(PendingCharge.teacher_id == teacher_id, PendingCharge.resolved_at.is_(None))
+        .all()
+    )
+    return TeacherPendingCommissionOut(
+        total_amount=sum(c.teacher_share for c in rows),
+        charge_count=len(rows),
+    )
+
+
+@router.get("/pending-commission", response_model=TeacherPendingCommissionOut)
+def get_teacher_pending_commission(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.teacher)),
+):
+    return _pending_commission_for(db, current_user.id)
+
+
+@router.get("/{teacher_id}/pending-commission", response_model=TeacherPendingCommissionOut)
+def get_teacher_pending_commission_by_id(
+    teacher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    teacher = db.get(User, teacher_id)
+    if teacher is None or teacher.role != UserRole.teacher:
+        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    return _pending_commission_for(db, teacher_id)
 
 
 @router.get("/{teacher_id}/stats", response_model=TeacherStatsOut)

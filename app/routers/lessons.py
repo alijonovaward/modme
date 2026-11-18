@@ -64,6 +64,147 @@ def _attendance_notification_text(
     return "\n".join(lines)
 
 
+def _apply_lesson_fee(
+    db: Session,
+    student: User,
+    lesson: Lesson,
+    teacher: Optional[User],
+    teacher_id: Optional[int],
+    teacher_percentage: float,
+    lesson_fee: float,
+    created_by_id: int,
+    comment_suffix: str,
+) -> bool:
+    """Deducts the full lesson fee from the student's balance (going negative if the
+    balance can't cover it), credits the teacher immediately for whatever portion was
+    actually available, and queues the uncollected remainder as a PendingCharge.
+
+    Always deducting the full fee (rather than only the collected part) keeps
+    student.balance the single source of truth for net debt - no separate bookkeeping
+    is needed to know how much a student owes in total.
+
+    Returns True if part of the fee is still pending (uncollected).
+    """
+    collected_amount = max(0.0, min(lesson_fee, student.balance))
+    pending_amount = lesson_fee - collected_amount
+
+    student.balance -= lesson_fee
+    db.add(
+        Transaction(
+            student_id=student.id,
+            amount=-lesson_fee,
+            type=TransactionType.deduction,
+            comment=f"Dars uchun yechim ({comment_suffix})",
+            created_by_id=created_by_id,
+            lesson_id=lesson.id,
+        )
+    )
+
+    if teacher is not None and collected_amount > 0:
+        immediate_teacher_share = collected_amount * (teacher_percentage / 100)
+        if immediate_teacher_share > 0:
+            teacher.balance += immediate_teacher_share
+            db.add(
+                TeacherTransaction(
+                    teacher_id=teacher_id,
+                    lesson_id=lesson.id,
+                    student_id=student.id,
+                    amount=immediate_teacher_share,
+                    type=TeacherTransactionType.lesson_earning,
+                    comment=f"Dars uchun ({comment_suffix})",
+                    created_by_id=created_by_id,
+                )
+            )
+
+    if pending_amount > 0:
+        pending_teacher_share = pending_amount * (teacher_percentage / 100)
+        db.add(
+            PendingCharge(
+                student_id=student.id,
+                lesson_id=lesson.id,
+                teacher_id=teacher_id,
+                amount=pending_amount,
+                original_amount=pending_amount,
+                teacher_share=pending_teacher_share,
+            )
+        )
+        return True
+    return False
+
+
+def _reverse_lesson_fee(
+    db: Session,
+    student: User,
+    lesson: Lesson,
+    teacher: Optional[User],
+    created_by_id: int,
+    comment_suffix: str,
+) -> None:
+    """Undoes everything `_apply_lesson_fee` (or the legacy charging path) did for this
+    lesson+student: refunds the full original fee to the student, claws back every
+    teacher earning tied to this lesson (including ones credited later via partial
+    pending-charge settlements), and drops any still-unresolved PendingCharge.
+    """
+    deductions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.lesson_id == lesson.id,
+            Transaction.student_id == student.id,
+            Transaction.type == TransactionType.deduction,
+        )
+        .all()
+    )
+    refund_amount = sum(-d.amount for d in deductions)
+    if refund_amount > 0:
+        student.balance += refund_amount
+        db.add(
+            Transaction(
+                student_id=student.id,
+                amount=refund_amount,
+                type=TransactionType.deposit,
+                comment=f"Davomat tuzatildi, pul qaytarildi ({comment_suffix})",
+                created_by_id=created_by_id,
+                lesson_id=lesson.id,
+            )
+        )
+
+    earnings = (
+        db.query(TeacherTransaction)
+        .filter(
+            TeacherTransaction.lesson_id == lesson.id,
+            TeacherTransaction.student_id == student.id,
+            TeacherTransaction.type == TeacherTransactionType.lesson_earning,
+        )
+        .all()
+    )
+    total_teacher_share = sum(e.amount for e in earnings)
+    if teacher is not None and total_teacher_share > 0:
+        teacher.balance -= total_teacher_share
+        db.add(
+            TeacherTransaction(
+                teacher_id=teacher.id,
+                lesson_id=lesson.id,
+                student_id=student.id,
+                amount=-total_teacher_share,
+                type=TeacherTransactionType.payout,
+                comment=f"Davomat tuzatildi, hisoblangan foiz bekor qilindi ({comment_suffix})",
+                created_by_id=created_by_id,
+            )
+        )
+
+    stale_pending = (
+        db.query(PendingCharge)
+        .filter(
+            PendingCharge.lesson_id == lesson.id,
+            PendingCharge.student_id == student.id,
+            PendingCharge.resolved_at.is_(None),
+        )
+        .all()
+    )
+    for charge in stale_pending:
+        db.delete(charge)
+
+
 LESSON_AUTO_CREATE_HORIZON = timedelta(days=30)
 LESSON_AUTO_CREATE_STATE_KEY = "lesson_auto_create_last_run"
 
@@ -501,50 +642,17 @@ def mark_attendance(
         )
 
         if should_charge and student is not None and not already_charged:
-            lesson_fee = group.lesson_price
-            collected_amount = max(0.0, min(lesson_fee, student.balance))
-            pending_amount = lesson_fee - collected_amount
-
-            student.balance -= lesson_fee
-            db.add(
-                Transaction(
-                    student_id=student.id,
-                    amount=-lesson_fee,
-                    type=TransactionType.deduction,
-                    comment=(
-                        f"Dars uchun yechim ({group.name}, {lesson.lesson_date})"
-                    ),
-                    created_by_id=current_user.id,
-                    lesson_id=lesson.id,
-                )
+            is_pending = _apply_lesson_fee(
+                db,
+                student,
+                lesson,
+                teacher_user,
+                teacher_id,
+                teacher_percentage,
+                group.lesson_price,
+                current_user.id,
+                f"{group.name}, {lesson.lesson_date}",
             )
-
-            immediate_teacher_share = collected_amount * (teacher_percentage / 100)
-            if teacher_user is not None and immediate_teacher_share > 0:
-                teacher_user.balance += immediate_teacher_share
-                db.add(
-                    TeacherTransaction(
-                        teacher_id=teacher_id,
-                        lesson_id=lesson.id,
-                        student_id=item.student_id,
-                        amount=immediate_teacher_share,
-                        type=TeacherTransactionType.lesson_earning,
-                    )
-                )
-
-            if pending_amount > 0:
-                is_pending = True
-                pending_teacher_share = pending_amount * (teacher_percentage / 100)
-                db.add(
-                    PendingCharge(
-                        student_id=item.student_id,
-                        lesson_id=lesson.id,
-                        teacher_id=teacher_id,
-                        amount=pending_amount,
-                        original_amount=pending_amount,
-                        teacher_share=pending_teacher_share,
-                    )
-                )
 
         if student is not None and student.telegram_chat_id:
             background_tasks.add_task(
@@ -633,15 +741,6 @@ def update_attendance(
         )
         .first()
     )
-    old_earning = (
-        db.query(TeacherTransaction)
-        .filter(
-            TeacherTransaction.lesson_id == lesson_id,
-            TeacherTransaction.student_id == student_id,
-            TeacherTransaction.type == TeacherTransactionType.lesson_earning,
-        )
-        .first()
-    )
     old_pending = (
         db.query(PendingCharge)
         .filter(
@@ -663,74 +762,31 @@ def update_attendance(
     student = db.get(User, student_id)
     teacher = db.get(User, group.teacher_id)
 
-    if was_pending and not should_charge:
+    if was_pending and not should_charge and not was_charged:
         db.delete(old_pending)
 
     if was_charged and not should_charge:
-        student.balance += group.lesson_price
-        db.add(
-            Transaction(
-                student_id=student_id,
-                amount=group.lesson_price,
-                type=TransactionType.deposit,
-                comment=f"Davomat tuzatildi, pul qaytarildi ({group.name}, {lesson.lesson_date})",
-                created_by_id=current_user.id,
-                lesson_id=lesson.id,
-            )
+        _reverse_lesson_fee(
+            db,
+            student,
+            lesson,
+            teacher,
+            current_user.id,
+            f"davomat tuzatildi, {group.name}, {lesson.lesson_date}",
         )
-        refund_share = old_earning.amount if old_earning else 0.0
-        if refund_share:
-            teacher.balance -= refund_share
-            db.add(
-                TeacherTransaction(
-                    teacher_id=teacher.id,
-                    lesson_id=lesson.id,
-                    student_id=student_id,
-                    amount=-refund_share,
-                    type=TeacherTransactionType.payout,
-                    comment=(
-                        f"Davomat tuzatildi, hisoblangan foiz bekor qilindi "
-                        f"({group.name}, {lesson.lesson_date})"
-                    ),
-                    created_by_id=current_user.id,
-                )
-            )
     elif not was_charged and not was_pending and should_charge:
-        teacher_share = group.lesson_price * ((teacher.teacher_percentage or 0.0) / 100)
-        if student.balance >= group.lesson_price:
-            student.balance -= group.lesson_price
-            db.add(
-                Transaction(
-                    student_id=student_id,
-                    amount=-group.lesson_price,
-                    type=TransactionType.deduction,
-                    comment=f"Davomat tuzatildi, dars uchun yechildi ({group.name}, {lesson.lesson_date})",
-                    created_by_id=current_user.id,
-                    lesson_id=lesson.id,
-                )
-            )
-            teacher.balance += teacher_share
-            db.add(
-                TeacherTransaction(
-                    teacher_id=teacher.id,
-                    lesson_id=lesson.id,
-                    student_id=student_id,
-                    amount=teacher_share,
-                    type=TeacherTransactionType.lesson_earning,
-                    comment=f"Davomat tuzatildi ({group.name}, {lesson.lesson_date})",
-                    created_by_id=current_user.id,
-                )
-            )
-        else:
-            db.add(
-                PendingCharge(
-                    student_id=student_id,
-                    lesson_id=lesson.id,
-                    teacher_id=teacher.id,
-                    amount=group.lesson_price,
-                    teacher_share=teacher_share,
-                )
-            )
+        teacher_percentage = (teacher.teacher_percentage or 0.0) if teacher else 0.0
+        _apply_lesson_fee(
+            db,
+            student,
+            lesson,
+            teacher,
+            teacher.id if teacher else group.teacher_id,
+            teacher_percentage,
+            group.lesson_price,
+            current_user.id,
+            f"davomat tuzatildi, {group.name}, {lesson.lesson_date}",
+        )
 
     attendance.status = payload.status
     attendance.correct_count = payload.correct_count

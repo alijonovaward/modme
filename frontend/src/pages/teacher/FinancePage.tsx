@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
-import { getTeacherFinance, listGroups, listSubjects } from "../../api/endpoints";
+import {
+  getTeacherFinance,
+  getTeacherPendingCommission,
+  listGroups,
+  listSubjects,
+} from "../../api/endpoints";
 import {
   Badge,
   Button,
@@ -42,6 +47,7 @@ const DEFAULT_FILTERS: Filters = {
 export function FinancePage() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<TeacherTransaction[]>([]);
+  const [pendingCommission, setPendingCommission] = useState(0);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +78,9 @@ export function FinancePage() {
   useEffect(() => {
     listGroups().then(setGroups).catch(() => undefined);
     listSubjects().then(setSubjects).catch(() => undefined);
+    getTeacherPendingCommission()
+      .then((data) => setPendingCommission(data.total_amount))
+      .catch(() => undefined);
     load(appliedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,7 +160,7 @@ export function FinancePage() {
             Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
           </p>
         )}
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
             label="Jami kirim (dars daromadi)"
             value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
@@ -170,7 +179,18 @@ export function FinancePage() {
             color="red"
             isPrivate={isPrivate}
           />
+          <StatTile
+            label="Kutilayotgan komissiya"
+            value={`${pendingCommission.toLocaleString("uz-UZ")} so'm`}
+            color="amber"
+            isPrivate={isPrivate}
+          />
         </div>
+        {pendingCommission > 0 && (
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Bu summa o'quvchilar qarzini to'liq to'laganidan keyin balansingizga avtomatik qo'shiladi.
+          </p>
+        )}
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
