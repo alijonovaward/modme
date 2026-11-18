@@ -214,7 +214,16 @@ export function StudentDetailPage() {
           </div>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Balans: <span className="font-semibold">{student.balance.toLocaleString("uz-UZ")} so'm</span>
+            Balans:{" "}
+            <span
+              className={`font-semibold ${
+                student.balance < 0
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-slate-800 dark:text-slate-200"
+              }`}
+            >
+              {student.balance.toLocaleString("uz-UZ")} so'm
+            </span>
           </p>
         </div>
         <div className="shrink-0">

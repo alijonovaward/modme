@@ -37,7 +37,7 @@ def _balance(db_session, user_id: int) -> float:
     return db_session.get(User, user_id).balance
 
 
-def test_insufficient_balance_marks_attendance_but_holds_the_charge(
+def test_insufficient_balance_deducts_directly_into_negative_balance(
     client, superadmin_headers, admin_headers, db_session
 ):
     teacher, group, student, lesson, teacher_headers = _setup(
@@ -57,18 +57,12 @@ def test_insufficient_balance_marks_attendance_but_holds_the_charge(
     )
     assert resp.status_code == 201, resp.text
 
-    assert _balance(db_session, student["id"]) == 10000
-    assert _balance(db_session, teacher["id"]) == 0
-
-    resp = client.get(f"/api/v1/students/{student['id']}/pending-charges", headers=admin_headers)
-    assert resp.status_code == 200, resp.text
-    pending = resp.json()
-    assert len(pending) == 1
-    assert pending[0]["amount"] == 50000
-    assert pending[0]["group_name"] == group["name"]
+    # 10,000 deposit - 50,000 lesson price = -40,000 negative balance (debt)
+    assert _balance(db_session, student["id"]) == -40000.0
+    assert _balance(db_session, teacher["id"]) == 20000.0
 
 
-def test_depositing_enough_money_settles_pending_charge_and_pays_teacher(
+def test_depositing_money_clears_negative_balance(
     client, superadmin_headers, admin_headers, db_session
 ):
     teacher, group, student, lesson, teacher_headers = _setup(
@@ -86,23 +80,21 @@ def test_depositing_enough_money_settles_pending_charge_and_pays_teacher(
         headers=teacher_headers,
         json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
-    assert _balance(db_session, student["id"]) == 0
+    assert _balance(db_session, student["id"]) == -50000.0
 
     resp = client.post(
         f"/api/v1/students/{student['id']}/deposit",
         headers=admin_headers,
-        json={"amount": 50000},
+        json={"amount": 80000},
     )
     assert resp.status_code == 201, resp.text
 
-    assert _balance(db_session, student["id"]) == 0
-    assert _balance(db_session, teacher["id"]) == 20000
-
-    resp = client.get(f"/api/v1/students/{student['id']}/pending-charges", headers=admin_headers)
-    assert resp.json() == []
+    # -50,000 debt + 80,000 deposit = +30,000 balance
+    assert _balance(db_session, student["id"]) == 30000.0
+    assert _balance(db_session, teacher["id"]) == 20000.0
 
 
-def test_cancelling_attendance_removes_pending_charge_without_moving_money(
+def test_cancelling_attendance_refunds_deducted_balance(
     client, superadmin_headers, admin_headers, db_session
 ):
     teacher, group, student, lesson, teacher_headers = _setup(
@@ -112,7 +104,7 @@ def test_cancelling_attendance_removes_pending_charge_without_moving_money(
         teacher_phone="+998900800005",
         student_phone="+998900800006",
         lesson_price=50000,
-        deposit=0,
+        deposit=10000,
     )
 
     client.post(
@@ -120,8 +112,7 @@ def test_cancelling_attendance_removes_pending_charge_without_moving_money(
         headers=teacher_headers,
         json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
     )
-    resp = client.get(f"/api/v1/students/{student['id']}/pending-charges", headers=admin_headers)
-    assert len(resp.json()) == 1
+    assert _balance(db_session, student["id"]) == -40000.0
 
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
@@ -130,7 +121,6 @@ def test_cancelling_attendance_removes_pending_charge_without_moving_money(
     )
     assert resp.status_code == 200, resp.text
 
-    assert _balance(db_session, student["id"]) == 0
-    assert _balance(db_session, teacher["id"]) == 0
-    resp = client.get(f"/api/v1/students/{student['id']}/pending-charges", headers=admin_headers)
-    assert resp.json() == []
+    # Refunded 50,000 brings balance back from -40,000 to +10,000
+    assert _balance(db_session, student["id"]) == 10000.0
+    assert _balance(db_session, teacher["id"]) == 0.0

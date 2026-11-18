@@ -497,41 +497,29 @@ def mark_attendance(
 
         if should_charge and student is not None and not already_charged:
             teacher_share = group.lesson_price * (teacher_percentage / 100)
-            if student.balance >= group.lesson_price:
-                student.balance -= group.lesson_price
-                db.add(
-                    Transaction(
-                        student_id=student.id,
-                        amount=-group.lesson_price,
-                        type=TransactionType.deduction,
-                        comment=(
-                            f"Dars uchun yechim ({group.name}, {lesson.lesson_date})"
-                        ),
-                        created_by_id=current_user.id,
-                        lesson_id=lesson.id,
-                    )
+            student.balance -= group.lesson_price
+            db.add(
+                Transaction(
+                    student_id=student.id,
+                    amount=-group.lesson_price,
+                    type=TransactionType.deduction,
+                    comment=(
+                        f"Dars uchun yechim ({group.name}, {lesson.lesson_date})"
+                    ),
+                    created_by_id=current_user.id,
+                    lesson_id=lesson.id,
                 )
+            )
 
-                if teacher_user is not None:
-                    teacher_user.balance += teacher_share
-                    db.add(
-                        TeacherTransaction(
-                            teacher_id=teacher_id,
-                            lesson_id=lesson.id,
-                            student_id=item.student_id,
-                            amount=teacher_share,
-                            type=TeacherTransactionType.lesson_earning,
-                        )
-                    )
-            else:
-                is_pending = True
+            if teacher_user is not None:
+                teacher_user.balance += teacher_share
                 db.add(
-                    PendingCharge(
-                        student_id=item.student_id,
-                        lesson_id=lesson.id,
+                    TeacherTransaction(
                         teacher_id=teacher_id,
-                        amount=group.lesson_price,
-                        teacher_share=teacher_share,
+                        lesson_id=lesson.id,
+                        student_id=item.student_id,
+                        amount=teacher_share,
+                        type=TeacherTransactionType.lesson_earning,
                     )
                 )
 
