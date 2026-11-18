@@ -36,6 +36,14 @@ function renderAttendanceStatusCircle(
   );
 }
 
+const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export function AttendanceCombinedTable({
   grid,
   stats,
@@ -59,6 +67,8 @@ export function AttendanceCombinedTable({
     }
     return Array.from(lessonIds);
   }, [editedCells]);
+
+  const todayStr = useMemo(() => getTodayStr(), []);
 
   if (!grid || grid.students.length === 0) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Hali o'quvchi yo'q.</p>;
@@ -189,14 +199,24 @@ export function AttendanceCombinedTable({
                     );
                     const currentStatus = getCellStatus(s.student_id, l.id);
                     const isModified = isCellModified(s.student_id, l.id);
+                    const isFutureLesson = l.lesson_date > todayStr;
 
                     return (
                       <td key={l.id} className="px-3.5 py-2.5 text-center">
                         <button
                           type="button"
-                          onClick={() => handleCellClick(s.student_id, l.id)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform active:scale-90"
-                          title={`${s.student_name} (${l.lesson_date}): Bosib holatni almashtiring`}
+                          disabled={isFutureLesson}
+                          onClick={() => !isFutureLesson && handleCellClick(s.student_id, l.id)}
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform ${
+                            isFutureLesson
+                              ? "cursor-not-allowed opacity-40"
+                              : "active:scale-90"
+                          }`}
+                          title={
+                            isFutureLesson
+                              ? "Kelgusi kunlar uchun davomat belgilab bo'lmaydi"
+                              : `${s.student_name} (${l.lesson_date}): Bosib holatni almashtiring`
+                          }
                         >
                           {renderAttendanceStatusCircle(
                             currentStatus,

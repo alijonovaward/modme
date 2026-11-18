@@ -392,7 +392,9 @@ def mark_attendance(
     payload: AttendanceCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.teacher)),
+    current_user: User = Depends(
+        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
+    ),
 ):
     lesson = db.get(Lesson, lesson_id)
     if lesson is None:
@@ -401,14 +403,19 @@ def mark_attendance(
     group = db.get(Group, lesson.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Guruh topilmadi")
-    if group.teacher_id != current_user.id:
+    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
-    existing_count = db.query(Attendance).filter(Attendance.lesson_id == lesson.id).count()
-    if existing_count > 0:
-        raise HTTPException(status_code=400, detail="Bu dars uchun davomat allaqachon qilingan")
+    teacher_user = (
+        current_user
+        if current_user.role == UserRole.teacher
+        else db.get(User, group.teacher_id)
+    )
+    teacher_percentage = (
+        teacher_user.teacher_percentage if teacher_user else 0.0
+    ) or 0.0
+    teacher_id = teacher_user.id if teacher_user else group.teacher_id
 
-    teacher_percentage = current_user.teacher_percentage or 0.0
     created_records: list[Attendance] = []
 
     for item in payload.records:
@@ -426,14 +433,27 @@ def mark_attendance(
                 detail=f"O'quvchi {item.student_id} ushbu guruhda topilmadi",
             )
 
-        if item.status == AttendanceStatus.present and item.total_count is None:
-            raise HTTPException(
-                status_code=400, detail="Kelgan o'quvchiga test natijasi kiritilishi shart"
-            )
         if item.status != AttendanceStatus.present and item.total_count is not None:
             raise HTTPException(
                 status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"
             )
+
+        existing_att = (
+            db.query(Attendance)
+            .filter(
+                Attendance.lesson_id == lesson.id,
+                Attendance.student_id == item.student_id,
+            )
+            .first()
+        )
+
+        if existing_att is not None:
+            existing_att.status = item.status
+            existing_att.correct_count = item.correct_count
+            existing_att.total_count = item.total_count
+            existing_att.is_trial = item.is_trial
+            created_records.append(existing_att)
+            continue
 
         attendance = Attendance(
             lesson_id=lesson.id,
@@ -456,7 +476,7 @@ def mark_attendance(
         student = db.get(User, item.student_id)
         is_pending = False
 
-        if should_charge:
+        if should_charge and student is not None:
             teacher_share = group.lesson_price * (teacher_percentage / 100)
             if student.balance >= group.lesson_price:
                 student.balance -= group.lesson_price
@@ -466,31 +486,31 @@ def mark_attendance(
                         amount=-group.lesson_price,
                         type=TransactionType.deduction,
                         comment=(
-                            f"Dars uchun yechim ({group.name}, {lesson.lesson_date}, "
-                            f"o'qituvchi: {current_user.full_name})"
+                            f"Dars uchun yechim ({group.name}, {lesson.lesson_date})"
                         ),
                         created_by_id=current_user.id,
                         lesson_id=lesson.id,
                     )
                 )
 
-                current_user.balance += teacher_share
-                db.add(
-                    TeacherTransaction(
-                        teacher_id=current_user.id,
-                        lesson_id=lesson.id,
-                        student_id=item.student_id,
-                        amount=teacher_share,
-                        type=TeacherTransactionType.lesson_earning,
+                if teacher_user is not None:
+                    teacher_user.balance += teacher_share
+                    db.add(
+                        TeacherTransaction(
+                            teacher_id=teacher_id,
+                            lesson_id=lesson.id,
+                            student_id=item.student_id,
+                            amount=teacher_share,
+                            type=TeacherTransactionType.lesson_earning,
+                        )
                     )
-                )
             else:
                 is_pending = True
                 db.add(
                     PendingCharge(
                         student_id=item.student_id,
                         lesson_id=lesson.id,
-                        teacher_id=current_user.id,
+                        teacher_id=teacher_id,
                         amount=group.lesson_price,
                         teacher_share=teacher_share,
                     )
