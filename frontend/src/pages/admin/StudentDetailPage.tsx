@@ -103,7 +103,7 @@ export function StudentDetailPage() {
   const handleDeposit = async (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(depositAmount);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || isSubmitting) return;
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
@@ -122,6 +122,7 @@ export function StudentDetailPage() {
 
   const handleEditSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);

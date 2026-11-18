@@ -198,7 +198,7 @@ export function StaffDetailPage() {
   const handlePayout = async (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(payoutAmount);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || isSubmitting) return;
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
