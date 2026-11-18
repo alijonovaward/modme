@@ -187,16 +187,6 @@ def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -
         else:
             teacher_pay_share = 0.0
 
-        db.add(
-            Transaction(
-                student_id=student.id,
-                amount=-pay_amount,
-                type=TransactionType.deduction,
-                comment=f"Kutilgan dars qarzidan to'lov yechildi ({pay_amount:,.0f} so'm)",
-                lesson_id=charge.lesson_id,
-            )
-        )
-
         teacher = db.get(User, charge.teacher_id)
         if teacher is not None and teacher_pay_share > 0:
             teacher.balance += teacher_pay_share
