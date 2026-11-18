@@ -163,7 +163,10 @@ def update_student_status(
     return student
 
 
-def _settle_pending_charges(db: Session, student: User) -> list[PendingCharge]:
+def _settle_pending_charges(db: Session, student: User, deposit_amount: float) -> list[PendingCharge]:
+    if deposit_amount <= 0:
+        return []
+
     pending = (
         db.query(PendingCharge)
         .filter(PendingCharge.student_id == student.id, PendingCharge.resolved_at.is_(None))
@@ -171,24 +174,43 @@ def _settle_pending_charges(db: Session, student: User) -> list[PendingCharge]:
         .all()
     )
     settled: list[PendingCharge] = []
+    remaining_deposit = deposit_amount
+
     for charge in pending:
-        if student.balance < 0:
+        if remaining_deposit <= 0:
             break
+
+        pay_amount = min(remaining_deposit, charge.amount)
+
+        if charge.amount > 0 and charge.teacher_share > 0:
+            teacher_pay_share = charge.teacher_share * (pay_amount / charge.amount)
+        else:
+            teacher_pay_share = 0.0
+
         teacher = db.get(User, charge.teacher_id)
-        if teacher is not None and charge.teacher_share > 0:
-            teacher.balance += charge.teacher_share
+        if teacher is not None and teacher_pay_share > 0:
+            teacher.balance += teacher_pay_share
             db.add(
                 TeacherTransaction(
                     teacher_id=charge.teacher_id,
                     lesson_id=charge.lesson_id,
                     student_id=student.id,
-                    amount=charge.teacher_share,
+                    amount=teacher_pay_share,
                     type=TeacherTransactionType.lesson_earning,
-                    comment="Qarz dars uchun o'qituvchiga hisoblangan ulush",
+                    comment=f"Qarz dars uchun qisman to'lov tushdi ({pay_amount:,.0f} so'm)",
                 )
             )
-        charge.resolved_at = datetime.now(timezone.utc)
-        settled.append(charge)
+
+        charge.amount -= pay_amount
+        charge.teacher_share -= teacher_pay_share
+        remaining_deposit -= pay_amount
+
+        if charge.amount <= 0.01:
+            charge.amount = 0.0
+            charge.teacher_share = 0.0
+            charge.resolved_at = datetime.now(timezone.utc)
+            settled.append(charge)
+
     return settled
 
 
@@ -215,7 +237,7 @@ def deposit_to_student(
     student.balance += payload.amount
     db.add(transaction)
 
-    settled = _settle_pending_charges(db, student)
+    settled = _settle_pending_charges(db, student, payload.amount)
 
     db.commit()
     db.refresh(transaction)
