@@ -47,6 +47,7 @@ const MONTH_NAMES_UZ = [
   "Noyabr",
   "Dekabr",
 ];
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 
 interface Filters {
   dateFrom: string;
@@ -427,88 +428,112 @@ export function LessonsPage() {
         {isLoading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : viewMode === "calendar" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-            {weekDays.map((dayDate: Date, idx: number) => {
-              const dayStr = toLocalISODate(dayDate);
-              const isToday = dayStr === todayStr;
-              const dayLessons = weeklyLessons
-                .filter((l) => l.lesson_date === dayStr)
-                .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                  <th className="sticky left-0 z-20 w-16 min-w-[64px] bg-slate-50/95 px-2 py-3 text-center shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-900/95">
+                    Vaqt
+                  </th>
+                  {weekDays.map((dayDate: Date, idx: number) => {
+                    const dayStr = toLocalISODate(dayDate);
+                    const isToday = dayStr === todayStr;
+                    return (
+                      <th
+                        key={dayStr}
+                        className={`min-w-[130px] px-3 py-2.5 text-center ${
+                          isToday ? "bg-indigo-50/90 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300" : ""
+                        }`}
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                            {WEEKDAY_SHORT[idx]}
+                          </span>
+                          <span className={`text-xs font-bold ${isToday ? "text-indigo-600 dark:text-indigo-400" : "text-slate-800 dark:text-slate-200"}`}>
+                            {dayDate.getDate()} {MONTH_NAMES_UZ[dayDate.getMonth()].slice(0, 3)}
+                          </span>
+                          {isToday && (
+                            <span className="mt-0.5 rounded-full bg-indigo-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-sm">
+                              Bugun
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {HOURS.map((hour) => {
+                  const hourLabel = `${String(hour).padStart(2, "0")}:00`;
+                  return (
+                    <tr key={hour} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                      <td className="sticky left-0 z-10 w-16 min-w-[64px] bg-slate-50/95 px-2 py-3 text-center text-[11px] font-bold text-slate-400 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-900/95 dark:text-slate-500">
+                        {hourLabel}
+                      </td>
+                      {weekDays.map((dayDate: Date) => {
+                        const dayStr = toLocalISODate(dayDate);
+                        const isToday = dayStr === todayStr;
+                        const slotLessons = weeklyLessons.filter((l) => {
+                          if (l.lesson_date !== dayStr) return false;
+                          if (!l.start_time) return false;
+                          const startHour = parseInt(l.start_time.split(":")[0], 10);
+                          return startHour === hour;
+                        });
 
-              return (
-                <div
-                  key={dayStr}
-                  className={`flex flex-col rounded-2xl border p-2.5 transition-all ${
-                    isToday
-                      ? "border-indigo-500 bg-indigo-50/40 ring-1 ring-indigo-500/30 dark:border-indigo-500/80 dark:bg-indigo-950/20"
-                      : "border-slate-200/70 bg-slate-50/50 dark:border-slate-800/70 dark:bg-slate-900/50"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between border-b border-slate-200/60 pb-2 dark:border-slate-800/60">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {WEEKDAY_SHORT[idx]}
-                      </p>
-                      <p className={`text-sm font-bold ${isToday ? "text-indigo-600 dark:text-indigo-400" : "text-slate-800 dark:text-slate-200"}`}>
-                        {dayDate.getDate()} {MONTH_NAMES_UZ[dayDate.getMonth()].slice(0, 3)}
-                      </p>
-                    </div>
-                    {isToday && (
-                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                        Bugun
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex flex-1 flex-col gap-2">
-                    {dayLessons.length === 0 ? (
-                      <div className="flex flex-1 items-center justify-center py-6 text-center">
-                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Dars yo'q</p>
-                      </div>
-                    ) : (
-                      dayLessons.map((l) => {
-                        const isCompleted = l.status === "completed";
                         return (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => openDetail(l)}
-                            className={`flex flex-col rounded-xl border p-2 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${
-                              isCompleted
-                                ? "border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40"
-                                : "border-indigo-200 bg-white hover:bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-slate-900 dark:hover:bg-indigo-950/40"
+                          <td
+                            key={dayStr}
+                            className={`min-w-[130px] p-1.5 align-top border-l border-slate-100 dark:border-slate-800/40 ${
+                              isToday ? "bg-indigo-50/20 dark:bg-indigo-950/10" : ""
                             }`}
                           >
-                            <div className="mb-1 flex items-center justify-between gap-1">
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                ⏰ {l.start_time ? l.start_time.slice(0, 5) : "--:--"}–{l.end_time ? l.end_time.slice(0, 5) : "--:--"}
-                              </span>
-                              <span
-                                className={`inline-block h-2 w-2 rounded-full ${
-                                  isCompleted ? "bg-emerald-500" : "bg-amber-400"
-                                }`}
-                                title={isCompleted ? "O'tildi" : "Rejada"}
-                              />
-                            </div>
-                            <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
-                              {l.group_name}
-                            </p>
-                            <p className="truncate text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                              {l.subject_name}
-                            </p>
-                            {l.teacher_name && (
-                              <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">
-                                👤 {l.teacher_name}
-                              </p>
-                            )}
-                          </button>
+                            {slotLessons.map((l) => {
+                              const isCompleted = l.status === "completed";
+                              return (
+                                <button
+                                  key={l.id}
+                                  type="button"
+                                  onClick={() => openDetail(l)}
+                                  className={`mb-1 flex w-full flex-col rounded-xl border p-2 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${
+                                    isCompleted
+                                      ? "border-emerald-200 bg-emerald-50/90 hover:bg-emerald-100/90 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/50"
+                                      : "border-indigo-200 bg-white hover:bg-indigo-50/80 dark:border-indigo-900/60 dark:bg-slate-900 dark:hover:bg-indigo-950/50"
+                                  }`}
+                                >
+                                  <div className="mb-1 flex items-center justify-between gap-1">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                      ⏰ {l.start_time ? l.start_time.slice(0, 5) : "--:--"}–{l.end_time ? l.end_time.slice(0, 5) : "--:--"}
+                                    </span>
+                                    <span
+                                      className={`inline-block h-2 w-2 rounded-full ${
+                                        isCompleted ? "bg-emerald-500" : "bg-amber-400"
+                                      }`}
+                                      title={isCompleted ? "O'tildi" : "Rejada"}
+                                    />
+                                  </div>
+                                  <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
+                                    {l.group_name}
+                                  </p>
+                                  <p className="truncate text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                                    {l.subject_name}
+                                  </p>
+                                  {l.teacher_name && (
+                                    <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">
+                                      👤 {l.teacher_name}
+                                    </p>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </td>
                         );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <>
