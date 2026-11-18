@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Combobox,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -253,19 +254,28 @@ export function LessonsPage() {
     }
   };
 
-  const handleDeleteLesson = async (lesson: LessonListItem) => {
-    if (!window.confirm(`${lesson.lesson_date} (${lesson.group_name}) darsini o'chirishni tasdiqlaysizmi?`)) {
-      return;
-    }
+  const [deleteTargetLesson, setDeleteTargetLesson] = useState<LessonListItem | null>(null);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
+
+  const confirmDeleteLesson = async () => {
+    if (!deleteTargetLesson || isDeletingLesson) return;
     setError(null);
     setSuccess(null);
+    setIsDeletingLesson(true);
     try {
-      await deleteLesson(lesson.id);
+      await deleteLesson(deleteTargetLesson.id);
       setSuccess("Dars o'chirildi");
       setDetailLesson(null);
-      await load(appliedFilters, page);
+      setDeleteTargetLesson(null);
+      if (viewMode === "calendar") {
+        await loadWeeklyLessons(appliedFilters);
+      } else {
+        await load(appliedFilters, page);
+      }
     } catch (err) {
       setError(extractErrorMessage(err));
+    } finally {
+      setIsDeletingLesson(false);
     }
   };
 
@@ -728,7 +738,7 @@ export function LessonsPage() {
               </Badge>
             </p>
             {detailLesson.status === "planned" && (
-              <Button variant="danger" onClick={() => handleDeleteLesson(detailLesson)}>
+              <Button variant="danger" onClick={() => setDeleteTargetLesson(detailLesson)}>
                 O'chirish
               </Button>
             )}
@@ -782,6 +792,20 @@ export function LessonsPage() {
           )}
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={deleteTargetLesson !== null}
+        title="Darsni o'chirish"
+        message={
+          deleteTargetLesson
+            ? `${deleteTargetLesson.lesson_date} dagi '${deleteTargetLesson.group_name}' darsini o'chirishni tasdiqlaysizmi?`
+            : ""
+        }
+        confirmLabel="O'chirish"
+        isLoading={isDeletingLesson}
+        onConfirm={confirmDeleteLesson}
+        onClose={() => setDeleteTargetLesson(null)}
+      />
     </Layout>
   );
 }

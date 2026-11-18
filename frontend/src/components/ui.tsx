@@ -447,3 +447,51 @@ export function extractErrorMessage(error: unknown): string {
 
   return "Nimadir xato ketdi";
 }
+
+export function ConfirmModal({
+  isOpen,
+  title = "O'chirishni tasdiqlash",
+  message,
+  confirmLabel = "O'chirish",
+  cancelLabel = "Bekor qilish",
+  variant = "danger",
+  isLoading = false,
+  onConfirm,
+  onClose,
+}: {
+  isOpen: boolean;
+  title?: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "danger" | "primary";
+  isLoading?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3 sm:p-4 dark:bg-slate-950/80">
+      <div className="w-full max-w-sm select-none rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-base text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+            ⚠️
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{message}</p>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
+            {cancelLabel}
+          </Button>
+          <Button type="button" variant={variant} onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? "Bajarilmoqda..." : confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

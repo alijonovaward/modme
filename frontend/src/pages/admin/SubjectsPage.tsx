@@ -3,6 +3,7 @@ import { createSubject, deleteSubject, listSubjects, updateSubject } from "../..
 import {
   Button,
   Card,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -83,15 +84,22 @@ export function SubjectsPage() {
     }
   };
 
-  const handleDelete = async (subject: Subject) => {
-    if (!window.confirm(`"${subject.name}" fanini o'chirishni tasdiqlaysizmi?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteTarget || isDeleting) return;
     setError(null);
+    setIsDeleting(true);
     try {
-      await deleteSubject(subject.id);
+      await deleteSubject(deleteTarget.id);
       setIsModalOpen(false);
+      setDeleteTarget(null);
       await loadSubjects();
     } catch (err) {
       setError(extractErrorMessage(err));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -149,7 +157,7 @@ export function SubjectsPage() {
                 <Button
                   type="button"
                   variant="danger"
-                  onClick={() => handleDelete(editTarget)}
+                  onClick={() => setDeleteTarget(editTarget)}
                 >
                   O'chirish
                 </Button>
@@ -158,6 +166,18 @@ export function SubjectsPage() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title="Fanni o'chirish"
+        message={
+          deleteTarget ? `'${deleteTarget.name}' fanini o'chirishni tasdiqlaysizmi?` : ""
+        }
+        confirmLabel="O'chirish"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteSubject}
+        onClose={() => setDeleteTarget(null)}
+      />
     </Layout>
   );
 }

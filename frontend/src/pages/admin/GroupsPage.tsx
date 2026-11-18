@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Combobox,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -114,13 +115,17 @@ export function GroupsPage() {
     }
   };
 
-  const handleDeleteSubjectClick = async (subjectId: number) => {
+  const [deleteTargetSubject, setDeleteTargetSubject] = useState<Subject | null>(null);
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteTargetSubject || isSubjectSubmitting) return;
     setSubjectError(null);
     setSubjectSuccess(null);
     setIsSubjectSubmitting(true);
     try {
-      await deleteSubject(subjectId);
+      await deleteSubject(deleteTargetSubject.id);
       setSubjectSuccess("Fan o'chirildi");
+      setDeleteTargetSubject(null);
       await reloadSubjects();
     } catch (err) {
       setSubjectError(extractErrorMessage(err));
@@ -513,7 +518,7 @@ export function GroupsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteSubjectClick(s.id)}
+                            onClick={() => setDeleteTargetSubject(s)}
                             className="rounded-lg p-1.5 text-xs text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/50"
                             title="O'chirish"
                           >
@@ -529,6 +534,18 @@ export function GroupsPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={deleteTargetSubject !== null}
+        title="Fanni o'chirish"
+        message={
+          deleteTargetSubject ? `'${deleteTargetSubject.name}' fanini o'chirishni tasdiqlaysizmi?` : ""
+        }
+        confirmLabel="O'chirish"
+        isLoading={isSubjectSubmitting}
+        onConfirm={confirmDeleteSubject}
+        onClose={() => setDeleteTargetSubject(null)}
+      />
     </Layout>
   );
 }
