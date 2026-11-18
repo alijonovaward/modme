@@ -126,6 +126,49 @@ def _ensure_lesson_unique_index() -> None:
         )
 
 
+def _ensure_group_student_unique_index() -> None:
+    """Same idea as `_ensure_lesson_unique_index`, for group enrollment: a student
+    should only ever have one non-dropped `group_students` row per group. Partial
+    (WHERE-filtered) so a dropped-then-re-enrolled student is still allowed."""
+    inspector = inspect(engine)
+    if "group_students" not in inspector.get_table_names():
+        return
+
+    already_unique = any(
+        idx.get("name") == "uq_group_students_active"
+        for idx in inspector.get_indexes("group_students")
+    )
+    if already_unique:
+        return
+
+    with engine.connect() as conn:
+        duplicate_count = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM ("
+                "SELECT group_id, student_id FROM group_students "
+                "WHERE status != 'dropped' "
+                "GROUP BY group_id, student_id HAVING COUNT(*) > 1"
+                ") AS dupes"
+            )
+        ).scalar()
+
+    if duplicate_count:
+        print(
+            f"[init_db] OGOHLANTIRISH: {duplicate_count} ta guruh+o'quvchi uchun "
+            "takroriy faol a'zolik topildi - ularni qo'lda tozalamaguningizcha "
+            "unique indeks o'rnatilmaydi."
+        )
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_group_students_active "
+                "ON group_students (group_id, student_id) WHERE status != 'dropped'"
+            )
+        )
+
+
 REQUIRED_INDEXES = {
     "groups": ["subject_id", "teacher_id"],
     "group_students": ["group_id", "student_id"],
@@ -183,6 +226,7 @@ def init_db() -> None:
     _run_migrations()
     _migrate_money_columns_to_numeric()
     _ensure_lesson_unique_index()
+    _ensure_group_student_unique_index()
 
     db = SessionLocal()
     try:

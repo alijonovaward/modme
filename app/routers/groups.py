@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
@@ -610,7 +611,13 @@ def add_student_to_group(
 
     group_student = GroupStudent(group_id=group.id, student_id=student.id)
     db.add(group_student)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Closes the race a pre-check alone can't: two near-simultaneous requests
+        # (double-click, slow-network retry) both passing the check above.
+        db.rollback()
+        raise HTTPException(status_code=400, detail="O'quvchi allaqachon ushbu guruhda")
     db.refresh(group_student)
     return group_student
 
