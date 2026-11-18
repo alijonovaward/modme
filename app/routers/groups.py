@@ -446,7 +446,13 @@ def list_group_lessons(
         (Lesson.status == LessonStatus.completed, 1),
         else_=2,
     )
-    return query.order_by(status_order, Lesson.lesson_date.asc()).all()
+    planned_date_order = case(
+        (Lesson.status == LessonStatus.planned, Lesson.lesson_date),
+    ).asc()
+    completed_date_order = case(
+        (Lesson.status == LessonStatus.completed, Lesson.lesson_date),
+    ).desc()
+    return query.order_by(status_order, planned_date_order, completed_date_order).all()
 
 
 @router.post("/{group_id}/lessons/generate", response_model=LessonGenerateResult)

@@ -198,7 +198,13 @@ def _lesson_order_expression():
         (Lesson.status == LessonStatus.completed, 1),
         else_=2,
     )
-    return (status_order, Lesson.lesson_date.asc())
+    planned_date_order = case(
+        (Lesson.status == LessonStatus.planned, Lesson.lesson_date),
+    ).asc()
+    completed_date_order = case(
+        (Lesson.status == LessonStatus.completed, Lesson.lesson_date),
+    ).desc()
+    return (status_order, planned_date_order, completed_date_order)
 
 
 @router.get("", response_model=LessonListOut)

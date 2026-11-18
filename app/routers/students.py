@@ -482,7 +482,13 @@ def _student_attendance_rows(
         (Lesson.status == LessonStatus.completed, 1),
         else_=2,
     )
-    rows = query.order_by(status_order, Lesson.lesson_date.asc()).all()
+    planned_date_order = case(
+        (Lesson.status == LessonStatus.planned, Lesson.lesson_date),
+    ).asc()
+    completed_date_order = case(
+        (Lesson.status == LessonStatus.completed, Lesson.lesson_date),
+    ).desc()
+    rows = query.order_by(status_order, planned_date_order, completed_date_order).all()
 
     if current_user.role == UserRole.teacher:
         rows = [row for row in rows if row[2].teacher_id == current_user.id]
