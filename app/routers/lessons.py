@@ -496,12 +496,15 @@ def mark_attendance(
         )
 
         if should_charge and student is not None and not already_charged:
-            teacher_share = group.lesson_price * (teacher_percentage / 100)
-            student.balance -= group.lesson_price
+            lesson_fee = group.lesson_price
+            collected_amount = max(0.0, min(lesson_fee, student.balance))
+            pending_amount = lesson_fee - collected_amount
+
+            student.balance -= lesson_fee
             db.add(
                 Transaction(
                     student_id=student.id,
-                    amount=-group.lesson_price,
+                    amount=-lesson_fee,
                     type=TransactionType.deduction,
                     comment=(
                         f"Dars uchun yechim ({group.name}, {lesson.lesson_date})"
@@ -511,15 +514,29 @@ def mark_attendance(
                 )
             )
 
-            if teacher_user is not None:
-                teacher_user.balance += teacher_share
+            immediate_teacher_share = collected_amount * (teacher_percentage / 100)
+            if teacher_user is not None and immediate_teacher_share > 0:
+                teacher_user.balance += immediate_teacher_share
                 db.add(
                     TeacherTransaction(
                         teacher_id=teacher_id,
                         lesson_id=lesson.id,
                         student_id=item.student_id,
-                        amount=teacher_share,
+                        amount=immediate_teacher_share,
                         type=TeacherTransactionType.lesson_earning,
+                    )
+                )
+
+            if pending_amount > 0:
+                is_pending = True
+                pending_teacher_share = pending_amount * (teacher_percentage / 100)
+                db.add(
+                    PendingCharge(
+                        student_id=item.student_id,
+                        lesson_id=lesson.id,
+                        teacher_id=teacher_id,
+                        amount=pending_amount,
+                        teacher_share=pending_teacher_share,
                     )
                 )
 
@@ -642,7 +659,8 @@ def update_attendance(
 
     if was_pending and not should_charge:
         db.delete(old_pending)
-    elif was_charged and not should_charge:
+
+    if was_charged and not should_charge:
         student.balance += group.lesson_price
         db.add(
             Transaction(

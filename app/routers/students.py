@@ -172,20 +172,10 @@ def _settle_pending_charges(db: Session, student: User) -> list[PendingCharge]:
     )
     settled: list[PendingCharge] = []
     for charge in pending:
-        if student.balance < charge.amount:
+        if student.balance < 0:
             break
-        student.balance -= charge.amount
-        db.add(
-            Transaction(
-                student_id=student.id,
-                amount=-charge.amount,
-                type=TransactionType.deduction,
-                comment="Oldin kutilgan dars puli, balans to'ldirilgach yechildi",
-                lesson_id=charge.lesson_id,
-            )
-        )
         teacher = db.get(User, charge.teacher_id)
-        if teacher is not None:
+        if teacher is not None and charge.teacher_share > 0:
             teacher.balance += charge.teacher_share
             db.add(
                 TeacherTransaction(
@@ -194,7 +184,7 @@ def _settle_pending_charges(db: Session, student: User) -> list[PendingCharge]:
                     student_id=student.id,
                     amount=charge.teacher_share,
                     type=TeacherTransactionType.lesson_earning,
-                    comment="Kutilgan dars uchun hisoblandi",
+                    comment="Qarz dars uchun o'qituvchiga hisoblangan ulush",
                 )
             )
         charge.resolved_at = datetime.now(timezone.utc)

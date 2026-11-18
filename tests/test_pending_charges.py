@@ -59,7 +59,7 @@ def test_insufficient_balance_deducts_directly_into_negative_balance(
 
     # 10,000 deposit - 50,000 lesson price = -40,000 negative balance (debt)
     assert _balance(db_session, student["id"]) == -40000.0
-    assert _balance(db_session, teacher["id"]) == 20000.0
+    assert _balance(db_session, teacher["id"]) == 4000.0
 
 
 def test_depositing_money_clears_negative_balance(
