@@ -500,6 +500,7 @@ export function LessonsPage() {
                           >
                             {slotLessons.map((l) => {
                               const isCompleted = l.status === "completed";
+                              const isMissed = !isCompleted && dayStr < todayStr;
                               return (
                                 <button
                                   key={l.id}
@@ -507,8 +508,10 @@ export function LessonsPage() {
                                   onClick={() => openDetail(l)}
                                   className={`mb-1 flex w-full flex-col rounded-xl border p-2 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${
                                     isCompleted
-                                      ? "border-emerald-200 bg-emerald-50/90 hover:bg-emerald-100/90 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/50"
-                                      : "border-indigo-200 bg-white hover:bg-indigo-50/80 dark:border-indigo-900/60 dark:bg-slate-900 dark:hover:bg-indigo-950/50"
+                                      ? "border-emerald-400 bg-emerald-200 hover:bg-emerald-300/80 dark:border-emerald-700 dark:bg-emerald-900 dark:hover:bg-emerald-800"
+                                      : isMissed
+                                        ? "border-rose-400 bg-rose-200 hover:bg-rose-300/80 dark:border-rose-700 dark:bg-rose-900 dark:hover:bg-rose-800"
+                                        : "border-indigo-200 bg-white hover:bg-indigo-50/80 dark:border-indigo-900/60 dark:bg-slate-900 dark:hover:bg-indigo-950/50"
                                   }`}
                                 >
                                   <div className="mb-1 flex items-center justify-between gap-1">
@@ -517,9 +520,9 @@ export function LessonsPage() {
                                     </span>
                                     <span
                                       className={`inline-block h-2 w-2 rounded-full ${
-                                        isCompleted ? "bg-emerald-500" : "bg-amber-400"
+                                        isCompleted ? "bg-emerald-500" : isMissed ? "bg-rose-500" : "bg-amber-400"
                                       }`}
-                                      title={isCompleted ? "O'tildi" : "Rejada"}
+                                      title={isCompleted ? "O'tildi" : isMissed ? "Davomat olinmagan" : "Rejada"}
                                     />
                                   </div>
                                   <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
@@ -548,23 +551,26 @@ export function LessonsPage() {
         ) : (
           <>
           <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat"]}>
-            {lessons.map((l) => (
-              <tr
-                key={l.id}
-                onClick={() => openDetail(l)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
-                <td className="px-3.5 py-2.5">
-                  <Badge color={l.status === "completed" ? "green" : "slate"}>
-                    {l.status === "completed" ? "O'tildi" : "Rejada"}
-                  </Badge>
-                </td>
-              </tr>
-            ))}
+            {lessons.map((l) => {
+              const isMissed = l.status !== "completed" && l.lesson_date < todayStr;
+              return (
+                <tr
+                  key={l.id}
+                  onClick={() => openDetail(l)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                  <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
+                  <td className="px-3.5 py-2.5">
+                    <Badge color={l.status === "completed" ? "green" : isMissed ? "red" : "slate"}>
+                      {l.status === "completed" ? "O'tildi" : isMissed ? "Davomat olinmagan" : "Rejada"}
+                    </Badge>
+                  </td>
+                </tr>
+              );
+            })}
           </Table>
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={handlePageChange} />
           </>
@@ -733,8 +739,20 @@ export function LessonsPage() {
           <div className="mb-4 flex items-center justify-between gap-2">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {detailLesson.subject_name} · {detailLesson.teacher_name} ·{" "}
-              <Badge color={detailLesson.status === "completed" ? "green" : "slate"}>
-                {detailLesson.status === "completed" ? "O'tildi" : "Rejada"}
+              <Badge
+                color={
+                  detailLesson.status === "completed"
+                    ? "green"
+                    : detailLesson.lesson_date < todayStr
+                      ? "red"
+                      : "slate"
+                }
+              >
+                {detailLesson.status === "completed"
+                  ? "O'tildi"
+                  : detailLesson.lesson_date < todayStr
+                    ? "Davomat olinmagan"
+                    : "Rejada"}
               </Badge>
             </p>
             {detailLesson.status === "planned" && (
