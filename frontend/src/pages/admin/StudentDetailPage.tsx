@@ -154,6 +154,7 @@ export function StudentDetailPage() {
     try {
       await updateStudentStatus(id, !student.is_active);
       setSuccess(student.is_active ? "O'quvchi bloklandi" : "O'quvchi faollashtirildi");
+      setIsEditModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -220,11 +221,6 @@ export function StudentDetailPage() {
               {displayBalance.toLocaleString("uz-UZ")} so'm
             </span>
           </p>
-        </div>
-        <div className="shrink-0">
-          <Button variant={student.is_active ? "danger" : "secondary"} onClick={handleToggleActive}>
-            {student.is_active ? "Bloklash" : "Faollashtirish"}
-          </Button>
         </div>
       </div>
 
@@ -414,6 +410,16 @@ export function StudentDetailPage() {
               Saqlash
             </Button>
           </form>
+
+          <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
+
+          <Button
+            variant={student.is_active ? "danger" : "secondary"}
+            className="w-full"
+            onClick={handleToggleActive}
+          >
+            {student.is_active ? "Bloklash" : "Faollashtirish"}
+          </Button>
         </Modal>
       )}
     </Layout>
