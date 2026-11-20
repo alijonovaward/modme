@@ -12,10 +12,12 @@ import {
   Label,
   Modal,
   Pagination,
+  PrivacyToggle,
   Select,
   StatTile,
   Table,
   usePagination,
+  usePrivacyMode,
 } from "../../components/ui";
 import type { StudentTransactionListItem } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -106,9 +108,30 @@ export function StudentTransactionsPage() {
   const totalRemaining = totalDeposits - totalDeductions;
   const [selectedTx, setSelectedTx] = useState<StudentTransactionListItem | null>(null);
   const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
+  const balance = user?.balance ?? 0;
+  const isNegative = balance < 0;
 
   return (
     <Layout>
+      <div
+        className={`mb-6 flex items-center justify-between rounded-xl border p-6 ${
+          isNegative
+            ? "border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/40"
+            : "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40"
+        }`}
+      >
+        <div>
+          <p className={`text-sm ${isNegative ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+            Joriy balans
+          </p>
+          <p className={`text-2xl font-semibold ${isNegative ? "text-rose-800 dark:text-rose-300" : "text-emerald-800 dark:text-emerald-300"}`}>
+            {isPrivate ? "••••••••" : `${balance.toLocaleString("uz-UZ")} so'm`}
+          </p>
+        </div>
+        <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
+      </div>
+
       <Card
         title="Tranzaksiyalar"
         action={
@@ -150,7 +173,7 @@ export function StudentTransactionsPage() {
             color="green"
           />
           <StatTile
-            label="Jami qolgan"
+            label="Davr farqi"
             value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
             color="indigo"
           />

@@ -4,7 +4,6 @@ import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeContext";
 import { InstallPWA } from "./InstallPWA";
 import { BottomNav } from "./BottomNav";
-import { PrivacyToggle, usePrivacyMode } from "./ui";
 
 interface NavItem {
   to: string;
@@ -49,7 +48,6 @@ export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
-  const { isPrivate, togglePrivacy } = usePrivacyMode();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -78,20 +76,6 @@ export function Layout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
-            {user.role === "student" && (
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`rounded-xl border px-3.5 py-1.5 text-xs font-semibold ${
-                    user.balance < 0
-                      ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-400"
-                      : "border-emerald-200/60 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400"
-                  }`}
-                >
-                  Balans: {isPrivate ? "••••••••" : `${user.balance.toLocaleString("uz-UZ")} so'm`}
-                </div>
-                <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
-              </div>
-            )}
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setIsMenuOpen((prev) => !prev)}
