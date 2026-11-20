@@ -140,7 +140,7 @@ export function AttendanceCombinedTable({
         <table className="w-full text-left text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-semibold tracking-wider text-slate-500 sm:text-xs dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-400">
-              <th className="sticky left-0 z-20 w-[125px] min-w-[125px] bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3.5 sm:py-3 sm:shadow-none dark:bg-slate-900/95 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
+              <th className="sticky left-0 z-20 w-[145px] min-w-[145px] bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[180px] sm:min-w-[180px] sm:px-3.5 sm:py-3 sm:shadow-none dark:bg-slate-900/95 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
                 O'quvchi
               </th>
               {lessons.map((l) => (
@@ -177,7 +177,8 @@ export function AttendanceCombinedTable({
                 <tr key={s.student_id}>
                   <td
                     onClick={() => setSelectedStudent(s)}
-                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} cursor-pointer underline-offset-2 hover:underline`}
+                    title={s.student_name}
+                    className={`sticky left-0 z-10 w-[145px] min-w-[145px] truncate px-2.5 py-2.5 text-[11px] font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[180px] sm:min-w-[180px] sm:px-3 sm:text-xs sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} cursor-pointer underline-offset-2 hover:underline`}
                   >
                     {s.student_name}
                   </td>
