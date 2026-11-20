@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeContext";
@@ -50,6 +50,18 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   const { isPrivate, togglePrivacy } = usePrivacyMode();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (!user) return null;
 
@@ -66,7 +78,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
-            {(user.role === "teacher" || user.role === "student") && (
+            {user.role === "student" && (
               <div className="flex items-center gap-1.5">
                 <div
                   className={`rounded-xl border px-3.5 py-1.5 text-xs font-semibold ${
@@ -80,27 +92,48 @@ export function Layout({ children }: { children: ReactNode }) {
                 <PrivacyToggle isPrivate={isPrivate} onToggle={togglePrivacy} />
               </div>
             )}
-            <button
-              onClick={toggleTheme}
-              aria-label="Tun/kun rejimini almashtirish"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              {theme === "dark" ? (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                  <path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Zm0 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm9-6a1 1 0 0 1-1 1h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1ZM5 12a1 1 0 0 1-1 1H3a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1Zm13.07-6.07a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0ZM7.05 16.95a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0ZM18.36 16.95a1 1 0 0 1 1.41 0l.71.71a1 1 0 1 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM7.05 7.05a1 1 0 0 1-1.41 0l-.71-.71a1 1 0 1 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41ZM12 20a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Z" />
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                aria-label="Menyu"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+                  <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                  <path d="M21.64 13a9 9 0 1 1-10.63-10.63 1 1 0 0 1 1.11 1.44A7 7 0 0 0 20.2 11.89a1 1 0 0 1 1.44 1.11Z" />
-                </svg>
+              </button>
+              {isMenuOpen && (
+                <div className="absolute right-0 z-40 mt-1.5 w-44 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-lg dark:border-slate-700/80 dark:bg-slate-900">
+                  <button
+                    onClick={() => {
+                      toggleTheme();
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    {theme === "dark" ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                        <path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Zm0 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm9-6a1 1 0 0 1-1 1h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1ZM5 12a1 1 0 0 1-1 1H3a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1Zm13.07-6.07a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0ZM7.05 16.95a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0ZM18.36 16.95a1 1 0 0 1 1.41 0l.71.71a1 1 0 1 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41ZM7.05 7.05a1 1 0 0 1-1.41 0l-.71-.71a1 1 0 1 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41ZM12 20a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                        <path d="M21.64 13a9 9 0 1 1-10.63-10.63 1 1 0 0 1 1.11 1.44A7 7 0 0 0 20.2 11.89a1 1 0 0 1 1.44 1.11Z" />
+                      </svg>
+                    )}
+                    {theme === "dark" ? "Kun rejimi" : "Tun rejimi"}
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m6 4 4 4-4 4m4-4H9" />
+                    </svg>
+                    Chiqish
+                  </button>
+                </div>
               )}
-            </button>
-            <button
-              onClick={logout}
-              className="rounded-xl border border-slate-200/80 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Chiqish
-            </button>
+            </div>
           </div>
         </div>
         <div className="hidden relative border-t border-slate-100 sm:block dark:border-slate-800/60">
