@@ -212,3 +212,38 @@ def test_double_submit_attendance_does_not_deduct_twice(client, superadmin_heade
         json={"status": "excused"},
     )
     assert resp.status_code == 200, resp.text
+
+
+def test_resubmitting_mark_attendance_with_a_different_status_still_reverses_the_charge(
+    client, superadmin_headers, admin_headers, db_session
+):
+    """Regression test: re-POSTing /lessons/{id}/attendance for an already-marked
+    student with a DIFFERENT status must go through the same reverse/apply ledger
+    logic as the PUT correction endpoint - not silently edit the Attendance row
+    while leaving the student's balance and the teacher's earnings untouched."""
+    teacher, group, lesson, students, teacher_headers = _setup_lesson_with_attendance(
+        client, superadmin_headers, admin_headers, teacher_phone="+998900500060", student_phones=["+998900500061"]
+    )
+    student = students[0]
+
+    resp1 = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp1.status_code == 201, resp1.text
+    assert _balance(db_session, student["id"]) == 450000.0  # 500000 - 50000
+    assert _balance(db_session, teacher["id"]) == 20000.0  # 40% of 50000
+
+    # Same lesson, same endpoint (POST, not PUT), but now "excused" - should_charge
+    # flips to False, so this must refund the student and claw back the teacher's
+    # share via new ledger entries, exactly like the PUT correction endpoint does.
+    resp2 = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "excused"}]},
+    )
+    assert resp2.status_code == 201, resp2.text
+
+    assert _balance(db_session, student["id"]) == 500000.0
+    assert _balance(db_session, teacher["id"]) == 0.0

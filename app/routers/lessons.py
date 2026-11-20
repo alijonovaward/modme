@@ -208,6 +208,77 @@ def _reverse_lesson_fee(
         db.delete(charge)
 
 
+def _sync_lesson_charge(
+    db: Session,
+    lesson: Lesson,
+    group: Group,
+    student_id: int,
+    student: Optional[User],
+    teacher: Optional[User],
+    teacher_percentage: float,
+    should_charge: bool,
+    created_by_id: int,
+    comment_suffix: str,
+) -> bool:
+    """Reconciles the money side with whatever attendance status is about to be
+    saved, using the same _apply_lesson_fee/_reverse_lesson_fee helpers everywhere
+    this is called. Ledger rows are never edited in place - re-marking an
+    already-charged lesson with a different status always produces new offsetting
+    transactions, so the ledger can never silently drift out of sync with the
+    displayed attendance status. A no-op when the existing charge state already
+    matches should_charge (e.g. a same-status resubmit, or present<->unexcused).
+
+    Returns True if the student still has an uncollected (pending) portion of the
+    fee after this call.
+    """
+    if student is None:
+        return False
+
+    old_deduction = (
+        db.query(Transaction)
+        .filter(
+            Transaction.lesson_id == lesson.id,
+            Transaction.student_id == student_id,
+            Transaction.type == TransactionType.deduction,
+        )
+        .first()
+    )
+    old_pending = (
+        db.query(PendingCharge)
+        .filter(
+            PendingCharge.lesson_id == lesson.id,
+            PendingCharge.student_id == student_id,
+            PendingCharge.resolved_at.is_(None),
+        )
+        .first()
+    )
+
+    was_charged = old_deduction is not None
+    was_pending = old_pending is not None
+
+    if was_pending and not should_charge and not was_charged:
+        db.delete(old_pending)
+
+    if was_charged and not should_charge:
+        _reverse_lesson_fee(db, student, lesson, teacher, created_by_id, comment_suffix)
+        return False
+
+    if not was_charged and not was_pending and should_charge:
+        return _apply_lesson_fee(
+            db,
+            student,
+            lesson,
+            teacher,
+            teacher.id if teacher else group.teacher_id,
+            teacher_percentage,
+            group.lesson_price,
+            created_by_id,
+            comment_suffix,
+        )
+
+    return was_pending
+
+
 LESSON_AUTO_CREATE_HORIZON = timedelta(days=30)
 LESSON_AUTO_CREATE_STATE_KEY = "lesson_auto_create_last_run"
 
@@ -582,7 +653,6 @@ def mark_attendance(
     teacher_percentage = (
         teacher_user.teacher_percentage if teacher_user else 0.0
     ) or 0.0
-    teacher_id = teacher_user.id if teacher_user else group.teacher_id
 
     created_records: list[Attendance] = []
 
@@ -606,6 +676,18 @@ def mark_attendance(
                 status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"
             )
 
+        is_frozen = group_student.status == GroupStudentStatus.frozen
+        should_charge = (
+            item.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
+            and not is_frozen
+            and not item.is_trial
+        )
+
+        # Lock the student row BEFORE reading/writing any ledger rows below, so a
+        # concurrent resubmit for the same student+lesson serializes here instead of
+        # both requests racing on the same "not charged yet" read.
+        student = lock_user_for_update(db, item.student_id)
+
         existing_att = (
             db.query(Attendance)
             .filter(
@@ -621,60 +703,35 @@ def mark_attendance(
             existing_att.total_count = item.total_count
             existing_att.is_trial = item.is_trial
             created_records.append(existing_att)
-            continue
-
-        attendance = Attendance(
-            lesson_id=lesson.id,
-            student_id=item.student_id,
-            status=item.status,
-            correct_count=item.correct_count,
-            total_count=item.total_count,
-            is_trial=item.is_trial,
-        )
-        db.add(attendance)
-        created_records.append(attendance)
-
-        is_frozen = group_student.status == GroupStudentStatus.frozen
-        should_charge = (
-            item.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
-            and not is_frozen
-            and not item.is_trial
-        )
-
-        student = lock_user_for_update(db, item.student_id)
-        is_pending = False
-
-        already_charged = (
-            db.query(Transaction)
-            .filter(
-                Transaction.lesson_id == lesson.id,
-                Transaction.student_id == item.student_id,
-                Transaction.type == TransactionType.deduction,
+        else:
+            attendance = Attendance(
+                lesson_id=lesson.id,
+                student_id=item.student_id,
+                status=item.status,
+                correct_count=item.correct_count,
+                total_count=item.total_count,
+                is_trial=item.is_trial,
             )
-            .first()
-            is not None
-        ) or (
-            db.query(PendingCharge)
-            .filter(
-                PendingCharge.lesson_id == lesson.id,
-                PendingCharge.student_id == item.student_id,
-            )
-            .first()
-            is not None
-        )
+            db.add(attendance)
+            created_records.append(attendance)
 
-        if should_charge and student is not None and not already_charged:
-            is_pending = _apply_lesson_fee(
-                db,
-                student,
-                lesson,
-                teacher_user,
-                teacher_id,
-                teacher_percentage,
-                group.lesson_price,
-                current_user.id,
-                f"{group.name}, {lesson.lesson_date}",
-            )
+        # Reconciles Transaction/PendingCharge/TeacherTransaction with should_charge
+        # via new offsetting entries - a no-op if the ledger already matches (e.g. a
+        # same-status resubmit), a reversal if this used to be charged and no longer
+        # should be, or a fresh charge if it's newly chargeable. Never edits an old
+        # ledger row in place.
+        is_pending = _sync_lesson_charge(
+            db,
+            lesson,
+            group,
+            item.student_id,
+            student,
+            teacher_user,
+            teacher_percentage,
+            should_charge,
+            current_user.id,
+            f"{group.name}, {lesson.lesson_date}",
+        )
 
         if student is not None and student.telegram_chat_id:
             background_tasks.add_task(
@@ -754,58 +811,27 @@ def update_attendance(
     student = lock_user_for_update(db, student_id)
     teacher = lock_user_for_update(db, group.teacher_id)
 
-    old_deduction = (
-        db.query(Transaction)
-        .filter(
-            Transaction.lesson_id == lesson_id,
-            Transaction.student_id == student_id,
-            Transaction.type == TransactionType.deduction,
-        )
-        .first()
-    )
-    old_pending = (
-        db.query(PendingCharge)
-        .filter(
-            PendingCharge.lesson_id == lesson_id,
-            PendingCharge.student_id == student_id,
-            PendingCharge.resolved_at.is_(None),
-        )
-        .first()
-    )
-
-    was_charged = old_deduction is not None
-    was_pending = old_pending is not None
     should_charge = (
         payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
         and not is_frozen
         and not payload.is_trial
     )
+    teacher_percentage = (teacher.teacher_percentage or 0.0) if teacher else 0.0
 
-    if was_pending and not should_charge and not was_charged:
-        db.delete(old_pending)
-
-    if was_charged and not should_charge:
-        _reverse_lesson_fee(
-            db,
-            student,
-            lesson,
-            teacher,
-            current_user.id,
-            f"davomat tuzatildi, {group.name}, {lesson.lesson_date}",
-        )
-    elif not was_charged and not was_pending and should_charge:
-        teacher_percentage = (teacher.teacher_percentage or 0.0) if teacher else 0.0
-        _apply_lesson_fee(
-            db,
-            student,
-            lesson,
-            teacher,
-            teacher.id if teacher else group.teacher_id,
-            teacher_percentage,
-            group.lesson_price,
-            current_user.id,
-            f"davomat tuzatildi, {group.name}, {lesson.lesson_date}",
-        )
+    # Reconciles Transaction/PendingCharge/TeacherTransaction with should_charge via
+    # new offsetting entries - never edits an old ledger row in place.
+    _sync_lesson_charge(
+        db,
+        lesson,
+        group,
+        student_id,
+        student,
+        teacher,
+        teacher_percentage,
+        should_charge,
+        current_user.id,
+        f"davomat tuzatildi, {group.name}, {lesson.lesson_date}",
+    )
 
     attendance.status = payload.status
     attendance.correct_count = payload.correct_count
