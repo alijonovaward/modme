@@ -320,17 +320,13 @@ function CellDetailModal({
   }, [lesson.id, student.student_id]);
 
   const handleSave = async () => {
-    if (status === "present" && (!correctCount || !totalCount)) {
-      setError("Kelgan o'quvchiga test natijasi kiritilishi shart");
-      return;
-    }
     setIsSaving(true);
     setError(null);
     try {
       const payload = {
         status,
-        correct_count: status === "present" ? Number(correctCount) : null,
-        total_count: status === "present" ? Number(totalCount) : null,
+        correct_count: status === "present" && correctCount !== "" ? Number(correctCount) : null,
+        total_count: status === "present" && totalCount !== "" ? Number(totalCount) : null,
         is_trial: isTrial,
       };
       if (existingCell) {

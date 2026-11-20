@@ -740,10 +740,6 @@ def update_attendance(
                 detail="Davomat belgilangandan 24 soat o'tgan, endi faqat admin tuzatishi mumkin",
             )
 
-    if payload.status == AttendanceStatus.present and payload.total_count is None:
-        raise HTTPException(
-            status_code=400, detail="Kelgan o'quvchiga test natijasi kiritilishi shart"
-        )
     if payload.status != AttendanceStatus.present and payload.total_count is not None:
         raise HTTPException(
             status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"

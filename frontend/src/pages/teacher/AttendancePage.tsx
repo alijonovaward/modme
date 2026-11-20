@@ -111,8 +111,8 @@ export function AttendancePage() {
           return {
             student_id: s.student_id,
             status: row.status,
-            correct_count: row.status === "present" ? Number(row.correctCount) : null,
-            total_count: row.status === "present" ? Number(row.totalCount) : null,
+            correct_count: row.status === "present" && row.correctCount !== "" ? Number(row.correctCount) : null,
+            total_count: row.status === "present" && row.totalCount !== "" ? Number(row.totalCount) : null,
             is_trial: row.isTrial,
           };
         });
@@ -155,8 +155,8 @@ export function AttendancePage() {
           const row = rows[studentId];
           return updateAttendance(lId, studentId, {
             status: row.status,
-            correct_count: row.status === "present" ? Number(row.correctCount) : null,
-            total_count: row.status === "present" ? Number(row.totalCount) : null,
+            correct_count: row.status === "present" && row.correctCount !== "" ? Number(row.correctCount) : null,
+            total_count: row.status === "present" && row.totalCount !== "" ? Number(row.totalCount) : null,
             is_trial: row.isTrial,
           });
         }),
