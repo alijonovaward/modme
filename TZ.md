@@ -1,149 +1,127 @@
-# 📚 O‘quv Markazi CRM Tizimi – To‘liq Texnik Topshiriq (TZ)
+# 📚 O'quv Markazi CRM Tizimi — Texnik Hujjat (joriy holat)
 
-Ushbu texnik topshiriq o‘quv markazining kundalik operatsiyalarini avtomatlashtirish, o‘quvchilar balansi, davomat, baholash, o‘qituvchilarning foizli oylik hisob-kitobi hamda rollar bo‘yicha huquqlarni boshqarishga mo‘ljallangan CRM tizimining backend (FastAPI) va kelgusidagi frontend/mobile ilovalari uchun asosiy qo‘llanma hisoblanadi.
-
----
-
-## 1. Loyihaning Umumiy Arxitekturasi va Texnologiyalar
-* **Backend Framework:** FastAPI (Python)
-* **Ma'lumotlar Bazasi (DB):** PostgreSQL / SQLite (SQLAlchemy ORM)
-* **Autentifikatsiya:** JWT (JSON Web Tokens) - Access token asosida.
-* **Xarajatlarni qisqartirish siyosati:** SMS yoki Telegram bot orqali parollarni tiklash xizmatlaridan voz kechilgan. Parollar va loginlar faqat Administrator tomonidan to‘g‘ridan-to‘g‘ri qo‘lda boshqariladi va yangilanadi.
+> Bu hujjat loyihaning **hozirgi (amaldagi) holatini** tasvirlaydi — boshlang'ich reja emas. Kod tez rivojlangani uchun, agar bu yerda yozilgan narsa kod bilan mos kelmasa, **kod haqiqiy manba hisoblanadi**. Katta o'zgarish qilinganda shu faylni ham yangilab turish tavsiya etiladi.
 
 ---
 
-## 2. Foydalanuvchilar Rollari va Huquqlar Matrikasi (Roles & Permissions)
+## 1. Arxitektura va texnologiyalar
 
-Tizimda 4 ta asosiy rol mavjud bo‘lib, ularning huquqlari quyidagicha qat'iy taqsimlangan:
-
-1. **Glavniy Admin (Superadmin / Owner):**
-   * Tizim egasi yoki bosh direktori.
-   * Barcha ma'lumotlarni ko‘ra oladi, umumiy moliyaviy statistikani kuzatadi.
-   * **O‘qituvchilarni yaratadi** va ularga har bir dars uchun o‘ziga xos **foiz (stavka - masalan, 40%)** belgilaydi.
-   * Oddiy adminlarni nazorat qiladi.
-2. **Administrator (Admin):**
-   * O‘quvchilarni tizimga ro‘yxatga olish va ularning balansiga pul kiritish (**Depozit** qo‘shish).
-   * Guruhlar ochish, ularga mos fan, o‘qituvchi va **1 ta dars narxini** biriktirish.
-   * O‘quvchilarni guruhlarga qo‘shish, guruhdan chiqarish yoki ularning guruhdagi holatini vaqtincha **muzlatib qo‘yish (`Freeze`)**.
-   * Xodimlar yoki o‘quvchilarning paroli esdan chiqqanda, ularga bazadan qo‘lda **yangi login va parol o‘rnatib berish**.
-   * *Cheklov:* O‘qituvchi yarata olmaydi.
-3. **O‘qituvchi (Teacher):**
-   * Faqat o‘ziga biriktirilgan guruhlarni va darslarni ko‘radi.
-   * Har bir dars davomida o‘quvchilarning **davomatini qiladi** (`Keldi`, `Sababli`, `Sababsiz`).
-   * Kelgan o‘quvchilarga **1 dan 5 gacha baho** qo‘yadi.
-   * O‘zining ishlagan puli (foiz tarixlari) va balansini sana hamda guruhlar bo‘yicha **filtrlab** ko‘ra oladi.
-4. **O‘quvchi (Student - Kelgusidagi kabinet uchun):**
-   * O‘zining joriy balansi, davomati, olgan baholari va to‘lovlar tarixini ko‘radi.
+* **Backend:** FastAPI (Python), SQLAlchemy ORM. Migratsiyalar Alembic orqali emas, `app/db/init_db.py` ichida qo'lda yozilgan ustun-qo'shish tekshiruvlari orqali amalga oshadi.
+* **Ma'lumotlar bazasi:** SQLite (lokal rivojlantirish) / PostgreSQL (production). Pul maydonlari `Numeric(14, 0)` — so'mda kasr qism yo'q, Decimal orqali aniq hisoblanadi (`app/core/money.py`).
+* **Autentifikatsiya:** JWT (access token), login telefon raqam + parol orqali (`/api/v1/auth/login`). Parollar faqat admin/bosh admin tomonidan qo'lda o'rnatiladi — SMS yoki bot orqali tiklash yo'q.
+* **Frontend:** React + Vite + TypeScript + Tailwind CSS, PWA (o'rnatish banneri bilan). Rol bo'yicha marshrutlash (`ProtectedRoute`), telefon ekrani uchun alohida zich ro'yxat ko'rinishi (`MobileList`/`MobileListRow`) har bir jadval sahifasida desktop jadvali bilan yonma-yon ishlaydi.
+* **Telegram integratsiyasi:** foydalanuvchi (o'quvchi) o'z Telegram akkauntini bog'lab qo'ysa (`telegram_chat_id`), balans to'ldirilganda/yechilganda, davomat belgilanganda avtomatik xabar boradi (`app/core/telegram.py`).
 
 ---
 
-## 3. Ma'lumotlar Bazasi Tuzilmasi (DB Schema & Models)
+## 2. Rollar va huquqlar
 
-### 3.1. `users` (Foydalanuvchilar)
-Foydalanuvchilar (Admin, Glavniy Admin, O‘qituvchi, O‘quvchi) bitta jadvalda saqlanadi va `role` ustuni orqali farqlanadi.
-* `id` (Integer, PK)
-* `full_name` (String) - F.I.O
-* `phone` (String, Unique) - Login sifatida ishlatiladi
-* `hashed_password` (String) - Shifrlangan parol
-* `role` (Enum: `superadmin`, `admin`, `teacher`, `student`)
-* `teacher_percentage` (Float, Nullable) - Faqat o‘qituvchilar uchun foiz stavkasi (masalan: 40.0)
-* `balance` (Float, Default=0.0) - O‘qituvchilar uchun ishlagan puli (balansi)
-* `created_at` (DateTime)
+Tizimda 4 ta rol bor, hammasi bitta `users` jadvalida, `role` ustuni orqali farqlanadi:
 
-### 3.2. `subjects` (Fanlar)
-* `id` (Integer, PK)
-* `name` (String) - Fan nomi (Masalan: Matematika, Ingliz tili)
+1. **Superadmin (Bosh Administrator)** — barcha ma'lumotni ko'radi, xodim (admin/o'qituvchi) yaratadi, o'qituvchiga foiz stavkasini belgilaydi, `/stats/reconciliation` orqali hisobotlar yaxlitligini tekshiradi.
+2. **Admin** — o'quvchi ro'yxatga oladi, balansga pul kiritadi/qaytaradi, guruh ochadi, o'quvchini guruhga qo'shadi/chiqaradi/muzlatadi, parollarni qo'lda tiklaydi. O'qituvchi **yarata olmaydi**.
+3. **O'qituvchi** — faqat o'ziga biriktirilgan guruhlarni ko'radi, davomat belgilaydi (24 soat ichida tuzatish huquqi bilan), o'z moliyaviy tarixini (`Moliyam`) ko'radi.
+4. **O'quvchi** — o'z balansi, davomati, tranzaksiyalari tarixini ko'radi (`/student/...` sahifalari).
 
-### 3.3. `groups` (Guruhlar)
-* `id` (Integer, PK)
-* `name` (String) - Guruh nomi (Masalan: Math-101)
-* `subject_id` (Integer, FK -> subjects.id)
-* `teacher_id` (Integer, FK -> users.id) - Dars o‘tuvchi o‘qituvchi
-* `lesson_price` (Float) - Guruhdagi 1 ta darsning narxi
-* `status` (Enum: `active`, `frozen`, `archived`)
-
-### 3.4. `group_students` (Guruh va O‘quvchi bog‘lanishi - Many-to-Many)
-1 ta o‘quvchi bir nechta fanda/guruhda qatnashishi mumkinligini ta'minlaydi.
-* `id` (Integer, PK)
-* `group_id` (Integer, FK -> groups.id)
-* `student_id` (Integer, FK -> users.id)
-* `status` (Enum: `active`, `frozen` - muzlatilgan, `dropped` - chiqib ketgan)
-
-### 3.5. `transactions` (O‘quvchi moliya va balans tarixi)
-* `id` (Integer, PK)
-* `student_id` (Integer, FK -> users.id)
-* `amount` (Float) - Summa (Musbat: balans to‘ldirildi, Manfiy: dars uchun yechildi)
-* `type` (Enum: `deposit`, `deduction`)
-* `comment` (String, Nullable) - Izoh
-* `created_at` (DateTime)
-
-### 3.6. `teacher_transactions` (O‘qituvchi daromad va chiqim tarixi)
-* `id` (Integer, PK)
-* `teacher_id` (Integer, FK -> users.id)
-* `amount` (Float) - Summa (Musbat: darsdan chiqqan foiz, Manfiy: admin bergan oylik/chiqim)
-* `type` (Enum: `lesson_earning`, `payout`)
-* `created_at` (DateTime)
-
-### 3.7. `lessons` (Darslar jadvali)
-* `id` (Integer, PK)
-* `group_id` (Integer, FK -> groups.id)
-* `lesson_date` (Date / DateTime) - Dars bo‘ladigan sana
-* `status` (Enum: `planned`, `completed`)
-
-### 3.8. `attendances` (Davomat va Baholar)
-* `id` (Integer, PK)
-* `lesson_id` (Integer, FK -> lessons.id)
-* `student_id` (Integer, FK -> users.id)
-* `status` (Enum: `present` - keldi, `excused` - sababli kelmadi, `unexcused` - sababsiz kelmadi)
-* `grade` (Integer, Nullable) - 1 dan 5 gacha baho (Faqat `present` bo‘lganda kiritiladi)
+**Muhim:** Admin va superadmin umumiy Tranzaksiyalar sahifasida **bir xil ko'rish huquqiga** ega — kim kiritgan/yechgan bo'lishidan qat'i nazar, barcha yozuvlarni ko'radi (teacher esa faqat o'z guruhlariga tegishlilarini).
 
 ---
 
-## 4. Asosiy Biznes Logika va Tranzaksiyalar (Core Logic)
+## 3. Ma'lumotlar bazasi tuzilmasi
 
-### 4.1. O‘quvchi balansini to‘ldirish (Deposit):
-* Admin o‘quvchi profiliga pul kiritadi.
-* `transactions` jadvaliga `deposit` turi bilan yozuv qo‘shiladi. O‘quvchining joriy balansiga bu summa qo‘shib boriladi (yoki balans tranzaksiyalar yig‘indisi sifatida hisoblanadi).
+### 3.1. `users`
+* `id`, `full_name`, `phone` (unique, login sifatida), `hashed_password`, `role` (`superadmin`/`admin`/`teacher`/`student`)
+* `teacher_percentage` (faqat o'qituvchi uchun, masalan 40.0)
+* `balance` (`Numeric(14,0)`) — o'quvchi uchun qolgan pul (manfiy bo'lishi mumkin — qarz), o'qituvchi uchun ishlagan/yechib olinmagan pul
+* `is_active` — bloklash belgisi. **Bloklash o'quvchining barcha faol guruh a'zoligini avtomatik "frozen" qiladi** (davomat/pul oqimi to'xtaydi); qayta faollashtirish bu holatni **avtomatik qaytarmaydi** — admin har bir guruhni qo'lda qayta faollashtirishi kerak.
+* `telegram_chat_id` — ixtiyoriy, Telegram bog'langanda to'ldiriladi
 
-### 4.2. Davomat va Pul yechish mexanizmi (Atomic Transaction):
-O‘qituvchi dars vaqtida davomat qilganda quyidagi shartlar bir vaqtning o‘zida (tranzaksiya ichida) bajarilishi shart:
-1. **Keldi (`present`):** 
-   * O‘quvchiga **1 dan 5 gacha baho** qo‘yiladi.
-   * O‘quvchining balansidan guruhning `lesson_price` miqdoricha pul yechiladi (`transactions` jadvaliga `deduction` sifatida yoziladi).
-   * O‘qituvchining foiz stavkasiga qarab (`teacher_percentage`), o‘qituvchiga tushadigan pul hisoblanadi: 
-     $$\text{O‘qituvchi ulushi} = \text{lesson\_price} \times \frac{\text{teacher\_percentage}}{100}$$
-   * Bu summa o‘qituvchining balansiga qo‘shiladi va `teacher_transactions` jadvaliga `lesson_earning` sifatida yoziladi.
-2. **Sababli kelmadi (`excused`):** 
-   * O‘quvchidan pul yechilmaydi.
-   * O‘qituvchiga pul yozilmaydi.
-3. **Sababsiz kelmadi (`unexcused`):** 
-   * O‘quvchi balansidan guruhning `lesson_price` miqdoricha pul yechiladi (`deduction`).
-   * O‘qituvchi darsga tayyor bo‘lib kelgani va o‘quvchi sababsiz qoldirgani uchun, o‘qituvchiga ham o‘z foizi hisoblanib yoziladi (`lesson_earning`).
+### 3.2. `subjects` — fanlar (`id`, `name`)
 
-### 4.3. Guruhni yoki o‘quvchini muzlatish (`Freeze`):
-* O‘quvchi uzoq muddatga kelolmaydigan bo‘lsa, admin uning `group_students` dagi statusini `frozen` qiladi. Bu holatda tizim o‘quvchiga dars hisoblaganda undan pul yechishni vaqtincha chetlab o‘tadi.
+### 3.3. `groups` — guruhlar
+* `name`, `subject_id`, `teacher_id`, `lesson_price`, `status` (`active`/`frozen`/`archived`)
+* `group_schedules` — alohida jadval: har bir guruh bir nechta `(weekday, start_time, end_time)` qatoriga ega bo'lishi mumkin (haftada bir necha kun)
+
+### 3.4. `group_students` — guruh-o'quvchi bog'lanishi
+* `status`: `active` / `frozen` (muzlatilgan — pul yechilmaydi) / `dropped` (chiqarilgan, sabab majburiy)
+* Bitta o'quvchi bir guruhda faqat bitta faol (`active`/`frozen`) yozuvga ega bo'lishi mumkin; `dropped`dan keyin qayta qo'shilsa yangi qator ochiladi
+* Guruhga qo'shishda **jadval to'qnashuvi** (schedule conflict) tekshiriladi — o'quvchi bir vaqtda ikki guruhga yozilishi odatiy holatda bloklanadi (`force` bayrog'i bilan bypass qilinadi)
+
+### 3.5. `lessons` — darslar
+* `group_id`, `lesson_date`, `start_time`/`end_time` (ixtiyoriy), `status` (`planned`/`completed`)
+* Bitta guruh + sana juftligi uchun faqat bitta dars (`uq_lessons_group_date`)
+* Guruh jadvali asosida darslarni avtomatik yaratish mumkin (30 kunlik gorizont, kunlik fon vazifasi)
+
+### 3.6. `attendances` — davomat
+* `lesson_id`, `student_id`, `status` (`present`/`excused`/`unexcused`)
+* `correct_count`/`total_count` — **ixtiyoriy test natijasi** (masalan 4/5), faqat `present` holatida kiritiladi. *(Eslatma: eski versiyada "1-5 baho" bo'lgan, hozir test natijasi bilan almashtirilgan)*
+* `is_trial` — sinov darsi belgisi: `true` bo'lsa pul yechilmaydi, lekin davomat yozib qo'yiladi
+* O'qituvchi davomatni belgilagandan **24 soat ichida** tuzatishi mumkin (`ATTENDANCE_EDIT_WINDOW`)
+
+### 3.7. `transactions` — o'quvchi pul harakati
+* `student_id`, `amount` (musbat=kirim, manfiy=chiqim), `type` (`deposit`/`deduction`), `comment`, `created_by_id`, `lesson_id` (ixtiyoriy — darsga bog'liq bo'lmagan yozuvlarda bo'sh)
+* **Ledger yozuvlari hech qachon o'rnida tahrirlanmaydi** — davomat tuzatilganda yoki holat o'zgarganda har doim yangi, qarama-qarshi (offsetting) yozuv qo'shiladi
+
+### 3.8. `teacher_transactions` — o'qituvchi daromadi
+* `teacher_id`, `lesson_id`, `student_id`, `amount`, `type` (`lesson_earning`/`payout`), `created_by_id`
+
+### 3.9. `pending_charges` — kechiktirilgan qarz (o'qituvchi ulushi uchun)
+* O'quvchi balansi darsning narxini to'liq qoplay olmasa: **balansdan baribir to'liq summa yechiladi** (balans manfiy bo'lib qolishi mumkin), lekin o'qituvchiga yetishmagan qism darhol to'lanmaydi — shu qism `pending_charges`ga yoziladi (`amount`, `original_amount`, `teacher_share`, `resolved_at`)
+* O'quvchi keyinroq pul to'ldirsa, eng eski qarzdan boshlab avtomatik yopiladi, o'qituvchiga mos ulush o'tkaziladi (`_settle_pending_charges`)
+
+### 3.10. `idempotency_keys`
+Pul harakatlantiruvchi so'rovlar (`deposit`, `withdraw`, `payout`) uchun `Idempotency-Key` header orqali — tarmoq xatosi natijasida qayta yuborilgan so'rov bir xil amalni ikki marta bajarmasligini ta'minlaydi.
+
+### 3.11. `app_state`
+Kichik key-value jadval — masalan, kunlik "darslarni avtomatik yaratish" vazifasi oxirgi marta qachon ishlaganini saqlash uchun.
 
 ---
 
-## 5. FastAPI Backend API Endpoints (Rejalashtirilgan marshrutlar)
+## 4. Asosiy biznes-mantiq
 
-* **Autentifikatsiya:**
-  * `POST /api/v1/auth/login` — Telefon raqam va parol orqali JWT token olish.
-* **Admin / Glavniy Admin boshqaruvi:**
-  * `POST /api/v1/admin/users` — Yangi xodim (o‘qituvchi, admin) qo‘shish (Glavniy admin uchun).
-  * `PUT /api/v1/admin/users/{id}/password` — Unutilgan parolni qo‘lda yangilash (Admin uchun).
-* **O‘quvchilar va Moliya:**
-  * `POST /api/v1/students` — O‘quvchi qo‘shish.
-  * `POST /api/v1/students/{id}/deposit` — O‘quvchi balansiga pul kiritish.
-  * `GET /api/v1/students/{id}/transactions` — O‘quvchining to‘lovlar va yechimlar tarixini ko‘rish.
-* **Guruhlar:**
-  * `POST /api/v1/groups` — Guruh ochish, fan, o‘qituvchi va dars narxini belgilash.
-  * `POST /api/v1/groups/{group_id}/students` — Guruhga o‘quvchi qo‘shish / muzlatish.
-* **Darslar va Davomat:**
-  * `POST /api/v1/lessons` — Guruh uchun dars ochish.
-  * `POST /api/v1/lessons/{lesson_id}/attendance` — Davomat qilish, baho qo‘yish va avtomatik balans/foiz yechimlarini bajarish.
-* **O‘qituvchi moliyasi:**
-  * `GET /api/v1/teachers/finance` — O‘qituvchining o‘z daromad tarixi, ishlagan pullari va filtrlar (sana, guruh bo‘yicha).
+### 4.1. Davomat belgilash va pul oqimi (`app/routers/lessons.py`)
+O'qituvchi dars uchun davomat belgilaganda (`POST /lessons/{id}/attendance`):
+
+1. **Keldi (`present`):** ixtiyoriy test natijasi kiritiladi → `should_charge = true` (agar sinov darsi va muzlatilmagan bo'lsa)
+2. **Sababli (`excused`):** pul yechilmaydi, o'qituvchiga ham yozilmaydi
+3. **Sababsiz (`unexcused`):** pul **yechiladi** (dars o'tgani uchun, o'quvchi sababsiz qoldirgani uchun javobgar) — `present` bilan bir xil moliyaviy natija
+4. **Sinov darsi (`is_trial=true`):** holatidan qat'i nazar pul yechilmaydi
+
+Pul yechish/qaytarish har doim `_apply_lesson_fee` / `_reverse_lesson_fee` / `_sync_lesson_charge` orqali, **yangi offsetting yozuv** sifatida amalga oshadi — hech qachon eski tranzaksiya qatori o'zgartirilmaydi. Parallel so'rovlar (masalan ikki marta tez ketma-ket yuborish) uchun o'quvchi/o'qituvchi qatori `SELECT ... FOR UPDATE` bilan qulflanadi.
+
+### 4.2. Balansni to'ldirish / qaytarib berish
+* **To'ldirish** (`POST /students/{id}/deposit`): balansga pul qo'shiladi, keyin kutilayotgan qarzlar (pending charges) eng eskisidan boshlab avtomatik yopiladi.
+* **Qaytarib berish** (`POST /students/{id}/withdraw`): admin o'quvchiga naqd pul qaytarganini qayd etadi (ortiqcha to'lov, chiqib ketish va h.k.). **Joriy balansdan ko'p yechib bo'lmaydi** — darsga bog'liq bo'lmagani uchun qarzga o'tkazilmaydi.
+* Ikkalasi ham `Idempotency-Key` bilan himoyalangan va Telegram orqali xabar yuboradi (agar bog'langan bo'lsa).
+
+### 4.3. O'qituvchiga pul berish (`POST /teachers/{id}/payout`)
+Admin o'qituvchi balansidan pul yechib berganini qayd etadi — xuddi o'quvchi `withdraw`siga o'xshab, o'qituvchi balansidan ko'p yechib bo'lmaydi.
+
+### 4.4. Guruhni/o'quvchini muzlatish
+* `group_students.status = frozen` — shu guruh bo'yicha pul yechish/davomat hisoblash vaqtincha to'xtaydi, lekin o'quvchi guruhda ro'yxatda qoladi.
+* `users.is_active = false` (Bloklash) — o'quvchining **barcha faol guruh a'zoligi avtomatik frozen**ga o'tadi (bir martalik harakat bilan butun o'quv jarayoni to'xtaydi), hisobga kirish ham yopiladi. Band 3.1ga qarang.
+
+### 4.5. Ma'lumotlar yaxlitligi
+`GET /stats/reconciliation` (faqat superadmin) — har bir o'quvchi/o'qituvchi uchun `balance` ustunini, o'sha foydalanuvchiga tegishli barcha tranzaksiyalar yig'indisi bilan solishtiradi. Mos kelmasa — bu dastur xatosi yoki bazaga to'g'ridan-to'g'ri kirishning belgisi.
 
 ---
-*Ushbu hujjatni kelgusida `TZ.md` nomi bilan loyihangiz papkasiga saqlab qo‘yishingiz mumkin.*
+
+## 5. Asosiy API yo'nalishlari (qisqacha)
+
+* `POST /api/v1/auth/login` — JWT token olish
+* `POST /api/v1/admin/users`, `PUT /api/v1/admin/users/{id}/status|password` — xodim boshqaruvi (superadmin/admin)
+* `POST /api/v1/students`, `POST /api/v1/students/{id}/deposit|withdraw`, `PUT /api/v1/students/{id}/status` — o'quvchi va moliya
+* `POST /api/v1/groups`, `POST /api/v1/groups/{id}/students`, `PUT /api/v1/groups/{id}/students/{student_id}` — guruh va a'zolik
+* `POST /api/v1/lessons`, `POST /api/v1/lessons/generate`, `POST /api/v1/lessons/{id}/attendance`, `PUT /api/v1/lessons/{id}/attendance/{student_id}` — darslar va davomat
+* `GET /api/v1/teachers/finance`, `POST /api/v1/teachers/{id}/payout` — o'qituvchi moliyasi
+* `GET /api/v1/transactions`, `GET /api/v1/teachers/transactions` — umumiy tranzaksiya ro'yxatlari (filtrlar bilan)
+* `GET /api/v1/stats/overview`, `GET /api/v1/stats/reconciliation` — umumiy statistika va yaxlitlik tekshiruvi
+
+Deyarli barcha ro'yxat endpointlari uchun `/export` varianti ham bor (Excel chiqarish).
+
+---
+
+## 6. Testlar
+
+Backend: `pytest` (`tests/`), 90+ test — pul hisob-kitobi, idempotency, reconciliation, ruxsatlar, davomat tuzatish, muzlatish/bloklash oqimlari qamrab olingan.
+Frontend: `vitest` + Testing Library (`frontend/src/**/*.test.tsx`) — asosiy sahifalarning render/interaksiya holatlari uchun.
