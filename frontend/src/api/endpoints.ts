@@ -156,6 +156,20 @@ export async function depositToStudent(
   return data;
 }
 
+export async function withdrawFromStudent(
+  studentId: number,
+  amount: number,
+  comment?: string,
+  idempotencyKey?: string,
+): Promise<Transaction> {
+  const { data } = await apiClient.post<Transaction>(
+    `/api/v1/students/${studentId}/withdraw`,
+    { amount, comment },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
+  );
+  return data;
+}
+
 export async function getStudentTransactions(
   studentId: number,
   params?: {

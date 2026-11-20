@@ -9,6 +9,7 @@ import {
   updateStudent,
   updateStudentStatus,
   updateUserPassword,
+  withdrawFromStudent,
 } from "../../api/endpoints";
 import {
   Badge,
@@ -68,6 +69,11 @@ export function StudentDetailPage() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositComment, setDepositComment] = useState("");
   const depositIdempotencyKey = useIdempotencyKey();
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawComment, setWithdrawComment] = useState("");
+  const withdrawIdempotencyKey = useIdempotencyKey();
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -117,6 +123,34 @@ export function StudentDetailPage() {
       setSuccess("Balans to'ldirildi");
       setDepositAmount("");
       setDepositComment("");
+      setIsDepositModalOpen(false);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWithdraw = async (e: FormEvent) => {
+    e.preventDefault();
+    const amount = Number(withdrawAmount);
+    if (!amount || amount <= 0 || isSubmitting) return;
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await withdrawFromStudent(
+        id,
+        amount,
+        withdrawComment || undefined,
+        withdrawIdempotencyKey.get(),
+      );
+      withdrawIdempotencyKey.renew();
+      setSuccess("Pul qaytarib berildi");
+      setWithdrawAmount("");
+      setWithdrawComment("");
+      setIsWithdrawModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -209,46 +243,39 @@ export function StudentDetailPage() {
             </Badge>
           </div>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Balans:{" "}
-            <span
-              className={`font-semibold ${
-                displayBalance < 0
-                  ? "font-bold text-rose-600 dark:text-rose-400"
-                  : "text-slate-800 dark:text-slate-200"
-              }`}
-            >
-              {displayBalance.toLocaleString("uz-UZ")} so'm
+          <div className="mt-1 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+            <span>
+              Balans:{" "}
+              <span
+                className={`font-semibold ${
+                  displayBalance < 0
+                    ? "font-bold text-rose-600 dark:text-rose-400"
+                    : "text-slate-800 dark:text-slate-200"
+                }`}
+              >
+                {displayBalance.toLocaleString("uz-UZ")} so'm
+              </span>
             </span>
-          </p>
+            <button
+              onClick={() => setIsDepositModalOpen(true)}
+              aria-label="Balansni to'ldirish"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-base font-bold leading-none text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900"
+            >
+              +
+            </button>
+            <button
+              onClick={() => setIsWithdrawModalOpen(true)}
+              aria-label="Pul qaytarish"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-base font-bold leading-none text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900"
+            >
+              -
+            </button>
+          </div>
         </div>
       </div>
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
-
-      <div className="max-w-md">
-        <Card title="Balansni to'ldirish">
-          <form onSubmit={handleDeposit} className="space-y-4">
-            <div>
-              <Label>Summa</Label>
-              <Input
-                type="number"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label>Izoh (ixtiyoriy)</Label>
-              <Input value={depositComment} onChange={(e) => setDepositComment(e.target.value)} />
-            </div>
-            <Button type="submit" disabled={isSubmitting}>
-              To'ldirish
-            </Button>
-          </form>
-        </Card>
-      </div>
 
       <div className="mt-6">
         <Card title="Fanlar va guruhlar">
@@ -383,6 +410,60 @@ export function StudentDetailPage() {
           />
         </Card>
       </div>
+
+      {isDepositModalOpen && (
+        <Modal title="Balansni to'ldirish" onClose={() => setIsDepositModalOpen(false)}>
+          <form onSubmit={handleDeposit} className="space-y-4">
+            <div>
+              <Label>Summa</Label>
+              <Input
+                type="number"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label>Izoh (ixtiyoriy)</Label>
+              <Input value={depositComment} onChange={(e) => setDepositComment(e.target.value)} />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              To'ldirish
+            </Button>
+          </form>
+        </Modal>
+      )}
+
+      {isWithdrawModalOpen && (
+        <Modal title="Pulni qaytarib berish" onClose={() => setIsWithdrawModalOpen(false)}>
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            O'quvchi ortiqcha to'lagan yoki guruhni tark etayotgan bo'lsa, balansidan naqd pul
+            qaytarib berilganini shu yerda qayd eting. Joriy balans:{" "}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              {student.balance.toLocaleString("uz-UZ")} so'm
+            </span>
+          </p>
+          <form onSubmit={handleWithdraw} className="space-y-4">
+            <div>
+              <Label>Summa</Label>
+              <Input
+                type="number"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                max={student.balance > 0 ? student.balance : 0}
+                required
+              />
+            </div>
+            <div>
+              <Label>Izoh (ixtiyoriy)</Label>
+              <Input value={withdrawComment} onChange={(e) => setWithdrawComment(e.target.value)} />
+            </div>
+            <Button type="submit" variant="danger" className="w-full" disabled={isSubmitting}>
+              Qaytarib berish
+            </Button>
+          </form>
+        </Modal>
+      )}
 
       {isEditModalOpen && (
         <Modal title="Ma'lumotlarni tahrirlash" onClose={() => setIsEditModalOpen(false)}>

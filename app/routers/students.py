@@ -314,6 +314,73 @@ def deposit_to_student(
     return result
 
 
+@router.post("/{student_id}/withdraw", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
+def withdraw_from_student(
+    student_id: int,
+    payload: DepositCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+):
+    """Hands cash back to a student from their balance - e.g. they overpaid, or are
+    leaving and the center owes them a refund. Unlike a lesson deduction, this is
+    capped at the student's current balance: it can't push them into debt, since
+    there's no lesson behind it to justify that."""
+    try:
+        replay = begin_idempotent_request(db, "students.withdraw", idempotency_key)
+    except IdempotencyInProgress:
+        raise HTTPException(
+            status_code=409, detail="So'rov hali bajarilmoqda, biroz kutib qayta urinib ko'ring"
+        )
+    if replay is not None:
+        return JSONResponse(status_code=replay.status_code, content=replay.body)
+
+    if payload.amount <= 0:
+        abort_idempotent_request(db, idempotency_key)
+        raise HTTPException(status_code=400, detail="Summa musbat bo'lishi kerak")
+
+    amount = round_som(payload.amount)
+
+    try:
+        student = _get_student_or_404(db, student_id)
+        student = lock_user_for_update(db, student.id) or student
+
+        if amount > to_decimal(student.balance):
+            abort_idempotent_request(db, idempotency_key)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Balansda yetarli mablag' yo'q (joriy balans: {student.balance:,.0f} so'm)",
+            )
+
+        transaction = Transaction(
+            student_id=student.id,
+            amount=-amount,
+            type=TransactionType.deduction,
+            comment=payload.comment or "Admin tomonidan pul qaytarib berildi",
+            created_by_id=current_user.id,
+        )
+        student.balance -= amount
+        db.add(transaction)
+
+        db.commit()
+        db.refresh(transaction)
+    except Exception:
+        abort_idempotent_request(db, idempotency_key)
+        raise
+
+    if student.telegram_chat_id:
+        message = (
+            f"Balansingizdan {amount:,.0f} so'm qaytarib berildi. "
+            f"Joriy balans: {student.balance:,.0f} so'm"
+        )
+        background_tasks.add_task(send_telegram_message, student.telegram_chat_id, message)
+
+    result = TransactionOut.model_validate(transaction)
+    finish_idempotent_request(db, idempotency_key, status.HTTP_201_CREATED, result)
+    return result
+
+
 def _build_student_transactions_query(
     db: Session,
     student: User,
