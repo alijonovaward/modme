@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { submitAttendance } from "../api/endpoints";
-import { Button, ErrorMessage, SuccessMessage } from "./ui";
-import type { AttendanceGrid, AttendanceStatus, StudentAttendanceStats } from "../types";
+import { Badge, Button, ErrorMessage, SuccessMessage } from "./ui";
+import type { AttendanceGrid, AttendanceStatus, GroupRosterItem, StudentAttendanceStats } from "../types";
 
 function renderAttendanceStatusCircle(
   status: AttendanceStatus | undefined,
@@ -44,19 +44,50 @@ const getTodayStr = () => {
   return `${year}-${month}-${day}`;
 };
 
+const ROSTER_STATUS_COLOR = {
+  active: "green",
+  frozen: "amber",
+  dropped: "red",
+} as const;
+
+// Sticky-column left offsets (desktop only - see the `sm:` gating below) and the
+// per-status row tint. Dropped/frozen rows need an opaque tint on every cell
+// (not just the <tr>), because the sticky cells each set their own background to
+// stay opaque while the row scrolls horizontally underneath them.
+const ROW_TINT = {
+  active: { sticky: "bg-white dark:bg-slate-950", cell: "" },
+  frozen: { sticky: "bg-amber-50/90 dark:bg-amber-950/40", cell: "bg-amber-50/40 dark:bg-amber-950/20" },
+  dropped: { sticky: "bg-slate-100/90 dark:bg-slate-800/40", cell: "bg-slate-100/50 dark:bg-slate-800/20" },
+} as const;
+
+const GROUP_HEADER_LABEL: Record<"frozen" | "dropped", string> = {
+  frozen: "Muzlatilgan",
+  dropped: "Arxiv",
+};
+
+const GROUP_HEADER_TINT: Record<"frozen" | "dropped", string> = {
+  frozen: "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+  dropped: "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-400",
+};
+
 export function AttendanceCombinedTable({
+  roster,
   grid,
   stats,
   onReload,
+  renderActions,
 }: {
+  roster: GroupRosterItem[];
   grid: AttendanceGrid | null;
   stats: StudentAttendanceStats[];
   onReload?: () => Promise<void>;
+  renderActions?: (student: GroupRosterItem) => ReactNode;
 }) {
   const [editedCells, setEditedCells] = useState<Record<string, AttendanceStatus | null>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const modifiedLessonIds = useMemo(() => {
     const lessonIds = new Set<number>();
@@ -70,17 +101,43 @@ export function AttendanceCombinedTable({
 
   const todayStr = useMemo(() => getTodayStr(), []);
 
-  if (!grid || grid.students.length === 0) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Hali o'quvchi yo'q.</p>;
-  }
-  const statsByStudent = new Map(stats.map((s) => [s.student_id, s]));
+  const statsByStudent = useMemo(() => new Map(stats.map((s) => [s.student_id, s])), [stats]);
+  const activeStudentIds = useMemo(
+    () => new Set((grid?.students ?? []).map((s) => s.student_id)),
+    [grid],
+  );
+
+  const rosterGroups = useMemo(() => {
+    const active = roster.filter((s) => s.status === "active");
+    const frozen = roster.filter((s) => s.status === "frozen");
+    const dropped = roster.filter((s) => s.status === "dropped");
+    return { active, frozen, dropped };
+  }, [roster]);
+
+  const hiddenCount = rosterGroups.frozen.length + rosterGroups.dropped.length;
+
+  const visibleRows = useMemo(() => {
+    type Row = { kind: "student"; student: GroupRosterItem } | { kind: "header"; status: "frozen" | "dropped" };
+    const rows: Row[] = rosterGroups.active.map((student) => ({ kind: "student", student }));
+    if (showAll) {
+      if (rosterGroups.frozen.length > 0) {
+        rows.push({ kind: "header", status: "frozen" });
+        for (const student of rosterGroups.frozen) rows.push({ kind: "student", student });
+      }
+      if (rosterGroups.dropped.length > 0) {
+        rows.push({ kind: "header", status: "dropped" });
+        for (const student of rosterGroups.dropped) rows.push({ kind: "student", student });
+      }
+    }
+    return rows;
+  }, [rosterGroups, showAll]);
 
   const getCellStatus = (studentId: number, lessonId: number): AttendanceStatus | undefined => {
     const cellKey = `${studentId}_${lessonId}`;
     if (cellKey in editedCells) {
       return editedCells[cellKey] ?? undefined;
     }
-    const cell = grid.cells.find((c) => c.student_id === studentId && c.lesson_id === lessonId);
+    const cell = grid?.cells.find((c) => c.student_id === studentId && c.lesson_id === lessonId);
     return cell?.status;
   };
 
@@ -109,7 +166,7 @@ export function AttendanceCombinedTable({
   };
 
   const handleSave = async () => {
-    if (modifiedLessonIds.length === 0 || isSaving) return;
+    if (modifiedLessonIds.length === 0 || isSaving || !grid) return;
     setIsSaving(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -134,17 +191,35 @@ export function AttendanceCombinedTable({
     }
   };
 
+  if (roster.length === 0) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Hali o'quvchi yo'q.</p>;
+  }
+
+  const lessons = grid?.lessons ?? [];
+
   return (
     <div className="space-y-3">
       <ErrorMessage message={errorMsg} />
       <SuccessMessage message={successMsg} />
 
-      {modifiedLessonIds.length > 0 && (
-        <div className="flex select-none items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50/90 px-3.5 py-2 shadow-sm dark:border-indigo-900/80 dark:bg-indigo-950/60">
-          <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-            O'zgartirilgan darslar: {modifiedLessonIds.length} ta
-          </p>
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between">
+        {hiddenCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowAll((prev) => !prev)}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+          >
+            {showAll ? "Faqat faollarni ko'rsatish" : `Hammasini ko'rsatish (${hiddenCount} ta yashirin)`}
+          </button>
+        ) : (
+          <span />
+        )}
+
+        {modifiedLessonIds.length > 0 && (
+          <div className="flex select-none items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/90 px-3.5 py-2 shadow-sm dark:border-indigo-900/80 dark:bg-indigo-950/60">
+            <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+              O'zgartirilgan darslar: {modifiedLessonIds.length} ta
+            </p>
             <button
               type="button"
               onClick={() => setEditedCells({})}
@@ -156,8 +231,8 @@ export function AttendanceCombinedTable({
               {isSaving ? "Saqlanmoqda..." : "Saqlash"}
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="relative w-full overflow-x-auto rounded-xl border border-slate-200/60 dark:border-slate-800/60">
         <table className="w-full text-left text-xs sm:text-sm">
@@ -166,35 +241,82 @@ export function AttendanceCombinedTable({
               <th className="sticky left-0 z-20 w-[125px] min-w-[125px] bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3.5 sm:py-3 sm:shadow-none dark:bg-slate-900/95 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
                 O'quvchi
               </th>
-              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[150px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 dark:bg-slate-900/95">
+              <th className="w-[90px] min-w-[90px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[150px] sm:z-20 sm:w-[100px] sm:min-w-[100px] sm:px-3.5 sm:py-3 dark:bg-slate-900/95">
+                Holat
+              </th>
+              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[250px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 dark:bg-slate-900/95">
                 Jami darslar
               </th>
-              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[240px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-900/95 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
+              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[340px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-900/95 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
                 Umumiy foiz
               </th>
-              {grid.lessons.map((l) => (
+              {lessons.map((l) => (
                 <th key={l.id} className="whitespace-nowrap px-2.5 py-2 font-semibold sm:px-3.5 sm:py-3">
                   {l.lesson_date}
                 </th>
               ))}
+              {renderActions && (
+                <th className="sticky right-0 z-20 w-px whitespace-nowrap bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:px-3.5 sm:py-3 dark:bg-slate-900/95 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)]">
+                  Amallar
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {grid.students.map((s) => {
+            {visibleRows.map((row) => {
+              if (row.kind === "header") {
+                return (
+                  <tr key={`header-${row.status}`}>
+                    <td
+                      colSpan={4 + lessons.length + (renderActions ? 1 : 0)}
+                      className={`px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider ${GROUP_HEADER_TINT[row.status]}`}
+                    >
+                      {GROUP_HEADER_LABEL[row.status]}
+                    </td>
+                  </tr>
+                );
+              }
+
+              const s = row.student;
               const stat = statsByStudent.get(s.student_id);
+              const hasAttendanceData = activeStudentIds.has(s.student_id);
+              const tint = ROW_TINT[s.status];
+
               return (
                 <tr key={s.student_id}>
-                  <td className="sticky left-0 z-10 w-[125px] min-w-[125px] truncate bg-white px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:bg-slate-950 dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
+                  <td
+                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky}`}
+                  >
                     {s.student_name}
                   </td>
-                  <td className="w-[80px] min-w-[80px] bg-white px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[150px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 dark:bg-slate-950 dark:text-slate-400">
-                    {stat?.total_lessons ?? 0}
+                  <td
+                    className={`w-[90px] min-w-[90px] px-2.5 py-2.5 sm:sticky sm:left-[150px] sm:z-10 sm:w-[100px] sm:min-w-[100px] sm:px-3 ${tint.sticky} ${tint.cell}`}
+                  >
+                    <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
+                    {s.status === "dropped" && s.status_reason && (
+                      <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{s.status_reason}</p>
+                    )}
                   </td>
-                  <td className="w-[80px] min-w-[80px] bg-white px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[240px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-950 dark:text-slate-400 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
-                    {stat ? `${stat.attendance_rate}%` : "-"}
+                  <td
+                    className={`w-[80px] min-w-[80px] px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[250px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 dark:text-slate-400 ${tint.sticky} ${tint.cell}`}
+                  >
+                    {hasAttendanceData ? stat?.total_lessons ?? 0 : "–"}
                   </td>
-                  {grid.lessons.map((l) => {
-                    const originalCell = grid.cells.find(
+                  <td
+                    className={`w-[80px] min-w-[80px] px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[340px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:text-slate-400 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} ${tint.cell}`}
+                  >
+                    {hasAttendanceData ? (stat ? `${stat.attendance_rate}%` : "-") : "–"}
+                  </td>
+                  {lessons.map((l) => {
+                    if (!hasAttendanceData) {
+                      return (
+                        <td key={l.id} className={`px-3.5 py-2.5 text-center text-slate-300 dark:text-slate-700 ${tint.cell}`}>
+                          –
+                        </td>
+                      );
+                    }
+
+                    const originalCell = grid?.cells.find(
                       (c) => c.student_id === s.student_id && c.lesson_id === l.id,
                     );
                     const currentStatus = getCellStatus(s.student_id, l.id);
@@ -202,7 +324,7 @@ export function AttendanceCombinedTable({
                     const isFutureLesson = l.lesson_date > todayStr;
 
                     return (
-                      <td key={l.id} className="px-3.5 py-2.5 text-center">
+                      <td key={l.id} className={`px-3.5 py-2.5 text-center ${tint.cell}`}>
                         <button
                           type="button"
                           disabled={isFutureLesson}
@@ -227,6 +349,11 @@ export function AttendanceCombinedTable({
                       </td>
                     );
                   })}
+                  {renderActions && (
+                    <td className={`sticky right-0 z-10 whitespace-nowrap px-2.5 py-2.5 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:px-3.5 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky}`}>
+                      {renderActions(s)}
+                    </td>
+                  )}
                 </tr>
               );
             })}

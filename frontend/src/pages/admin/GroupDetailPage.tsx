@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   addStudentToGroup,
@@ -22,11 +22,7 @@ import {
   Input,
   Label,
   Modal,
-  Pagination,
   SuccessMessage,
-  Table,
-  TdAction,
-  usePagination,
 } from "../../components/ui";
 import { AttendanceCombinedTable } from "../../components/AttendanceGridView";
 import { DateRangeFilterModal } from "../../components/DateRangeFilterModal";
@@ -44,12 +40,6 @@ import type {
 import { Layout } from "../../components/Layout";
 import { formatSchedule, WEEKDAYS } from "../../utils/weekdays";
 
-const ROSTER_STATUS_COLOR = {
-  active: "green",
-  frozen: "amber",
-  dropped: "red",
-} as const;
-
 const GROUP_STATUS_COLOR = {
   active: "green",
   frozen: "amber",
@@ -61,13 +51,6 @@ const GROUP_STATUS_LABEL: Record<GroupStatus, string> = {
   frozen: "Muzlatilgan",
   archived: "Arxivlangan",
 };
-
-const STATUS_TABS: { value: GroupStudentStatus | ""; label: string }[] = [
-  { value: "", label: "Hammasi" },
-  { value: "active", label: "Faol" },
-  { value: "frozen", label: "Muzlatilgan" },
-  { value: "dropped", label: "Arxiv" },
-];
 
 export function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -84,7 +67,6 @@ export function GroupDetailPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [statusFilter, setStatusFilter] = useState<GroupStudentStatus | "">("");
   const [dropTarget, setDropTarget] = useState<GroupRosterItem | null>(null);
   const [dropReason, setDropReason] = useState("");
 
@@ -260,14 +242,6 @@ export function GroupDetailPage() {
     }
   };
 
-  const filteredStudents = useMemo(() => {
-    if (!group) return [];
-    if (!statusFilter) return group.students;
-    return group.students.filter((s) => s.status === statusFilter);
-  }, [group, statusFilter]);
-
-  const { page, setPage, pageCount, pageItems, total } = usePagination(filteredStudents);
-
   if (isLoading || !group) {
     return (
       <Layout>
@@ -320,7 +294,14 @@ export function GroupDetailPage() {
       <SuccessMessage message={success} />
 
       <div>
-        <Card title="O'quvchilar ro'yxati">
+        <Card
+          title="O'quvchilar va davomat"
+          action={
+            <Button variant="secondary" onClick={attendanceFilter.open}>
+              Filterlar
+            </Button>
+          }
+        >
           <div className="mb-4 flex gap-2">
             <Combobox
               className="flex-1"
@@ -334,83 +315,42 @@ export function GroupDetailPage() {
             </Button>
           </div>
 
-          <div className="mb-3 flex gap-1">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setStatusFilter(tab.value)}
-                className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                  statusFilter === tab.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
+          </p>
 
-          <Table headers={["F.I.O", "Telefon", "Holat", ""]}>
-            {pageItems.map((s) => (
-              <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.student_phone}</td>
-                <td className="px-3.5 py-2.5">
-                  <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
-                  {s.status === "dropped" && s.status_reason && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sababi: {s.status_reason}</p>
-                  )}
-                </td>
-                <TdAction>
-                  <div className="flex gap-1">
-                    {s.status !== "active" && (
-                      <Button variant="secondary" onClick={() => handleStatusChange(s.student_id, "active")}>
-                        Aktiv
-                      </Button>
-                    )}
-                    {s.status !== "frozen" && (
-                      <Button variant="secondary" onClick={() => handleStatusChange(s.student_id, "frozen")}>
-                        Freeze
-                      </Button>
-                    )}
-                    {s.status !== "dropped" && (
-                      <Button
-                        variant="danger"
-                        onClick={() => {
-                          setDropTarget(s);
-                          setDropReason("");
-                        }}
-                      >
-                        Chiqarish
-                      </Button>
-                    )}
-                  </div>
-                </TdAction>
-              </tr>
-            ))}
-          </Table>
-          <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
+          <AttendanceCombinedTable
+            roster={group.students}
+            grid={attendanceGrid}
+            stats={attendanceStats}
+            onReload={reloadAttendance}
+            renderActions={(s) => (
+              <div className="flex gap-1">
+                {s.status !== "active" && (
+                  <Button variant="secondary" onClick={() => handleStatusChange(s.student_id, "active")}>
+                    Aktiv
+                  </Button>
+                )}
+                {s.status !== "frozen" && (
+                  <Button variant="secondary" onClick={() => handleStatusChange(s.student_id, "frozen")}>
+                    Freeze
+                  </Button>
+                )}
+                {s.status !== "dropped" && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setDropTarget(s);
+                      setDropReason("");
+                    }}
+                  >
+                    Chiqarish
+                  </Button>
+                )}
+              </div>
+            )}
+          />
         </Card>
-
-        <div className="mt-6">
-          <Card
-            title="Davomat"
-            action={
-              <Button variant="secondary" onClick={attendanceFilter.open}>
-                Filterlar
-              </Button>
-            }
-          >
-            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
-            </p>
-            <AttendanceCombinedTable
-              grid={attendanceGrid}
-              stats={attendanceStats}
-              onReload={reloadAttendance}
-            />
-          </Card>
-        </div>
       </div>
 
       <DateRangeFilterModal
