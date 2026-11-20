@@ -167,12 +167,12 @@ export function StudentTransactionsPage() {
         )}
         <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatTile
-            label="Jami to'ldirilgan"
+            label="Kirim"
             value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
             color="green"
           />
           <StatTile
-            label="Jami yechilgan"
+            label="Chiqim"
             value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
             color="red"
           />
