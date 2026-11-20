@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   listAllTeacherTransactions,
   listGroups,
@@ -78,6 +79,12 @@ const DEFAULT_TEACHER_FILTERS: TeacherFilters = {
 export function TransactionsPage() {
   const { user } = useAuth();
   const isSuperadmin = user?.role === "superadmin";
+  const location = useLocation();
+  const incomingStudentId = (location.state as { studentId?: number } | null)?.studentId;
+
+  const initialStudentFilters: StudentFilters = incomingStudentId
+    ? { ...DEFAULT_STUDENT_FILTERS, dateFrom: "", dateTo: "", studentId: String(incomingStudentId) }
+    : DEFAULT_STUDENT_FILTERS;
 
   const [tab, setTab] = useState<"student" | "teacher">("student");
 
@@ -94,8 +101,8 @@ export function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [studentDraft, setStudentDraft] = useState<StudentFilters>(DEFAULT_STUDENT_FILTERS);
-  const [studentFilters, setStudentFilters] = useState<StudentFilters>(DEFAULT_STUDENT_FILTERS);
+  const [studentDraft, setStudentDraft] = useState<StudentFilters>(initialStudentFilters);
+  const [studentFilters, setStudentFilters] = useState<StudentFilters>(initialStudentFilters);
   const [teacherDraft, setTeacherDraft] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
   const [teacherFilters, setTeacherFilters] = useState<TeacherFilters>(DEFAULT_TEACHER_FILTERS);
 

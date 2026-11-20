@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   depositToStudent,
   getStudentAttendanceHistory,
   getStudentGroups,
   getStudentPendingCharges,
-  getStudentTransactions,
   listStudents,
   updateStudent,
   updateStudentStatus,
@@ -19,9 +18,7 @@ import {
   extractErrorMessage,
   Input,
   Label,
-  Modal,
   Pagination,
-  StatTile,
   SuccessMessage,
   Table,
   usePagination,
@@ -30,8 +27,6 @@ import type {
   StudentAttendanceHistoryItem,
   StudentGroupStats,
   StudentPendingCharge,
-  StudentTransactionListItem,
-  TransactionType,
   User,
 } from "../../types";
 import { Layout } from "../../components/Layout";
@@ -58,10 +53,10 @@ const GROUP_STATUS_COLOR: Record<string, "green" | "amber" | "red"> = {
 
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>();
+  const navigate = useNavigate();
   const id = Number(studentId);
 
   const [student, setStudent] = useState<User | null>(null);
-  const [transactions, setTransactions] = useState<StudentTransactionListItem[]>([]);
   const [attendance, setAttendance] = useState<StudentAttendanceHistoryItem[]>([]);
   const [groups, setGroups] = useState<StudentGroupStats[]>([]);
   const [pendingCharges, setPendingCharges] = useState<StudentPendingCharge[]>([]);
@@ -87,7 +82,6 @@ export function StudentDetailPage() {
         setEditFullName(found.full_name);
         setEditPhone(found.phone);
       }
-      setTransactions(await getStudentTransactions(id));
       setAttendance(await getStudentAttendanceHistory(id));
       setGroups(await getStudentGroups(id));
       setPendingCharges(await getStudentPendingCharges(id));
@@ -175,59 +169,6 @@ export function StudentDetailPage() {
     }
   };
 
-  const [txFilterTab, setTxFilterTab] = useState<"all" | "deposit" | "deduction" | "pending_charge">("all");
-
-  const totalDeposits = transactions
-    .filter((t) => t.type === "deposit")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalDeductions = Math.abs(
-    transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
-  );
-  const totalRemaining = totalDeposits - totalDeductions;
-
-  const mappedPendingTransactions: StudentTransactionListItem[] = useMemo(() => {
-    return pendingCharges.map((p) => {
-      const orig = p.original_amount || p.amount;
-      const rem = p.amount;
-      const paid = Math.max(0, orig - rem);
-
-      return {
-        id: -p.id,
-        amount: -p.amount,
-        type: "pending_charge" as TransactionType,
-        comment:
-          paid > 0
-            ? `Kutilayotgan qarz dars puli (${orig.toLocaleString("uz-UZ")} so'mdan ${paid.toLocaleString("uz-UZ")} so'm to'langan, ${rem.toLocaleString("uz-UZ")} so'm qolgan)`
-            : "Kutilayotgan qarz dars puli",
-        created_at: p.created_at,
-        group_id: null,
-        group_name: p.group_name,
-        teacher_name: p.teacher_name,
-        lesson_date: p.lesson_date,
-      };
-    });
-  }, [pendingCharges]);
-
-  const allUnifiedTransactions = useMemo<StudentTransactionListItem[]>(() => {
-    const combined = [...transactions, ...mappedPendingTransactions];
-    return combined.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
-  }, [transactions, mappedPendingTransactions]);
-
-  const filteredTransactions = useMemo<StudentTransactionListItem[]>(() => {
-    if (txFilterTab === "all") return allUnifiedTransactions;
-    return allUnifiedTransactions.filter((t: StudentTransactionListItem) => t.type === txFilterTab);
-  }, [allUnifiedTransactions, txFilterTab]);
-
-  const [selectedTx, setSelectedTx] = useState<StudentTransactionListItem | null>(null);
-  const {
-    page: transactionsPage,
-    setPage: setTransactionsPage,
-    pageCount: transactionsPageCount,
-    pageItems: transactionsPageItems,
-    total: transactionsTotal,
-  } = usePagination<StudentTransactionListItem>(filteredTransactions);
   const {
     page: attendancePage,
     setPage: setAttendancePage,
@@ -245,7 +186,7 @@ export function StudentDetailPage() {
     );
   }
 
-  const displayBalance = student ? (student.balance !== 0 ? student.balance : totalRemaining) : 0;
+  const displayBalance = student.balance;
 
   return (
     <Layout>
@@ -369,146 +310,63 @@ export function StudentDetailPage() {
 
       <div className="mt-6">
         <Card
-          title="To'lovlar va yechimlar tarixi"
+          title="Tranzaksiyalar tarixi"
           action={
-            <Button
-              variant="secondary"
-              onClick={() =>
-                downloadXlsx(
-                  `/api/v1/students/${id}/transactions/export`,
-                  undefined,
-                  `${student.full_name}_tranzaksiyalari.xlsx`,
-                )
-              }
-            >
-              Excel'ga chiqarish
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  downloadXlsx(
+                    `/api/v1/students/${id}/transactions/export`,
+                    undefined,
+                    `${student.full_name}_tranzaksiyalari.xlsx`,
+                  )
+                }
+              >
+                Excel'ga chiqarish
+              </Button>
+              <Button onClick={() => navigate("/admin/transactions", { state: { studentId: id } })}>
+                To'liq tarixni ko'rish
+              </Button>
+            </div>
           }
         >
-          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <StatTile
-              label="Jami to'ldirilgan"
-              value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
-              color="green"
-            />
-            <StatTile
-              label="Jami yechilgan"
-              value={`${totalDeductions.toLocaleString("uz-UZ")} so'm`}
-              color="red"
-            />
-          </div>
-          <div className="mb-3 flex flex-wrap items-center gap-1.5 select-none">
-            <button
-              type="button"
-              onClick={() => {
-                setTxFilterTab("all");
-                setTransactionsPage(1);
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                txFilterTab === "all"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Barchasi ({allUnifiedTransactions.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTxFilterTab("deposit");
-                setTransactionsPage(1);
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                txFilterTab === "deposit"
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
-              }`}
-            >
-              To'lovlar ({transactions.filter((t) => t.type === "deposit").length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTxFilterTab("deduction");
-                setTransactionsPage(1);
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                txFilterTab === "deduction"
-                  ? "bg-rose-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Yechimlar ({transactions.filter((t) => t.type === "deduction").length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTxFilterTab("pending_charge");
-                setTransactionsPage(1);
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                txFilterTab === "pending_charge"
-                  ? "bg-amber-500 text-white shadow-sm"
-                  : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"
-              }`}
-            >
-              Kutilayotgan qarzlar ({pendingCharges.length})
-            </button>
-          </div>
-
-          <Table headers={["Sana", "Turi", "Guruh", "Summa", "Izoh"]}>
-            {transactionsPageItems.map((t) => (
-              <tr
-                key={t.id}
-                onClick={() => setSelectedTx(t)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {t.lesson_date || new Date(t.created_at).toLocaleDateString("uz-UZ")}
-                </td>
-                <td className="px-2.5 py-2.5">
-                  <Badge
-                    color={
-                      t.type === "deposit"
-                        ? "green"
-                        : t.type === "pending_charge"
-                          ? "amber"
-                          : "red"
-                    }
-                  >
-                    {t.type === "deposit"
-                      ? "To'ldirish"
-                      : t.type === "pending_charge"
-                        ? "Kutilayotgan qarz"
-                        : "Yechim"}
-                  </Badge>
-                </td>
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2.5 font-semibold">
-                  <span
-                    className={
-                      t.type === "deposit"
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : t.type === "pending_charge"
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-slate-800 dark:text-slate-200"
-                    }
-                  >
-                    {t.amount > 0 ? `+${t.amount.toLocaleString("uz-UZ")}` : `${t.amount.toLocaleString("uz-UZ")}`} so'm
-                  </span>
-                </td>
-                <td className="px-2.5 py-2.5 text-xs text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
-              </tr>
-            ))}
-          </Table>
-          <Pagination
-            page={transactionsPage}
-            pageCount={transactionsPageCount}
-            total={transactionsTotal}
-            onPageChange={setTransactionsPage}
-          />
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Ushbu o'quvchining barcha to'lov va yechimlari (kim tomonidan kiritilgan/yechilganidan qat'i
+            nazar) umumiy Tranzaksiyalar sahifasida, shu o'quvchi bo'yicha filtrlangan holda ko'rinadi.
+          </p>
         </Card>
       </div>
+
+      {pendingCharges.length > 0 && (
+        <div className="mt-6">
+          <Card title="Kutilayotgan qarzlar">
+            <Table headers={["Sana", "Guruh", "O'qituvchi", "Qolgan summa"]}>
+              {pendingCharges.map((p) => {
+                const orig = p.original_amount || p.amount;
+                const paid = Math.max(0, orig - p.amount);
+                return (
+                  <tr key={p.id}>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.lesson_date}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.group_name}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.teacher_name}</td>
+                    <td className="px-3 py-2">
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                        {p.amount.toLocaleString("uz-UZ")} so'm
+                      </span>
+                      {paid > 0 && (
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">
+                          {orig.toLocaleString("uz-UZ")} so'mdan {paid.toLocaleString("uz-UZ")} to'langan
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </Card>
+        </div>
+      )}
 
       <div className="mt-6">
         <Card
@@ -557,47 +415,6 @@ export function StudentDetailPage() {
         </Card>
       </div>
 
-      {selectedTx && (
-        <Modal title="Tranzaksiya tafsilotlari" onClose={() => setSelectedTx(null)}>
-          <div className="space-y-3.5 text-xs sm:text-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
-              <span className="font-semibold text-slate-500 dark:text-slate-400">Turi:</span>
-              <Badge color={selectedTx.type === "deposit" ? "green" : "red"}>
-                {selectedTx.type === "deposit" ? "To'ldirish" : "Yechim"}
-              </Badge>
-            </div>
-            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
-              <span className="font-semibold text-slate-500 dark:text-slate-400">Summa:</span>
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                {selectedTx.amount.toLocaleString("uz-UZ")} so'm
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
-              <span className="font-semibold text-slate-500 dark:text-slate-400">Guruh:</span>
-              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedTx.group_name || "-"}</span>
-            </div>
-            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
-              <span className="font-semibold text-slate-500 dark:text-slate-400">O'qituvchi:</span>
-              <span className="font-medium text-slate-800 dark:text-slate-200">{selectedTx.teacher_name || "-"}</span>
-            </div>
-            <div className="flex justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
-              <span className="font-semibold text-slate-500 dark:text-slate-400">Sana va vaqt:</span>
-              <span className="font-medium text-slate-800 dark:text-slate-200">
-                {new Date(selectedTx.created_at).toLocaleString("uz-UZ")}
-              </span>
-            </div>
-            <div>
-              <span className="block font-semibold text-slate-500 mb-1 dark:text-slate-400">To'liq izoh:</span>
-              <p className="rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                {selectedTx.comment || "Izoh mavjud emas"}
-              </p>
-            </div>
-            <Button className="w-full mt-2" onClick={() => setSelectedTx(null)}>
-              Yopish
-            </Button>
-          </div>
-        </Modal>
-      )}
     </Layout>
   );
 }
