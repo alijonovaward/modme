@@ -33,6 +33,10 @@ function renderAttendanceStatusCircle(status: AttendanceStatus | undefined, isTr
   );
 }
 
+// Drops the year from "YYYY-MM-DD" (e.g. "2026-11-04" -> "11-04") - the grid header
+// has no room to spare, and the year is already visible in the date-range filter above.
+const formatShortDate = (isoDate: string) => isoDate.slice(5);
+
 const getTodayStr = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -145,7 +149,7 @@ export function AttendanceCombinedTable({
               </th>
               {lessons.map((l) => (
                 <th key={l.id} className="whitespace-nowrap px-2.5 py-2 font-semibold sm:px-3.5 sm:py-3">
-                  {l.lesson_date}
+                  {formatShortDate(l.lesson_date)}
                 </th>
               ))}
             </tr>
