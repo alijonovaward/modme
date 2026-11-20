@@ -259,16 +259,20 @@ export function StudentDetailPage() {
             <button
               onClick={() => setIsDepositModalOpen(true)}
               aria-label="Balansni to'ldirish"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xl font-bold leading-none text-white shadow-sm transition-colors hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm transition-colors hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500"
             >
-              +
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-5 w-5">
+                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+              </svg>
             </button>
             <button
               onClick={() => setIsWithdrawModalOpen(true)}
               aria-label="Pul qaytarish"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-xl font-bold leading-none text-white shadow-sm transition-colors hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-500"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm transition-colors hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-500"
             >
-              -
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-5 w-5">
+                <path strokeLinecap="round" d="M5 12h14" />
+              </svg>
             </button>
           </div>
         </div>
