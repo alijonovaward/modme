@@ -397,28 +397,28 @@ function CellDetailModal({
           </div>
         </div>
 
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">Test natijasi</p>
-          <div className="flex items-center gap-1.5">
-            <Input
-              type="number"
-              min={0}
-              className="w-20 text-center"
-              disabled={status !== "present"}
-              value={correctCount}
-              onChange={(e) => setCorrectCount(e.target.value)}
-            />
-            <span className="text-slate-400">/</span>
-            <Input
-              type="number"
-              min={1}
-              className="w-20 text-center"
-              disabled={status !== "present"}
-              value={totalCount}
-              onChange={(e) => setTotalCount(e.target.value)}
-            />
+        {status === "present" && (
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">Test natijasi</p>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                min={0}
+                className="w-20 text-center"
+                value={correctCount}
+                onChange={(e) => setCorrectCount(e.target.value)}
+              />
+              <span className="text-slate-400">/</span>
+              <Input
+                type="number"
+                min={1}
+                className="w-20 text-center"
+                value={totalCount}
+                onChange={(e) => setTotalCount(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
           <input
