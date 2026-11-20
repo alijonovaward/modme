@@ -133,7 +133,11 @@ export function StudentDetailPage() {
     setIsSubmitting(true);
     try {
       await updateStudent(id, { full_name: editFullName, phone: editPhone });
-      setSuccess("Ma'lumotlar saqlandi");
+      if (newPassword.trim()) {
+        await updateUserPassword(id, newPassword.trim());
+      }
+      setSuccess(newPassword.trim() ? "Ma'lumotlar va parol saqlandi" : "Ma'lumotlar saqlandi");
+      setNewPassword("");
       setIsEditModalOpen(false);
       await load();
     } catch (err) {
@@ -153,23 +157,6 @@ export function StudentDetailPage() {
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
-    }
-  };
-
-  const handlePasswordUpdate = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setIsSubmitting(true);
-    try {
-      await updateUserPassword(id, newPassword);
-      setSuccess("Parol muvaffaqiyatli yangilandi");
-      setNewPassword("");
-      setIsEditModalOpen(false);
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -201,7 +188,10 @@ export function StudentDetailPage() {
               {student.full_name}
             </h1>
             <button
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => {
+                setNewPassword("");
+                setIsEditModalOpen(true);
+              }}
               aria-label="Tahrirlash"
               className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
             >
@@ -409,23 +399,16 @@ export function StudentDetailPage() {
               <Label>Telefon</Label>
               <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              Saqlash
-            </Button>
-          </form>
-
-          <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
-
-          <form onSubmit={handlePasswordUpdate} className="space-y-4">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Parolni yangilash</p>
             <div>
-              <Label>Yangi parol</Label>
+              <Label>Yangi parol (ixtiyoriy)</Label>
               <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                required
               />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Bo'sh qoldirilsa, parol eskiligicha qoladi.
+              </p>
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               Saqlash
