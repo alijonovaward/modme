@@ -75,7 +75,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {user.full_name} · {ROLE_LABEL[user.role]}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-4">
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setIsMenuOpen((prev) => !prev)}
