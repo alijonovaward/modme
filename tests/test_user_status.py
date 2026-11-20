@@ -1,4 +1,12 @@
-from tests.conftest import auth_headers, login, make_group, make_staff, make_student, make_subject
+from tests.conftest import (
+    add_student_to_group,
+    auth_headers,
+    login,
+    make_group,
+    make_staff,
+    make_student,
+    make_subject,
+)
 
 
 def test_admin_cannot_block_teacher_but_superadmin_can(client, superadmin_headers, admin_headers):
@@ -106,3 +114,35 @@ def test_admin_can_block_student_and_blocked_student_cannot_join_group(client, s
         json={"student_id": student["id"]},
     )
     assert resp.status_code == 400, resp.text
+
+
+def test_blocking_student_auto_freezes_active_groups_but_unblocking_does_not_unfreeze(
+    client, superadmin_headers, admin_headers
+):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400007")
+    student = make_student(client, admin_headers, phone="+998900400008")
+    subject = make_subject(client, admin_headers, "Chemistry")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+    add_student_to_group(client, admin_headers, group_id=group["id"], student_id=student["id"])
+
+    resp = client.put(
+        f"/api/v1/students/{student['id']}/status",
+        headers=admin_headers,
+        json={"is_active": False},
+    )
+    assert resp.status_code == 200, resp.text
+
+    roster = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()["students"]
+    membership = next(s for s in roster if s["student_id"] == student["id"])
+    assert membership["status"] == "frozen", membership
+
+    resp = client.put(
+        f"/api/v1/students/{student['id']}/status",
+        headers=admin_headers,
+        json={"is_active": True},
+    )
+    assert resp.status_code == 200, resp.text
+
+    roster = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()["students"]
+    membership = next(s for s in roster if s["student_id"] == student["id"])
+    assert membership["status"] == "frozen", "reactivating a student must not silently resume billing"

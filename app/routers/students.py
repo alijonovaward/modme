@@ -21,7 +21,7 @@ from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.group import Group
-from app.models.group_student import GroupStudent
+from app.models.group_student import GroupStudent, GroupStudentStatus
 from app.models.lesson import Lesson, LessonStatus
 from app.models.pending_charge import PendingCharge
 from app.models.subject import Subject
@@ -173,6 +173,25 @@ def update_student_status(
 ):
     student = _get_student_or_404(db, student_id)
     student.is_active = payload.is_active
+
+    if not payload.is_active:
+        # Blocking a student stops them from using their own account, but says
+        # nothing on its own about whether they're still being billed - freeze
+        # every group they're actively enrolled in so attendance/charges stop too.
+        # Reactivating does NOT auto-unfreeze: an admin must resume each group on
+        # purpose, so billing never silently restarts.
+        active_memberships = (
+            db.query(GroupStudent)
+            .filter(
+                GroupStudent.student_id == student.id,
+                GroupStudent.status == GroupStudentStatus.active,
+            )
+            .all()
+        )
+        for membership in active_memberships:
+            membership.status = GroupStudentStatus.frozen
+            membership.status_reason = "O'quvchi bloklangani uchun avtomatik muzlatildi"
+
     db.commit()
     db.refresh(student)
     return student
