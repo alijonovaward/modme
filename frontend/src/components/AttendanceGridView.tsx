@@ -148,7 +148,7 @@ export function AttendanceCombinedTable({
                 O'quvchi
               </th>
               {lessons.map((l) => (
-                <th key={l.id} className="whitespace-nowrap px-2.5 py-2 font-semibold sm:px-3.5 sm:py-3">
+                <th key={l.id} className="w-[64px] min-w-[64px] whitespace-nowrap px-2.5 py-2 text-center font-semibold sm:w-[72px] sm:min-w-[72px] sm:px-3.5 sm:py-3">
                   {formatShortDate(l.lesson_date)}
                 </th>
               ))}
@@ -189,7 +189,7 @@ export function AttendanceCombinedTable({
                   {lessons.map((l) => {
                     if (!hasAttendanceData) {
                       return (
-                        <td key={l.id} className={`px-3.5 py-2.5 text-center text-slate-300 dark:text-slate-700 ${tint.cell}`}>
+                        <td key={l.id} className={`w-[64px] min-w-[64px] px-3.5 py-2.5 text-center text-slate-300 sm:w-[72px] sm:min-w-[72px] dark:text-slate-700 ${tint.cell}`}>
                           –
                         </td>
                       );
@@ -202,7 +202,7 @@ export function AttendanceCombinedTable({
                     const isDisabled = isFutureLesson || !canEditAttendance;
 
                     return (
-                      <td key={l.id} className={`px-3.5 py-2.5 text-center ${tint.cell}`}>
+                      <td key={l.id} className={`w-[64px] min-w-[64px] px-3.5 py-2.5 text-center sm:w-[72px] sm:min-w-[72px] ${tint.cell}`}>
                         <button
                           type="button"
                           disabled={isDisabled}
