@@ -96,59 +96,59 @@ export function TeacherGroupDetailPage() {
         </p>
       </div>
       <ErrorMessage message={error} />
-      <Card title="O'quvchilar">
-        <div className="mb-3 flex gap-1">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                statusFilter === tab.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <Table headers={["F.I.O", "Holat"]}>
-          {studentPagination.pageItems.map((s) => (
-            <tr key={s.id}>
-              <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
-              <td className="px-3 py-2">
-                <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
-                {s.status === "dropped" && s.status_reason && (
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sababi: {s.status_reason}</p>
-                )}
-              </td>
-            </tr>
-          ))}
-        </Table>
-        <Pagination
-          page={studentPagination.page}
-          pageCount={studentPagination.pageCount}
-          total={studentPagination.total}
-          onPageChange={studentPagination.setPage}
+      <Card
+        title="Davomat"
+        action={
+          <Button variant="secondary" onClick={attendanceFilter.open}>
+            Filterlar
+          </Button>
+        }
+      >
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
+        </p>
+        <AttendanceCombinedTable
+          grid={attendanceGrid}
+          stats={attendanceStats}
+          onReload={reloadAttendance}
         />
       </Card>
 
       <div className="mt-6">
-        <Card
-          title="Davomat"
-          action={
-            <Button variant="secondary" onClick={attendanceFilter.open}>
-              Filterlar
-            </Button>
-          }
-        >
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Davr: {attendanceFilter.filters.dateFrom || "..."} — {attendanceFilter.filters.dateTo || "..."}
-          </p>
-          <AttendanceCombinedTable
-            grid={attendanceGrid}
-            stats={attendanceStats}
-            onReload={reloadAttendance}
+        <Card title="O'quvchilar">
+          <div className="mb-3 flex gap-1">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                  statusFilter === tab.value
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Table headers={["F.I.O", "Holat"]}>
+            {studentPagination.pageItems.map((s) => (
+              <tr key={s.id}>
+                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{s.student_name}</td>
+                <td className="px-3 py-2">
+                  <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
+                  {s.status === "dropped" && s.status_reason && (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sababi: {s.status_reason}</p>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </Table>
+          <Pagination
+            page={studentPagination.page}
+            pageCount={studentPagination.pageCount}
+            total={studentPagination.total}
+            onPageChange={studentPagination.setPage}
           />
         </Card>
       </div>
