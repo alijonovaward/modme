@@ -84,6 +84,7 @@ export function AttendanceCombinedTable({
 }) {
   const [showAll, setShowAll] = useState(false);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+  const [selectedStudentForActions, setSelectedStudentForActions] = useState<GroupRosterItem | null>(null);
 
   const todayStr = useMemo(() => getTodayStr(), []);
   const statsByStudent = useMemo(() => new Map(stats.map((s) => [s.student_id, s])), [stats]);
@@ -156,11 +157,6 @@ export function AttendanceCombinedTable({
                   {l.lesson_date}
                 </th>
               ))}
-              {renderActions && (
-                <th className="sticky right-0 z-20 w-px whitespace-nowrap bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:px-3.5 sm:py-3 dark:bg-slate-900/95 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)]">
-                  Amallar
-                </th>
-              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -169,7 +165,7 @@ export function AttendanceCombinedTable({
                 return (
                   <tr key={`header-${row.status}`}>
                     <td
-                      colSpan={4 + lessons.length + (renderActions ? 1 : 0)}
+                      colSpan={4 + lessons.length}
                       className={`px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider ${GROUP_HEADER_TINT[row.status]}`}
                     >
                       {GROUP_HEADER_LABEL[row.status]}
@@ -186,7 +182,8 @@ export function AttendanceCombinedTable({
               return (
                 <tr key={s.student_id}>
                   <td
-                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky}`}
+                    onClick={() => renderActions && setSelectedStudentForActions(s)}
+                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} ${renderActions ? "cursor-pointer underline-offset-2 hover:underline" : ""}`}
                   >
                     {s.student_name}
                   </td>
@@ -242,11 +239,6 @@ export function AttendanceCombinedTable({
                       </td>
                     );
                   })}
-                  {renderActions && (
-                    <td className={`sticky right-0 z-10 whitespace-nowrap px-2.5 py-2.5 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:px-3.5 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky}`}>
-                      {renderActions(s)}
-                    </td>
-                  )}
                 </tr>
               );
             })}
@@ -264,6 +256,29 @@ export function AttendanceCombinedTable({
             if (onReload) await onReload();
           }}
         />
+      )}
+
+      {selectedStudentForActions && renderActions && (
+        <Modal title={selectedStudentForActions.student_name} onClose={() => setSelectedStudentForActions(null)}>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge color={ROSTER_STATUS_COLOR[selectedStudentForActions.status]}>
+                {selectedStudentForActions.status}
+              </Badge>
+              {selectedStudentForActions.status === "dropped" && selectedStudentForActions.status_reason && (
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Sababi: {selectedStudentForActions.status_reason}
+                </span>
+              )}
+            </div>
+            {/* Any action button inside here should close this modal - e.g. "Chiqarish"
+                opens the parent's own reason-input modal, which must not stack on top
+                of this one. */}
+            <div onClick={() => setSelectedStudentForActions(null)}>
+              {renderActions(selectedStudentForActions)}
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
