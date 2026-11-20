@@ -18,6 +18,7 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  Modal,
   Pagination,
   SuccessMessage,
   Table,
@@ -71,6 +72,7 @@ export function StudentDetailPage() {
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
@@ -132,6 +134,7 @@ export function StudentDetailPage() {
     try {
       await updateStudent(id, { full_name: editFullName, phone: editPhone });
       setSuccess("Ma'lumotlar saqlandi");
+      setIsEditModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -162,6 +165,7 @@ export function StudentDetailPage() {
       await updateUserPassword(id, newPassword);
       setSuccess("Parol muvaffaqiyatli yangilandi");
       setNewPassword("");
+      setIsEditModalOpen(false);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -192,9 +196,21 @@ export function StudentDetailPage() {
     <Layout>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
-            {student.full_name}
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+              {student.full_name}
+            </h1>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              aria-label="Tahrirlash"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125 16.862 4.487" />
+              </svg>
+            </button>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {!student.is_active && <Badge color="red">Bloklangan</Badge>}
             <Badge color={student.telegram_linked ? "green" : "slate"}>
@@ -225,23 +241,7 @@ export function StudentDetailPage() {
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Ma'lumotlarni tahrirlash">
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <Label>F.I.O</Label>
-              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
-            </div>
-            <div>
-              <Label>Telefon</Label>
-              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
-            </div>
-            <Button type="submit" disabled={isSubmitting}>
-              Saqlash
-            </Button>
-          </form>
-        </Card>
-
+      <div className="max-w-md">
         <Card title="Balansni to'ldirish">
           <form onSubmit={handleDeposit} className="space-y-4">
             <div>
@@ -259,23 +259,6 @@ export function StudentDetailPage() {
             </div>
             <Button type="submit" disabled={isSubmitting}>
               To'ldirish
-            </Button>
-          </form>
-        </Card>
-
-        <Card title="Parolni yangilash">
-          <form onSubmit={handlePasswordUpdate} className="space-y-4">
-            <div>
-              <Label>Yangi parol</Label>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={isSubmitting}>
-              Saqlash
             </Button>
           </form>
         </Card>
@@ -415,6 +398,41 @@ export function StudentDetailPage() {
         </Card>
       </div>
 
+      {isEditModalOpen && (
+        <Modal title="Ma'lumotlarni tahrirlash" onClose={() => setIsEditModalOpen(false)}>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label>F.I.O</Label>
+              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Telefon</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              Saqlash
+            </Button>
+          </form>
+
+          <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
+
+          <form onSubmit={handlePasswordUpdate} className="space-y-4">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Parolni yangilash</p>
+            <div>
+              <Label>Yangi parol</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              Saqlash
+            </Button>
+          </form>
+        </Modal>
+      )}
     </Layout>
   );
 }
