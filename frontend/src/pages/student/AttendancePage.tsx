@@ -10,6 +10,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   Pagination,
   Select,
@@ -158,26 +160,55 @@ export function StudentAttendancePage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"]}>
+              {pageItems.map((a) => (
+                <tr key={a.id}>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.group_name}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.teacher_name}</td>
+                  <td className="px-3 py-2">
+                    <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
+                      {ATTENDANCE_LABEL[a.status]}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
+                      {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {pageItems.map((a) => (
-              <tr key={a.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.group_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.teacher_name}</td>
-                <td className="px-3 py-2">
+              <MobileListRow key={a.id}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {a.group_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {a.teacher_name} · {a.lesson_date}
+                  </p>
+                  {a.total_count != null && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Test: {a.correct_count}/{a.total_count}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
                   <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
                     {ATTENDANCE_LABEL[a.status]}
                   </Badge>
-                </td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
-                    {a.is_trial && <Badge color="amber">Sinov</Badge>}
-                  </div>
-                </td>
-              </tr>
+                  {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
           </>
         )}

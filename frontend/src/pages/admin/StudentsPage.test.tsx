@@ -61,7 +61,7 @@ describe("StudentsPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Ali Valiyev")).toBeInTheDocument();
+    expect((await screen.findAllByText("Ali Valiyev"))[0]).toBeInTheDocument();
     expect(listStudentsPage).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, page_size: 10 }),
     );
@@ -126,7 +126,7 @@ describe("StudentsPage", () => {
 
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Ali Valiyev");
+    await screen.findAllByText("Ali Valiyev");
 
     await user.click(screen.getByRole("button", { name: "Keyingi sahifa" }));
 

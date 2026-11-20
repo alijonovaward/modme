@@ -20,6 +20,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   PAGE_SIZE,
   Pagination,
@@ -550,28 +552,53 @@ export function LessonsPage() {
           </div>
         ) : (
           <>
-          <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "Guruh", "Fan", "O'qituvchi", "Holat"]}>
+              {lessons.map((l) => {
+                const isMissed = l.status !== "completed" && l.lesson_date < todayStr;
+                return (
+                  <tr
+                    key={l.id}
+                    onClick={() => openDetail(l)}
+                    className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                  >
+                    <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                    <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                    <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                    <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
+                    <td className="px-3.5 py-2.5">
+                      <Badge color={l.status === "completed" ? "green" : isMissed ? "red" : "slate"}>
+                        {l.status === "completed" ? "O'tildi" : isMissed ? "Davomat olinmagan" : "Rejada"}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
+
+          <MobileList>
             {lessons.map((l) => {
               const isMissed = l.status !== "completed" && l.lesson_date < todayStr;
               return (
-                <tr
-                  key={l.id}
-                  onClick={() => openDetail(l)}
-                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-                >
-                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                  <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
-                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
-                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.teacher_name}</td>
-                  <td className="px-3.5 py-2.5">
-                    <Badge color={l.status === "completed" ? "green" : isMissed ? "red" : "slate"}>
-                      {l.status === "completed" ? "O'tildi" : isMissed ? "Davomat olinmagan" : "Rejada"}
-                    </Badge>
-                  </td>
-                </tr>
+                <MobileListRow key={l.id} onClick={() => openDetail(l)}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {l.group_name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {l.subject_name} · {l.teacher_name}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{l.lesson_date}</p>
+                  </div>
+                  <Badge color={l.status === "completed" ? "green" : isMissed ? "red" : "slate"}>
+                    {l.status === "completed" ? "O'tildi" : isMissed ? "Davomat olinmagan" : "Rejada"}
+                  </Badge>
+                </MobileListRow>
               );
             })}
-          </Table>
+          </MobileList>
+
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={handlePageChange} />
           </>
         )}

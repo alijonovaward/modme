@@ -10,6 +10,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   PAGE_SIZE,
   Pagination,
@@ -135,24 +137,48 @@ export function AttendanceHubPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Sana", "Guruh", "Fan", "Holat"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "Guruh", "Fan", "Holat"]}>
+              {lessons.map((l) => (
+                <tr
+                  key={l.id}
+                  onClick={() => navigate(`/teacher/groups/${l.group_id}/lessons/${l.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
+                  <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
+                  <td className="px-3.5 py-2.5">
+                    <Badge color={l.status === "completed" ? "green" : "slate"}>
+                      {l.status === "completed" ? "O'tildi" : "Rejada"}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {lessons.map((l) => (
-              <tr
+              <MobileListRow
                 key={l.id}
                 onClick={() => navigate(`/teacher/groups/${l.group_id}/lessons/${l.id}`)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
               >
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.lesson_date}</td>
-                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{l.group_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{l.subject_name}</td>
-                <td className="px-3.5 py-2.5">
-                  <Badge color={l.status === "completed" ? "green" : "slate"}>
-                    {l.status === "completed" ? "O'tildi" : "Rejada"}
-                  </Badge>
-                </td>
-              </tr>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {l.group_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {l.subject_name} · {l.lesson_date}
+                  </p>
+                </div>
+                <Badge color={l.status === "completed" ? "green" : "slate"}>
+                  {l.status === "completed" ? "O'tildi" : "Rejada"}
+                </Badge>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={handlePageChange} />
           </>
         )}

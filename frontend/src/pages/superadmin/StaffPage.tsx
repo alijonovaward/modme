@@ -10,6 +10,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   PAGE_SIZE,
   Pagination,
@@ -176,34 +178,62 @@ export function StaffPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans"]}>
+          <div className="hidden sm:block">
+            <Table headers={["F.I.O", "Telefon", "Rol", "Foiz", "Balans"]}>
+              {staff.map((s) => (
+                <tr
+                  key={s.id}
+                  onClick={() => navigate(`/superadmin/staff/${s.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
+                  <td className="px-3.5 py-2.5">
+                    <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
+                      {ROLE_LABEL[s.role] ?? s.role}
+                    </Badge>
+                    {!s.is_active && (
+                      <span className="ml-1">
+                        <Badge color="red">Bloklangan</Badge>
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
+                  </td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {s.balance.toLocaleString("uz-UZ")} so'm
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {staff.map((s) => (
-              <tr
-                key={s.id}
-                onClick={() => navigate(`/superadmin/staff/${s.id}`)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
-                <td className="px-3.5 py-2.5">
-                  <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
-                    {ROLE_LABEL[s.role] ?? s.role}
-                  </Badge>
-                  {!s.is_active && (
-                    <span className="ml-1">
-                      <Badge color="red">Bloklangan</Badge>
-                    </span>
-                  )}
-                </td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {s.teacher_percentage !== null ? `${s.teacher_percentage}%` : "-"}
-                </td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {s.balance.toLocaleString("uz-UZ")} so'm
-                </td>
-              </tr>
+              <MobileListRow key={s.id} onClick={() => navigate(`/superadmin/staff/${s.id}`)}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {s.full_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{s.phone}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
+                      {ROLE_LABEL[s.role] ?? s.role}
+                    </Badge>
+                    {!s.is_active && <Badge color="red">Bloklangan</Badge>}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {s.teacher_percentage !== null ? `${s.teacher_percentage}% · ` : ""}
+                    {s.balance.toLocaleString("uz-UZ")} so'm
+                  </p>
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination
             page={page}
             pageCount={pageCount}

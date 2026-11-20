@@ -20,6 +20,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   Pagination,
   StatTile,
@@ -416,26 +418,52 @@ export function StaffDetailPage() {
                 color="violet"
               />
             </div>
-            <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
+            <div className="hidden sm:block">
+              <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
+                {pageItems.map((t) => (
+                  <tr key={t.id}>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                      {new Date(t.created_at).toLocaleString("uz-UZ")}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
+                        {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.student_name ?? "-"}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                    <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                      {t.amount.toLocaleString("uz-UZ")} so'm
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+
+            <MobileList>
               {pageItems.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                    {new Date(t.created_at).toLocaleString("uz-UZ")}
-                  </td>
-                  <td className="px-3 py-2">
+                <MobileListRow key={t.id}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {t.student_name ?? t.group_name ?? "-"}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {t.group_name ?? "-"} · {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      {t.amount.toLocaleString("uz-UZ")} so'm
+                    </p>
                     <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
                       {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
                     </Badge>
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.student_name ?? "-"}</td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                    {t.amount.toLocaleString("uz-UZ")} so'm
-                  </td>
-                  <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
-                </tr>
+                  </div>
+                </MobileListRow>
               ))}
-            </Table>
+            </MobileList>
+
             <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
           </Card>
         </div>

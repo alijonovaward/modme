@@ -19,6 +19,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   Pagination,
   SuccessMessage,
@@ -288,22 +290,50 @@ export function StudentDetailPage() {
               O'quvchi hali hech qanday guruhga yozilmagan.
             </p>
           ) : (
-            <Table headers={["Fan", "Guruh", "O'qituvchi", "Holat", "Davomat foizi", "Sarflangan summa"]}>
+            <>
+            <div className="hidden sm:block">
+              <Table headers={["Fan", "Guruh", "O'qituvchi", "Holat", "Davomat foizi", "Sarflangan summa"]}>
+                {groups.map((g) => (
+                  <tr key={g.group_id}>
+                    <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.subject_name}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.group_name}</td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
+                    <td className="px-3 py-2">
+                      <Badge color={GROUP_STATUS_COLOR[g.status]}>{GROUP_STATUS_LABEL[g.status]}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.attendance_rate}%</td>
+                    <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                      {g.total_spent.toLocaleString("uz-UZ")} so'm
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+
+            <MobileList>
               {groups.map((g) => (
-                <tr key={g.group_id}>
-                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{g.subject_name}</td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.group_name}</td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.teacher_name}</td>
-                  <td className="px-3 py-2">
+                <MobileListRow key={g.group_id}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {g.subject_name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {g.group_name} · {g.teacher_name}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Davomat: {g.attendance_rate}%
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
                     <Badge color={GROUP_STATUS_COLOR[g.status]}>{GROUP_STATUS_LABEL[g.status]}</Badge>
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{g.attendance_rate}%</td>
-                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                    {g.total_spent.toLocaleString("uz-UZ")} so'm
-                  </td>
-                </tr>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {g.total_spent.toLocaleString("uz-UZ")} so'm
+                    </p>
+                  </div>
+                </MobileListRow>
               ))}
-            </Table>
+            </MobileList>
+            </>
           )}
         </Card>
       </div>
@@ -341,29 +371,60 @@ export function StudentDetailPage() {
       {pendingCharges.length > 0 && (
         <div className="mt-6">
           <Card title="Kutilayotgan qarzlar">
-            <Table headers={["Sana", "Guruh", "O'qituvchi", "Qolgan summa"]}>
+            <div className="hidden sm:block">
+              <Table headers={["Sana", "Guruh", "O'qituvchi", "Qolgan summa"]}>
+                {pendingCharges.map((p) => {
+                  const orig = p.original_amount || p.amount;
+                  const paid = Math.max(0, orig - p.amount);
+                  return (
+                    <tr key={p.id}>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.lesson_date}</td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.group_name}</td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.teacher_name}</td>
+                      <td className="px-3 py-2">
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">
+                          {p.amount.toLocaleString("uz-UZ")} so'm
+                        </span>
+                        {paid > 0 && (
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">
+                            {orig.toLocaleString("uz-UZ")} so'mdan {paid.toLocaleString("uz-UZ")} to'langan
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Table>
+            </div>
+
+            <MobileList>
               {pendingCharges.map((p) => {
                 const orig = p.original_amount || p.amount;
                 const paid = Math.max(0, orig - p.amount);
                 return (
-                  <tr key={p.id}>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.lesson_date}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.group_name}</td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{p.teacher_name}</td>
-                    <td className="px-3 py-2">
-                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                  <MobileListRow key={p.id}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                        {p.group_name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        {p.teacher_name} · {p.lesson_date}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
                         {p.amount.toLocaleString("uz-UZ")} so'm
                       </span>
                       {paid > 0 && (
-                        <span className="block text-xs text-slate-500 dark:text-slate-400">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
                           {orig.toLocaleString("uz-UZ")} so'mdan {paid.toLocaleString("uz-UZ")} to'langan
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </div>
+                  </MobileListRow>
                 );
               })}
-            </Table>
+            </MobileList>
           </Card>
         </div>
       )}
@@ -386,26 +447,55 @@ export function StudentDetailPage() {
             </Button>
           }
         >
-          <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "Guruh", "O'qituvchi", "Holat", "Test natijasi"]}>
+              {attendancePageItems.map((a) => (
+                <tr key={a.id}>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.group_name}</td>
+                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.teacher_name}</td>
+                  <td className="px-3 py-2">
+                    <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
+                      {ATTENDANCE_LABEL[a.status]}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
+                      {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {attendancePageItems.map((a) => (
-              <tr key={a.id}>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.lesson_date}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.group_name}</td>
-                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{a.teacher_name}</td>
-                <td className="px-3 py-2">
+              <MobileListRow key={a.id}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {a.group_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {a.teacher_name} · {a.lesson_date}
+                  </p>
+                  {a.total_count != null && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Test: {a.correct_count}/{a.total_count}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
                   <Badge color={a.status === "present" ? "green" : a.status === "excused" ? "slate" : "red"}>
                     {ATTENDANCE_LABEL[a.status]}
                   </Badge>
-                </td>
-                <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span>{a.total_count != null ? `${a.correct_count}/${a.total_count}` : "-"}</span>
-                    {a.is_trial && <Badge color="amber">Sinov</Badge>}
-                  </div>
-                </td>
-              </tr>
+                  {a.is_trial && <Badge color="amber">Sinov</Badge>}
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination
             page={attendancePage}
             pageCount={attendancePageCount}

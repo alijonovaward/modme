@@ -8,6 +8,8 @@ import {
   ErrorMessage,
   extractErrorMessage,
   Input,
+  MobileList,
+  MobileListRow,
   Modal,
   Pagination,
   Table,
@@ -83,32 +85,58 @@ export function MyGroupsPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Yuklanmoqda...</p>
         ) : (
           <>
-          <Table headers={["Nomi", "Fan", "Soati", "Holat"]}>
-            {pageItems.map((g) => (
-              <tr
-                key={g.id}
-                onClick={() => navigate(`/teacher/groups/${g.id}`)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openStats(g);
-                  }}
-                  className="px-3.5 py-2.5 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+          <div className="hidden sm:block">
+            <Table headers={["Nomi", "Fan", "Soati", "Holat"]}>
+              {pageItems.map((g) => (
+                <tr
+                  key={g.id}
+                  onClick={() => navigate(`/teacher/groups/${g.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
                 >
-                  {g.name}
-                </td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {formatSchedule(g.schedule)}
-                </td>
-                <td className="px-3.5 py-2.5">
-                  <Badge color={g.status === "active" ? "green" : "slate"}>{g.status}</Badge>
-                </td>
-              </tr>
+                  <td
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openStats(g);
+                    }}
+                    className="px-3.5 py-2.5 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                  >
+                    {g.name}
+                  </td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{g.subject_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {formatSchedule(g.schedule)}
+                  </td>
+                  <td className="px-3.5 py-2.5">
+                    <Badge color={g.status === "active" ? "green" : "slate"}>{g.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
+            {pageItems.map((g) => (
+              <MobileListRow key={g.id} onClick={() => navigate(`/teacher/groups/${g.id}`)}>
+                <div className="min-w-0 flex-1">
+                  <p
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openStats(g);
+                    }}
+                    className="truncate text-sm font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                  >
+                    {g.name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{g.subject_name}</p>
+                  <p className="truncate text-xs text-slate-400 dark:text-slate-500">
+                    {formatSchedule(g.schedule)}
+                  </p>
+                </div>
+                <Badge color={g.status === "active" ? "green" : "slate"}>{g.status}</Badge>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination page={page} pageCount={pageCount} total={total} onPageChange={setPage} />
           </>
         )}

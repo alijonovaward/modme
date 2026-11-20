@@ -18,6 +18,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   PAGE_SIZE,
   Pagination,
@@ -382,29 +384,55 @@ export function TransactionsPage() {
 
         {!isLoading && tab === "student" ? (
           <>
-          <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "O'quvchi", "Guruh", "Turi", "Summa"]}>
+              {transactions.map((t) => (
+                <tr
+                  key={t.id}
+                  onClick={() => setSelectedStudentTx(t)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                  </td>
+                  <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
+                  <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                  <td className="px-2.5 py-2.5">
+                    <Badge color={t.type === "deposit" ? "green" : "red"}>
+                      {t.type === "deposit" ? "To'ldirish" : "Yechim"}
+                    </Badge>
+                  </td>
+                  <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
+                    {t.amount.toLocaleString("uz-UZ")} so'm
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {transactions.map((t) => (
-              <tr
-                key={t.id}
-                onClick={() => setSelectedStudentTx(t)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {new Date(t.created_at).toLocaleDateString("uz-UZ")}
-                </td>
-                <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.student_name}</td>
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2.5">
+              <MobileListRow key={t.id} onClick={() => setSelectedStudentTx(t)}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {t.student_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {t.group_name ?? "-"} · {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {t.amount.toLocaleString("uz-UZ")} so'm
+                  </p>
                   <Badge color={t.type === "deposit" ? "green" : "red"}>
                     {t.type === "deposit" ? "To'ldirish" : "Yechim"}
                   </Badge>
-                </td>
-                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
-                  {t.amount.toLocaleString("uz-UZ")} so'm
-                </td>
-              </tr>
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination
             page={studentPage}
             pageCount={studentPageCount}
@@ -414,29 +442,55 @@ export function TransactionsPage() {
           </>
         ) : !isLoading && tab === "teacher" ? (
           <>
-          <Table headers={["Sana", "O'qituvchi", "Guruh", "Turi", "Summa"]}>
+          <div className="hidden sm:block">
+            <Table headers={["Sana", "O'qituvchi", "Guruh", "Turi", "Summa"]}>
+              {teacherTransactions.map((t) => (
+                <tr
+                  key={t.id}
+                  onClick={() => setSelectedTeacherTx(t)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                  </td>
+                  <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
+                  <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
+                  <td className="px-2.5 py-2.5">
+                    <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
+                      {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
+                    </Badge>
+                  </td>
+                  <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
+                    {t.amount.toLocaleString("uz-UZ")} so'm
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {teacherTransactions.map((t) => (
-              <tr
-                key={t.id}
-                onClick={() => setSelectedTeacherTx(t)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">
-                  {new Date(t.created_at).toLocaleDateString("uz-UZ")}
-                </td>
-                <td className="px-2.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{t.teacher_name}</td>
-                <td className="px-2.5 py-2.5 text-slate-600 dark:text-slate-400">{t.group_name ?? "-"}</td>
-                <td className="px-2.5 py-2.5">
+              <MobileListRow key={t.id} onClick={() => setSelectedTeacherTx(t)}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {t.teacher_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {t.group_name ?? "-"} · {new Date(t.created_at).toLocaleDateString("uz-UZ")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {t.amount.toLocaleString("uz-UZ")} so'm
+                  </p>
                   <Badge color={t.type === "lesson_earning" ? "green" : "red"}>
                     {t.type === "lesson_earning" ? "Dars daromadi" : "Pul berildi"}
                   </Badge>
-                </td>
-                <td className="px-2.5 py-2.5 font-semibold text-slate-800 dark:text-slate-200">
-                  {t.amount.toLocaleString("uz-UZ")} so'm
-                </td>
-              </tr>
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination
             page={teacherPage}
             pageCount={teacherPageCount}
