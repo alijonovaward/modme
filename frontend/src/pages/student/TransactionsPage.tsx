@@ -105,7 +105,6 @@ export function StudentTransactionsPage() {
   const totalDeductions = Math.abs(
     transactions.filter((t) => t.type === "deduction").reduce((sum, t) => sum + t.amount, 0),
   );
-  const totalRemaining = totalDeposits - totalDeductions;
   const [selectedTx, setSelectedTx] = useState<StudentTransactionListItem | null>(null);
   const { page, setPage, pageCount, pageItems, total } = usePagination(transactions);
   const { isPrivate, togglePrivacy } = usePrivacyMode();
@@ -166,16 +165,11 @@ export function StudentTransactionsPage() {
             Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
           </p>
         )}
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatTile
             label="Jami to'ldirilgan"
             value={`${totalDeposits.toLocaleString("uz-UZ")} so'm`}
             color="green"
-          />
-          <StatTile
-            label="Davr farqi"
-            value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
-            color="indigo"
           />
           <StatTile
             label="Jami yechilgan"

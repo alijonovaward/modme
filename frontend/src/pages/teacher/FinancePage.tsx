@@ -110,7 +110,6 @@ export function FinancePage() {
   const totalPayouts = Math.abs(
     transactions.filter((t) => t.type === "payout").reduce((sum, t) => sum + t.amount, 0),
   );
-  const totalRemaining = totalEarnings - totalPayouts;
   const filterGroupOptions = groups.filter(
     (g) => !draft.subjectId || String(g.subject_id) === draft.subjectId,
   );
@@ -160,17 +159,11 @@ export function FinancePage() {
             Davr: {appliedFilters.dateFrom || "..."} — {appliedFilters.dateTo || "..."}
           </p>
         )}
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatTile
             label="Jami kirim (dars daromadi)"
             value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
             color="green"
-            isPrivate={isPrivate}
-          />
-          <StatTile
-            label="Jami qolgan"
-            value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
-            color="indigo"
             isPrivate={isPrivate}
           />
           <StatTile
