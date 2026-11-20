@@ -243,7 +243,7 @@ export function StudentDetailPage() {
             </Badge>
           </div>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{student.phone}</p>
-          <div className="mt-1 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="mt-1.5 flex items-center gap-2.5 text-base text-slate-600 dark:text-slate-400">
             <span>
               Balans:{" "}
               <span
@@ -259,14 +259,14 @@ export function StudentDetailPage() {
             <button
               onClick={() => setIsDepositModalOpen(true)}
               aria-label="Balansni to'ldirish"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-base font-bold leading-none text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xl font-bold leading-none text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900"
             >
               +
             </button>
             <button
               onClick={() => setIsWithdrawModalOpen(true)}
               aria-label="Pul qaytarish"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-base font-bold leading-none text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-xl font-bold leading-none text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900"
             >
               -
             </button>
