@@ -418,9 +418,9 @@ export function StatTile({
   const displayValue = isPrivate && isMoneyValue ? "••••••••" : value;
 
   return (
-    <div className={`rounded-2xl border p-3.5 shadow-sm transition-all hover:-translate-y-0.5 sm:p-6 ${styles}`}>
+    <div className={`rounded-xl border p-2.5 shadow-sm transition-all hover:-translate-y-0.5 sm:p-4 ${styles}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80 sm:text-xs">{label}</p>
-      <p className="mt-1 break-words text-lg font-bold tracking-tight sm:text-3xl">{displayValue}</p>
+      <p className="mt-0.5 break-words text-base font-bold tracking-tight sm:text-2xl">{displayValue}</p>
     </div>
   );
 }
