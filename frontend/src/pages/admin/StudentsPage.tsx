@@ -17,6 +17,8 @@ import {
   extractErrorMessage,
   Input,
   Label,
+  MobileList,
+  MobileListRow,
   Modal,
   PAGE_SIZE,
   Pagination,
@@ -228,28 +230,58 @@ export function StudentsPage() {
           </div>
         ) : (
           <>
-          <Table headers={["F.I.O", "Telefon", "Balans", "Holat"]}>
+          <div className="hidden sm:block">
+            <Table headers={["F.I.O", "Telefon", "Balans", "Holat"]}>
+              {students.map((s) => (
+                <tr
+                  key={s.id}
+                  onClick={() => navigate(`/admin/students/${s.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
+                >
+                  <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
+                  <td className={`px-3.5 py-2.5 ${s.balance < 0 ? "font-medium text-rose-600" : "text-slate-600 dark:text-slate-400"}`}>
+                    {s.balance.toLocaleString("uz-UZ")} so'm
+                  </td>
+                  <td className="px-3.5 py-2.5">
+                    {s.is_active ? (
+                      <Badge color="green">Faol</Badge>
+                    ) : (
+                      <Badge color="red">Bloklangan</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+
+          <MobileList>
             {students.map((s) => (
-              <tr
-                key={s.id}
-                onClick={() => navigate(`/admin/students/${s.id}`)}
-                className="cursor-pointer transition-colors hover:bg-indigo-50/60 active:scale-[0.99] dark:hover:bg-indigo-950/40"
-              >
-                <td className="px-3.5 py-2.5 font-medium text-slate-800 dark:text-slate-200">{s.full_name}</td>
-                <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">{s.phone}</td>
-                <td className={`px-3.5 py-2.5 ${s.balance < 0 ? "font-medium text-rose-600" : "text-slate-600 dark:text-slate-400"}`}>
-                  {s.balance.toLocaleString("uz-UZ")} so'm
-                </td>
-                <td className="px-3.5 py-2.5">
+              <MobileListRow key={s.id} onClick={() => navigate(`/admin/students/${s.id}`)}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {s.full_name}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{s.phone}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <p
+                    className={`text-sm font-semibold ${
+                      s.balance < 0 ? "text-rose-600" : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {s.balance.toLocaleString("uz-UZ")} so'm
+                  </p>
                   {s.is_active ? (
                     <Badge color="green">Faol</Badge>
                   ) : (
                     <Badge color="red">Bloklangan</Badge>
                   )}
-                </td>
-              </tr>
+                </div>
+              </MobileListRow>
             ))}
-          </Table>
+          </MobileList>
+
           <Pagination
             page={page}
             pageCount={pageCount}

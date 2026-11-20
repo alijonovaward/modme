@@ -15,6 +15,43 @@ export function Card({ title, children, action }: { title?: string; children: Re
   );
 }
 
+export function MobileList({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`divide-y divide-slate-200/70 overflow-hidden rounded-xl border border-slate-200/70 sm:hidden dark:divide-slate-800/70 dark:border-slate-800/70 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function MobileListRow({
+  children,
+  onClick,
+  className = "",
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={`flex items-center justify-between gap-3 px-3 py-2 ${
+        onClick ? "cursor-pointer active:bg-slate-100 dark:active:bg-slate-800/60" : ""
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function Button({
   className = "",
   variant = "primary",
