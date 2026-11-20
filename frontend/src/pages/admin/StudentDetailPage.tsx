@@ -259,14 +259,14 @@ export function StudentDetailPage() {
             <button
               onClick={() => setIsDepositModalOpen(true)}
               aria-label="Balansni to'ldirish"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xl font-bold leading-none text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xl font-bold leading-none text-white shadow-sm transition-colors hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500"
             >
               +
             </button>
             <button
               onClick={() => setIsWithdrawModalOpen(true)}
               aria-label="Pul qaytarish"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-xl font-bold leading-none text-rose-700 transition-colors hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-xl font-bold leading-none text-white shadow-sm transition-colors hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-500"
             >
               -
             </button>
