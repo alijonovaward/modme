@@ -566,9 +566,7 @@ def mark_attendance(
     payload: AttendanceCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
-    ),
+    current_user: User = Depends(require_roles(UserRole.teacher)),
 ):
     lesson = db.get(Lesson, lesson_id)
     if lesson is None:
@@ -577,7 +575,7 @@ def mark_attendance(
     group = db.get(Group, lesson.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Guruh topilmadi")
-    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+    if group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
     teacher_user = lock_user_for_update(db, group.teacher_id)
@@ -708,9 +706,7 @@ def update_attendance(
     payload: AttendanceUpdate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.superadmin, UserRole.admin, UserRole.teacher)
-    ),
+    current_user: User = Depends(require_roles(UserRole.teacher)),
 ):
     lesson = db.get(Lesson, lesson_id)
     if lesson is None:
@@ -719,7 +715,7 @@ def update_attendance(
     group = db.get(Group, lesson.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="Guruh topilmadi")
-    if current_user.role == UserRole.teacher and group.teacher_id != current_user.id:
+    if group.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
     attendance = (
@@ -730,15 +726,14 @@ def update_attendance(
     if attendance is None:
         raise HTTPException(status_code=404, detail="Bu o'quvchi uchun davomat topilmadi")
 
-    if current_user.role == UserRole.teacher:
-        created_at = attendance.created_at
-        if created_at is not None and created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        if created_at is None or datetime.now(timezone.utc) - created_at > ATTENDANCE_EDIT_WINDOW:
-            raise HTTPException(
-                status_code=403,
-                detail="Davomat belgilangandan 24 soat o'tgan, endi faqat admin tuzatishi mumkin",
-            )
+    created_at = attendance.created_at
+    if created_at is not None and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    if created_at is None or datetime.now(timezone.utc) - created_at > ATTENDANCE_EDIT_WINDOW:
+        raise HTTPException(
+            status_code=403,
+            detail="Davomat belgilangandan 24 soat o'tdi, endi uni tuzatib bo'lmaydi",
+        )
 
     if payload.status != AttendanceStatus.present and payload.total_count is not None:
         raise HTTPException(

@@ -84,7 +84,7 @@ export function AttendanceCombinedTable({
 }) {
   const [showAll, setShowAll] = useState(false);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
-  const [selectedStudentForActions, setSelectedStudentForActions] = useState<GroupRosterItem | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<GroupRosterItem | null>(null);
 
   const todayStr = useMemo(() => getTodayStr(), []);
   const statsByStudent = useMemo(() => new Map(stats.map((s) => [s.student_id, s])), [stats]);
@@ -143,15 +143,6 @@ export function AttendanceCombinedTable({
               <th className="sticky left-0 z-20 w-[125px] min-w-[125px] bg-slate-50/95 px-2.5 py-2 font-semibold shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3.5 sm:py-3 sm:shadow-none dark:bg-slate-900/95 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
                 O'quvchi
               </th>
-              <th className="w-[90px] min-w-[90px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[150px] sm:z-20 sm:w-[100px] sm:min-w-[100px] sm:px-3.5 sm:py-3 dark:bg-slate-900/95">
-                Holat
-              </th>
-              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[250px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 dark:bg-slate-900/95">
-                Jami darslar
-              </th>
-              <th className="w-[80px] min-w-[80px] bg-slate-50/95 px-2.5 py-2 font-semibold sm:sticky sm:left-[340px] sm:z-20 sm:w-[90px] sm:min-w-[90px] sm:px-3.5 sm:py-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-slate-900/95 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]">
-                Umumiy foiz
-              </th>
               {lessons.map((l) => (
                 <th key={l.id} className="whitespace-nowrap px-2.5 py-2 font-semibold sm:px-3.5 sm:py-3">
                   {l.lesson_date}
@@ -165,7 +156,7 @@ export function AttendanceCombinedTable({
                 return (
                   <tr key={`header-${row.status}`}>
                     <td
-                      colSpan={4 + lessons.length}
+                      colSpan={1 + lessons.length}
                       className={`px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider ${GROUP_HEADER_TINT[row.status]}`}
                     >
                       {GROUP_HEADER_LABEL[row.status]}
@@ -175,35 +166,20 @@ export function AttendanceCombinedTable({
               }
 
               const s = row.student;
-              const stat = statsByStudent.get(s.student_id);
               const hasAttendanceData = activeStudentIds.has(s.student_id);
               const tint = ROW_TINT[s.status];
+              // Only the group's own teacher can mark/correct attendance - admin and
+              // superadmin get a read-only grid (see mark_attendance/update_attendance
+              // on the backend, which now reject anyone else).
+              const canEditAttendance = !renderActions;
 
               return (
                 <tr key={s.student_id}>
                   <td
-                    onClick={() => renderActions && setSelectedStudentForActions(s)}
-                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} ${renderActions ? "cursor-pointer underline-offset-2 hover:underline" : ""}`}
+                    onClick={() => setSelectedStudent(s)}
+                    className={`sticky left-0 z-10 w-[125px] min-w-[125px] truncate px-2.5 py-2.5 font-medium text-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] sm:w-[150px] sm:min-w-[150px] sm:px-3 sm:shadow-none dark:text-slate-200 dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} cursor-pointer underline-offset-2 hover:underline`}
                   >
                     {s.student_name}
-                  </td>
-                  <td
-                    className={`w-[90px] min-w-[90px] px-2.5 py-2.5 sm:sticky sm:left-[150px] sm:z-10 sm:w-[100px] sm:min-w-[100px] sm:px-3 ${tint.sticky} ${tint.cell}`}
-                  >
-                    <Badge color={ROSTER_STATUS_COLOR[s.status]}>{s.status}</Badge>
-                    {s.status === "dropped" && s.status_reason && (
-                      <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{s.status_reason}</p>
-                    )}
-                  </td>
-                  <td
-                    className={`w-[80px] min-w-[80px] px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[250px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 dark:text-slate-400 ${tint.sticky} ${tint.cell}`}
-                  >
-                    {hasAttendanceData ? stat?.total_lessons ?? 0 : "–"}
-                  </td>
-                  <td
-                    className={`w-[80px] min-w-[80px] px-2.5 py-2.5 text-slate-600 sm:sticky sm:left-[340px] sm:z-10 sm:w-[90px] sm:min-w-[90px] sm:px-3 sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:text-slate-400 dark:sm:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] ${tint.sticky} ${tint.cell}`}
-                  >
-                    {hasAttendanceData ? (stat ? `${stat.attendance_rate}%` : "-") : "–"}
                   </td>
                   {lessons.map((l) => {
                     if (!hasAttendanceData) {
@@ -218,20 +194,27 @@ export function AttendanceCombinedTable({
                       (c) => c.student_id === s.student_id && c.lesson_id === l.id,
                     );
                     const isFutureLesson = l.lesson_date > todayStr;
+                    const isDisabled = isFutureLesson || !canEditAttendance;
 
                     return (
                       <td key={l.id} className={`px-3.5 py-2.5 text-center ${tint.cell}`}>
                         <button
                           type="button"
-                          disabled={isFutureLesson}
-                          onClick={() => !isFutureLesson && setSelectedCell({ student: s, lesson: l, existingCell: originalCell })}
+                          disabled={isDisabled}
+                          onClick={() =>
+                            canEditAttendance &&
+                            !isFutureLesson &&
+                            setSelectedCell({ student: s, lesson: l, existingCell: originalCell })
+                          }
                           className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform ${
-                            isFutureLesson ? "cursor-not-allowed opacity-40" : "active:scale-90"
-                          }`}
+                            isDisabled ? "cursor-not-allowed" : "active:scale-90"
+                          } ${isFutureLesson ? "opacity-40" : ""}`}
                           title={
                             isFutureLesson
                               ? "Kelgusi kunlar uchun davomat belgilab bo'lmaydi"
-                              : `${s.student_name} (${l.lesson_date}): Batafsil`
+                              : !canEditAttendance
+                                ? "Faqat guruh o'qituvchisi davomat belgilashi mumkin"
+                                : `${s.student_name} (${l.lesson_date}): Batafsil`
                           }
                         >
                           {renderAttendanceStatusCircle(originalCell?.status, originalCell?.is_trial)}
@@ -258,25 +241,49 @@ export function AttendanceCombinedTable({
         />
       )}
 
-      {selectedStudentForActions && renderActions && (
-        <Modal title={selectedStudentForActions.student_name} onClose={() => setSelectedStudentForActions(null)}>
+      {selectedStudent && (
+        <Modal title={selectedStudent.student_name} onClose={() => setSelectedStudent(null)}>
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge color={ROSTER_STATUS_COLOR[selectedStudentForActions.status]}>
-                {selectedStudentForActions.status}
-              </Badge>
-              {selectedStudentForActions.status === "dropped" && selectedStudentForActions.status_reason && (
+              <Badge color={ROSTER_STATUS_COLOR[selectedStudent.status]}>{selectedStudent.status}</Badge>
+              {selectedStudent.status === "dropped" && selectedStudent.status_reason && (
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  Sababi: {selectedStudentForActions.status_reason}
+                  Sababi: {selectedStudent.status_reason}
                 </span>
               )}
             </div>
-            {/* Any action button inside here should close this modal - e.g. "Chiqarish"
-                opens the parent's own reason-input modal, which must not stack on top
-                of this one. */}
-            <div onClick={() => setSelectedStudentForActions(null)}>
-              {renderActions(selectedStudentForActions)}
+
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Jami darslar
+                </p>
+                <p className="mt-0.5 text-base font-bold text-slate-800 dark:text-slate-200">
+                  {activeStudentIds.has(selectedStudent.student_id)
+                    ? statsByStudent.get(selectedStudent.student_id)?.total_lessons ?? 0
+                    : "–"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Umumiy foiz
+                </p>
+                <p className="mt-0.5 text-base font-bold text-slate-800 dark:text-slate-200">
+                  {activeStudentIds.has(selectedStudent.student_id)
+                    ? `${statsByStudent.get(selectedStudent.student_id)?.attendance_rate ?? 0}%`
+                    : "–"}
+                </p>
+              </div>
             </div>
+
+            {renderActions && (
+              // Any action button inside here should close this modal - e.g. "Chiqarish"
+              // opens the parent's own reason-input modal, which must not stack on top
+              // of this one.
+              <div onClick={() => setSelectedStudent(null)} className="border-t border-slate-100 pt-4 dark:border-slate-800">
+                {renderActions(selectedStudent)}
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -208,7 +208,7 @@ def test_double_submit_attendance_does_not_deduct_twice(client, superadmin_heade
 
     resp = client.put(
         f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
-        headers=admin_headers,
+        headers=teacher_headers,
         json={"status": "excused"},
     )
     assert resp.status_code == 200, resp.text
