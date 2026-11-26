@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="O'quv Markazi CRM", lifespan=lifespan)
+app = FastAPI(title="Nova - O'quv Markazi CRM", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,4 +48,4 @@ app.include_router(telegram.router)
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "O'quv Markazi CRM backend"}
+    return {"status": "ok", "service": "Nova - O'quv Markazi CRM backend"}

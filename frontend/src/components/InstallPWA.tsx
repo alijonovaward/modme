@@ -67,13 +67,11 @@ export function InstallPWA() {
       <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-slide-up rounded-2xl border border-indigo-200/80 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 dark:border-indigo-900/60 dark:bg-slate-900/95">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
-                <path fillRule="evenodd" d="M10.5 3.75a6 6 0 0 0-6 6v8.25a3 3 0 0 0 3 3h9a3 3 0 0 0 3-3V9.75a6 6 0 0 0-6-6h-3Zm1.5 4.5a.75.75 0 0 1 .75.75v4.19l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.72V9a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-              </svg>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md shadow-indigo-500/20">
+              <img src="/favicon.png" alt="Nova" className="h-full w-full object-cover" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Modme Ilovasi</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Nova Ilovasi</p>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Telefoningizga o‘rnating va tezkor kiring
               </p>

@@ -32,8 +32,14 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-950">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900 dark:text-slate-100">O'quv Markazi CRM</h1>
-        <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">Tizimga kirish uchun login/parolingizni kiriting</p>
+        <div className="mb-1 flex items-center gap-2.5">
+          <img src="/favicon.png" alt="Nova" className="h-9 w-9 rounded-lg" />
+          <div>
+            <h1 className="text-xl font-bold leading-tight text-slate-900 dark:text-slate-100">NOVA</h1>
+            <p className="text-xs leading-tight text-slate-400 dark:text-slate-500">O'quv Markazi CRM</p>
+          </div>
+        </div>
+        <p className="mb-6 mt-4 text-sm text-slate-500 dark:text-slate-400">Tizimga kirish uchun login/parolingizni kiriting</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Telefon raqam</Label>

@@ -11,10 +11,10 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons.svg'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'icons.svg'],
       manifest: {
-        name: 'Modme O‘quv Markazi',
-        short_name: 'Modme',
+        name: 'Nova O‘quv Markazi',
+        short_name: 'Nova',
         description: 'O‘quv markazini boshqarish tizimi',
         theme_color: '#4f46e5',
         background_color: '#ffffff',

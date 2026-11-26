@@ -69,11 +69,17 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-50/80 dark:bg-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/95">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-6 sm:py-4">
-          <div>
-            <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">O'quv Markazi CRM</p>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {user.full_name} · {ROLE_LABEL[user.role]}
-            </p>
+          <div className="flex items-center gap-2">
+            <img src="/favicon.png" alt="Nova" className="h-8 w-8 shrink-0 rounded-lg" />
+            <div>
+              <p className="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100">
+                NOVA
+              </p>
+              <p className="text-[11px] leading-tight text-slate-400 dark:text-slate-500">O'quv Markazi CRM</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {user.full_name} · {ROLE_LABEL[user.role]}
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-4">
             <div ref={menuRef} className="relative">
