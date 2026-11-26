@@ -10,7 +10,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://markaz.alijonovblog.uz}"
+VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://infoplatform.uz}"
 FRONTEND_IMAGE="modme-frontend"
 FRONTEND_TMP_CONTAINER="modme-frontend-tmp"
 
