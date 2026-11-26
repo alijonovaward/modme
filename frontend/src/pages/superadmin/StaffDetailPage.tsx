@@ -75,10 +75,12 @@ export function StaffDetailPage() {
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutComment, setPayoutComment] = useState("");
   const payoutIdempotencyKey = useIdempotencyKey();
+  const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editPercentage, setEditPercentage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const load = async (filters: FinanceFilters = financeFilters) => {
     setIsLoading(true);
@@ -161,7 +163,12 @@ export function StaffDetailPage() {
         phone: editPhone,
         teacher_percentage: staffMember.role === "teacher" ? Number(editPercentage) : undefined,
       });
-      setSuccess("Ma'lumotlar saqlandi");
+      if (newPassword.trim()) {
+        await updateUserPassword(id, newPassword.trim());
+      }
+      setSuccess(newPassword.trim() ? "Ma'lumotlar va parol saqlandi" : "Ma'lumotlar saqlandi");
+      setNewPassword("");
+      setIsEditModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -177,25 +184,10 @@ export function StaffDetailPage() {
     try {
       await updateStaffStatus(id, !staffMember.is_active);
       setSuccess(staffMember.is_active ? "Xodim bloklandi" : "Xodim faollashtirildi");
+      setIsEditModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
-    }
-  };
-
-  const handlePasswordUpdate = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setIsSubmitting(true);
-    try {
-      await updateUserPassword(id, newPassword);
-      setSuccess("Parol muvaffaqiyatli yangilandi");
-      setNewPassword("");
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -212,6 +204,7 @@ export function StaffDetailPage() {
       setSuccess("Pul o'qituvchi balansidan yechildi");
       setPayoutAmount("");
       setPayoutComment("");
+      setIsPayoutModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -243,7 +236,24 @@ export function StaffDetailPage() {
     <Layout>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">{staffMember.full_name}</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+              {staffMember.full_name}
+            </h1>
+            <button
+              onClick={() => {
+                setNewPassword("");
+                setIsEditModalOpen(true);
+              }}
+              aria-label="Tahrirlash"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125 16.862 4.487" />
+              </svg>
+            </button>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {!staffMember.is_active && <Badge color="red">Bloklangan</Badge>}
             <Badge color={staffMember.telegram_linked ? "green" : "slate"}>
@@ -259,97 +269,30 @@ export function StaffDetailPage() {
               <span className="ml-2">· Foiz: {staffMember.teacher_percentage}%</span>
             )}
           </p>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Balans: <span className="font-semibold">{staffMember.balance.toLocaleString("uz-UZ")} so'm</span>
-          </p>
-        </div>
-        {staffMember.role !== "superadmin" && (
-          <div className="shrink-0">
-            <Button
-              variant={staffMember.is_active ? "danger" : "secondary"}
-              onClick={handleToggleActive}
-            >
-              {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
-            </Button>
+          <div className="mt-1.5 flex items-center gap-2.5 text-base text-slate-600 dark:text-slate-400">
+            <span>
+              Balans:{" "}
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {staffMember.balance.toLocaleString("uz-UZ")} so'm
+              </span>
+            </span>
+            {staffMember.role === "teacher" && (
+              <button
+                onClick={() => setIsPayoutModalOpen(true)}
+                aria-label="Pul berish"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm transition-colors hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-5 w-5">
+                  <path strokeLinecap="round" d="M5 12h14" />
+                </svg>
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title="Ma'lumotlarni tahrirlash">
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <Label>F.I.O</Label>
-              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
-            </div>
-            <div>
-              <Label>Telefon</Label>
-              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
-            </div>
-            {staffMember.role === "teacher" && (
-              <div>
-                <Label>Foiz stavkasi (%)</Label>
-                <Input
-                  type="number"
-                  value={editPercentage}
-                  onChange={(e) => setEditPercentage(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              Saqlash
-            </Button>
-          </form>
-        </Card>
-
-        <Card title="Parolni yangilash">
-          <form onSubmit={handlePasswordUpdate} className="space-y-4">
-            <div>
-              <Label>Yangi parol</Label>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={isSubmitting}>
-              Saqlash
-            </Button>
-          </form>
-        </Card>
-
-        {staffMember.role === "teacher" && (
-          <Card title="Pul berish (balansdan yechish)">
-            <form onSubmit={handlePayout} className="space-y-4">
-              <div>
-                <Label>Summa</Label>
-                <Input
-                  type="number"
-                  value={payoutAmount}
-                  onChange={(e) => setPayoutAmount(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label>Izoh (ixtiyoriy)</Label>
-                <Input
-                  value={payoutComment}
-                  onChange={(e) => setPayoutComment(e.target.value)}
-                  placeholder="Masalan: Oylik to'lov"
-                />
-              </div>
-              <Button type="submit" disabled={isSubmitting}>
-                Berish
-              </Button>
-            </form>
-          </Card>
-        )}
-      </div>
 
       {staffMember.role === "teacher" && (
         <div className="mt-6">
@@ -525,6 +468,87 @@ export function StaffDetailPage() {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {isPayoutModalOpen && (
+        <Modal title="Pul berish (balansdan yechish)" onClose={() => setIsPayoutModalOpen(false)}>
+          <form onSubmit={handlePayout} className="space-y-4">
+            <div>
+              <Label>Summa</Label>
+              <Input
+                type="number"
+                value={payoutAmount}
+                onChange={(e) => setPayoutAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label>Izoh (ixtiyoriy)</Label>
+              <Input
+                value={payoutComment}
+                onChange={(e) => setPayoutComment(e.target.value)}
+                placeholder="Masalan: Oylik to'lov"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              Berish
+            </Button>
+          </form>
+        </Modal>
+      )}
+
+      {isEditModalOpen && (
+        <Modal title="Ma'lumotlarni tahrirlash" onClose={() => setIsEditModalOpen(false)}>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label>F.I.O</Label>
+              <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Telefon</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} required />
+            </div>
+            {staffMember.role === "teacher" && (
+              <div>
+                <Label>Foiz stavkasi (%)</Label>
+                <Input
+                  type="number"
+                  value={editPercentage}
+                  onChange={(e) => setEditPercentage(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            <div>
+              <Label>Yangi parol (ixtiyoriy)</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Bo'sh qoldirilsa, parol eskiligicha qoladi.
+              </p>
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              Saqlash
+            </Button>
+          </form>
+
+          {staffMember.role !== "superadmin" && (
+            <>
+              <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
+
+              <Button
+                variant={staffMember.is_active ? "danger" : "secondary"}
+                className="w-full"
+                onClick={handleToggleActive}
+              >
+                {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
+              </Button>
+            </>
+          )}
         </Modal>
       )}
     </Layout>
