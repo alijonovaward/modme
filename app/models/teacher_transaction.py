@@ -23,3 +23,4 @@ class TeacherTransaction(Base):
     type = Column(Enum(TeacherTransactionType), nullable=False)
     comment = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    reversed_at = Column(DateTime(timezone=True), nullable=True)

@@ -62,6 +62,7 @@ class TeacherTransactionListItemOut(BaseModel):
     type: TeacherTransactionType
     comment: Optional[str] = None
     created_at: datetime
+    reversed_at: Optional[datetime] = None
     student_name: Optional[str] = None
     group_name: Optional[str] = None
     lesson_date: Optional[date] = None
@@ -77,6 +78,7 @@ class TeacherTransactionGlobalListItemOut(BaseModel):
     type: TeacherTransactionType
     comment: Optional[str] = None
     created_at: datetime
+    reversed_at: Optional[datetime] = None
     group_id: Optional[int] = None
     group_name: Optional[str] = None
     lesson_date: Optional[date] = None

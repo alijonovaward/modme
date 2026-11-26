@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
@@ -69,6 +69,7 @@ def _query_teacher_finance(
             type=tt.type,
             comment=tt.comment,
             created_at=tt.created_at,
+            reversed_at=tt.reversed_at,
             student_name=student.full_name if student else None,
             group_name=group.name if group else None,
             lesson_date=lesson.lesson_date if lesson else None,
@@ -88,6 +89,20 @@ def get_teacher_finance(
     return _query_teacher_finance(db, current_user.id, date_from, date_to, group_id)
 
 
+def _get_payable_staff_member_or_404(db: Session, user_id: int, current_user: User) -> User:
+    """Shared lookup for every staff-payout-related endpoint: the target must be a
+    teacher or an admin, and only a superadmin may act on an admin target - paying a
+    fellow admin's salary is kept out of an ordinary admin's reach."""
+    member = db.get(User, user_id)
+    if member is None or member.role not in (UserRole.teacher, UserRole.admin):
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    if member.role == UserRole.admin and current_user.role != UserRole.superadmin:
+        raise HTTPException(
+            status_code=403, detail="Faqat bosh admin administratorga pul bera oladi"
+        )
+    return member
+
+
 @router.get("/{teacher_id}/finance", response_model=list[TeacherTransactionListItemOut])
 def get_teacher_finance_by_id(
     teacher_id: int,
@@ -97,9 +112,7 @@ def get_teacher_finance_by_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    teacher = db.get(User, teacher_id)
-    if teacher is None or teacher.role != UserRole.teacher:
-        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    _get_payable_staff_member_or_404(db, teacher_id, current_user)
     return _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
 
 
@@ -237,9 +250,7 @@ def export_teacher_finance_by_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    teacher = db.get(User, teacher_id)
-    if teacher is None or teacher.role != UserRole.teacher:
-        raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+    teacher = _get_payable_staff_member_or_404(db, teacher_id, current_user)
     items = _query_teacher_finance(db, teacher_id, date_from, date_to, group_id)
     return xlsx_response(
         f"{teacher.full_name}_moliyasi.xlsx", FINANCE_XLSX_HEADERS, _finance_xlsx_rows(items)
@@ -248,6 +259,7 @@ def export_teacher_finance_by_id(
 
 def _build_teacher_transactions_query(
     db: Session,
+    viewer: User,
     teacher_id: Optional[int],
     created_by_id: Optional[int],
     group_id: Optional[int],
@@ -267,6 +279,11 @@ def _build_teacher_transactions_query(
         .outerjoin(Lesson, Lesson.id == TeacherTransaction.lesson_id)
         .outerjoin(Group, Group.id == Lesson.group_id)
     )
+
+    if viewer.role != UserRole.superadmin:
+        # An ordinary admin browsing the shared transactions list must never see
+        # another admin's payout history - that stays superadmin-only.
+        query = query.filter(TeacherUser.role == UserRole.teacher)
 
     if created_by_id is not None:
         query = query.filter(TeacherTransaction.created_by_id == created_by_id)
@@ -298,7 +315,7 @@ def list_all_teacher_transactions(
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
     query = _build_teacher_transactions_query(
-        db, teacher_id, created_by_id, group_id, type, date_from, date_to
+        db, current_user, teacher_id, created_by_id, group_id, type, date_from, date_to
     )
 
     total = query.count()
@@ -333,6 +350,7 @@ def list_all_teacher_transactions(
             type=tt.type,
             comment=tt.comment,
             created_at=tt.created_at,
+            reversed_at=tt.reversed_at,
             group_id=group.id if group else None,
             group_name=group.name if group else None,
             lesson_date=lesson.lesson_date if lesson else None,
@@ -363,7 +381,7 @@ def export_all_teacher_transactions(
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
     query = _build_teacher_transactions_query(
-        db, teacher_id, created_by_id, group_id, type, date_from, date_to
+        db, current_user, teacher_id, created_by_id, group_id, type, date_from, date_to
     )
     rows = query.order_by(TeacherTransaction.created_at.desc()).all()
     xlsx_rows = [
@@ -420,14 +438,21 @@ def create_teacher_payout(
         return JSONResponse(status_code=replay.status_code, content=replay.body)
 
     try:
+        # Validates the target role and the superadmin-only rule for paying an admin,
+        # but without the row lock _get_payable_staff_member_or_404 would use a plain
+        # read - re-fetch under lock right after so the balance check below can't race.
+        _get_payable_staff_member_or_404(db, teacher_id, current_user)
         teacher = lock_user_for_update(db, teacher_id)
-        if teacher is None or teacher.role != UserRole.teacher:
-            raise HTTPException(status_code=404, detail="O'qituvchi topilmadi")
+        if teacher is None:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi")
 
         if payload.amount <= 0:
             raise HTTPException(status_code=400, detail="Summa musbat bo'lishi kerak")
         amount = round_som(payload.amount)
-        if amount > teacher.balance:
+        # A teacher's payout can never exceed what they've actually accrued from
+        # lessons. An admin has no such accrual (nothing ever credits their balance),
+        # so a salary payout to one is a plain expense and is allowed to go negative.
+        if teacher.role == UserRole.teacher and amount > teacher.balance:
             raise HTTPException(status_code=400, detail="O'qituvchi balansida yetarli mablag' yo'q")
 
         teacher.balance -= amount
@@ -458,6 +483,79 @@ def create_teacher_payout(
         type=payout.type,
         comment=payout.comment,
         created_at=payout.created_at,
+        group_name=None,
+        lesson_date=None,
+    )
+    finish_idempotent_request(db, idempotency_key, status.HTTP_201_CREATED, result)
+    return result
+
+
+@router.post(
+    "/transactions/{transaction_id}/reverse",
+    response_model=TeacherTransactionListItemOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def reverse_teacher_transaction(
+    transaction_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin)),
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+):
+    """Undoes a mistaken payout (e.g. an extra zero typed in by accident) by posting
+    an offsetting entry that credits the amount back - the original row is never
+    edited, only flagged via `reversed_at` so it can't be reversed twice."""
+    try:
+        replay = begin_idempotent_request(db, "teachers.reverse_transaction", idempotency_key)
+    except IdempotencyInProgress:
+        raise HTTPException(
+            status_code=409, detail="So'rov hali bajarilmoqda, biroz kutib qayta urinib ko'ring"
+        )
+    if replay is not None:
+        return JSONResponse(status_code=replay.status_code, content=replay.body)
+
+    try:
+        original = db.get(TeacherTransaction, transaction_id)
+        if original is None or original.type != TeacherTransactionType.payout:
+            raise HTTPException(status_code=404, detail="To'lov tranzaksiyasi topilmadi")
+        if original.reversed_at is not None:
+            raise HTTPException(status_code=400, detail="Bu tranzaksiya allaqachon bekor qilingan")
+
+        staff_member = lock_user_for_update(db, original.teacher_id)
+        if staff_member is None:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi")
+
+        staff_member.balance -= original.amount  # original.amount is negative, so this credits it back
+        reversal = TeacherTransaction(
+            teacher_id=original.teacher_id,
+            amount=-original.amount,
+            type=TeacherTransactionType.payout,
+            comment=f"Bekor qilindi: #{original.id} to'lovi qaytarildi",
+            created_by_id=current_user.id,
+        )
+        original.reversed_at = datetime.now(timezone.utc)
+        db.add(reversal)
+        db.commit()
+        db.refresh(reversal)
+    except Exception:
+        abort_idempotent_request(db, idempotency_key)
+        raise
+
+    if staff_member.telegram_chat_id:
+        background_tasks.add_task(
+            send_telegram_message,
+            staff_member.telegram_chat_id,
+            f"E'tibor bering: avvalgi {(-original.amount):,.0f} so'mlik to'lov bekor qilindi, "
+            "summa balansingizga qaytarildi.",
+        )
+
+    result = TeacherTransactionListItemOut(
+        id=reversal.id,
+        teacher_id=reversal.teacher_id,
+        amount=reversal.amount,
+        type=reversal.type,
+        comment=reversal.comment,
+        created_at=reversal.created_at,
         group_name=None,
         lesson_date=None,
     )

@@ -528,3 +528,15 @@ export async function payoutTeacher(
   );
   return data;
 }
+
+export async function reverseTeacherTransaction(
+  transactionId: number,
+  idempotencyKey?: string,
+): Promise<TeacherTransaction> {
+  const { data } = await apiClient.post<TeacherTransaction>(
+    `/api/v1/teachers/transactions/${transactionId}/reverse`,
+    {},
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
+  );
+  return data;
+}

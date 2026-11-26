@@ -7,6 +7,7 @@ import {
   listStaffUsers,
   listSubjects,
   payoutTeacher,
+  reverseTeacherTransaction,
   updateStaffStatus,
   updateStaffUser,
   updateUserPassword,
@@ -16,6 +17,7 @@ import {
   Button,
   Card,
   Combobox,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -31,6 +33,7 @@ import {
 } from "../../components/ui";
 import type { GroupListItem, Subject, TeacherStats, TeacherTransaction, User } from "../../types";
 import { Layout } from "../../components/Layout";
+import { useAuth } from "../../auth/AuthContext";
 import { useIdempotencyKey } from "../../hooks/useIdempotencyKey";
 import { currentMonthRange } from "../../utils/date";
 import { downloadXlsx } from "../../utils/download";
@@ -57,6 +60,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function StaffDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const id = Number(userId);
+  const { user: viewer } = useAuth();
 
   const [staffMember, setStaffMember] = useState<User | null>(null);
   const [finance, setFinance] = useState<TeacherTransaction[]>([]);
@@ -76,11 +80,15 @@ export function StaffDetailPage() {
   const [payoutComment, setPayoutComment] = useState("");
   const payoutIdempotencyKey = useIdempotencyKey();
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
+  const [isPayoutConfirmOpen, setIsPayoutConfirmOpen] = useState(false);
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editPercentage, setEditPercentage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [reverseTarget, setReverseTarget] = useState<TeacherTransaction | null>(null);
+  const [isReversing, setIsReversing] = useState(false);
+  const reverseIdempotencyKey = useIdempotencyKey();
 
   const load = async (filters: FinanceFilters = financeFilters) => {
     setIsLoading(true);
@@ -93,18 +101,25 @@ export function StaffDetailPage() {
         setEditPhone(found.phone);
         setEditPercentage(found.teacher_percentage != null ? String(found.teacher_percentage) : "");
       }
-      if (found?.role === "teacher") {
+      const isTeacherTarget = found?.role === "teacher";
+      const canViewAdminFinance = found?.role === "admin" && viewer?.role === "superadmin";
+      if (isTeacherTarget || canViewAdminFinance) {
         const params = {
           date_from: filters.dateFrom || undefined,
           date_to: filters.dateTo || undefined,
           group_id: filters.groupId ? Number(filters.groupId) : undefined,
         };
-        const [financeData, statsData] = await Promise.all([
-          getTeacherFinanceById(id, params),
-          getTeacherStats(id, params),
-        ]);
-        setFinance(financeData);
-        setStats(statsData);
+        if (isTeacherTarget) {
+          const [financeData, statsData] = await Promise.all([
+            getTeacherFinanceById(id, params),
+            getTeacherStats(id, params),
+          ]);
+          setFinance(financeData);
+          setStats(statsData);
+        } else {
+          setFinance(await getTeacherFinanceById(id, params));
+          setStats(null);
+        }
       }
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -191,25 +206,50 @@ export function StaffDetailPage() {
     }
   };
 
-  const handlePayout = async (e: FormEvent) => {
+  const requestPayout = (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(payoutAmount);
-    if (!amount || amount <= 0 || isSubmitting) return;
+    if (!amount || amount <= 0) return;
+    setIsPayoutConfirmOpen(true);
+  };
+
+  const confirmPayout = async () => {
+    if (!staffMember || isSubmitting) return;
+    const amount = Number(payoutAmount);
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
     try {
       await payoutTeacher(id, amount, payoutComment || undefined, payoutIdempotencyKey.get());
       payoutIdempotencyKey.renew();
-      setSuccess("Pul o'qituvchi balansidan yechildi");
+      setSuccess("Pul berildi");
       setPayoutAmount("");
       setPayoutComment("");
+      setIsPayoutConfirmOpen(false);
       setIsPayoutModalOpen(false);
       await load();
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleReverse = async () => {
+    if (!reverseTarget || isReversing) return;
+    setError(null);
+    setSuccess(null);
+    setIsReversing(true);
+    try {
+      await reverseTeacherTransaction(reverseTarget.id, reverseIdempotencyKey.get());
+      reverseIdempotencyKey.renew();
+      setSuccess("To'lov bekor qilindi, summa balansga qaytarildi");
+      setReverseTarget(null);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setIsReversing(false);
     }
   };
 
@@ -231,6 +271,9 @@ export function StaffDetailPage() {
       </Layout>
     );
   }
+
+  const isTeacherTarget = staffMember.role === "teacher";
+  const canPayout = isTeacherTarget || (staffMember.role === "admin" && viewer?.role === "superadmin");
 
   return (
     <Layout>
@@ -276,7 +319,7 @@ export function StaffDetailPage() {
                 {staffMember.balance.toLocaleString("uz-UZ")} so'm
               </span>
             </span>
-            {staffMember.role === "teacher" && (
+            {canPayout && (
               <button
                 onClick={() => setIsPayoutModalOpen(true)}
                 aria-label="Pul berish"
@@ -294,7 +337,7 @@ export function StaffDetailPage() {
       <ErrorMessage message={error} />
       <SuccessMessage message={success} />
 
-      {staffMember.role === "teacher" && (
+      {canPayout && (
         <div className="mt-6">
           <Card
             title="Moliya tarixi"
@@ -327,42 +370,54 @@ export function StaffDetailPage() {
                 Davr: {financeFilters.dateFrom || "..."} — {financeFilters.dateTo || "..."}
               </p>
             )}
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatTile
-                label="Jami dars daromadi"
-                value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
-                color="green"
-              />
-              <StatTile
-                label="Jami qolgan"
-                value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
-                color="indigo"
-              />
-              <StatTile
-                label="Jami pul berilgan"
-                value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
-                color="red"
-              />
-            </div>
-            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatTile
-                label="Faol o'quvchilar"
-                value={String(stats?.active_student_count ?? 0)}
-                color="slate"
-              />
-              <StatTile
-                label="O'tilgan darslar"
-                value={String(stats?.completed_lesson_count ?? 0)}
-                color="amber"
-              />
-              <StatTile
-                label="Davomat foizi"
-                value={`${(stats?.attendance_rate ?? 0).toLocaleString("uz-UZ")}%`}
-                color="violet"
-              />
-            </div>
+            {isTeacherTarget ? (
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatTile
+                  label="Jami dars daromadi"
+                  value={`${totalEarnings.toLocaleString("uz-UZ")} so'm`}
+                  color="green"
+                />
+                <StatTile
+                  label="Jami qolgan"
+                  value={`${totalRemaining.toLocaleString("uz-UZ")} so'm`}
+                  color="indigo"
+                />
+                <StatTile
+                  label="Jami pul berilgan"
+                  value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
+                  color="red"
+                />
+              </div>
+            ) : (
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <StatTile
+                  label="Jami to'langan"
+                  value={`${totalPayouts.toLocaleString("uz-UZ")} so'm`}
+                  color="red"
+                />
+              </div>
+            )}
+            {isTeacherTarget && (
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatTile
+                  label="Faol o'quvchilar"
+                  value={String(stats?.active_student_count ?? 0)}
+                  color="slate"
+                />
+                <StatTile
+                  label="O'tilgan darslar"
+                  value={String(stats?.completed_lesson_count ?? 0)}
+                  color="amber"
+                />
+                <StatTile
+                  label="Davomat foizi"
+                  value={`${(stats?.attendance_rate ?? 0).toLocaleString("uz-UZ")}%`}
+                  color="violet"
+                />
+              </div>
+            )}
             <div className="hidden sm:block">
-              <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh"]}>
+              <Table headers={["Sana", "Turi", "O'quvchi", "Guruh", "Summa", "Izoh", ""]}>
                 {pageItems.map((t) => (
                   <tr key={t.id}>
                     <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
@@ -379,6 +434,20 @@ export function StaffDetailPage() {
                       {t.amount.toLocaleString("uz-UZ")} so'm
                     </td>
                     <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{t.comment ?? "-"}</td>
+                    <td className="px-3 py-2">
+                      {viewer?.role === "superadmin" && t.type === "payout" && (
+                        t.reversed_at ? (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">Bekor qilingan</span>
+                        ) : (
+                          <button
+                            onClick={() => setReverseTarget(t)}
+                            className="text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400"
+                          >
+                            Bekor qilish
+                          </button>
+                        )
+                      )}
+                    </td>
                   </tr>
                 ))}
               </Table>
@@ -394,6 +463,18 @@ export function StaffDetailPage() {
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                       {t.group_name ?? "-"} · {new Date(t.created_at).toLocaleDateString("uz-UZ")}
                     </p>
+                    {viewer?.role === "superadmin" && t.type === "payout" && (
+                      t.reversed_at ? (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Bekor qilingan</p>
+                      ) : (
+                        <button
+                          onClick={() => setReverseTarget(t)}
+                          className="text-xs font-semibold text-rose-600 hover:underline dark:text-rose-400"
+                        >
+                          Bekor qilish
+                        </button>
+                      )
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0.5">
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -433,32 +514,36 @@ export function StaffDetailPage() {
                 />
               </div>
             </div>
-            <div>
-              <Label>Fan</Label>
-              <Combobox
-                value={filterDraft.subjectId}
-                onChange={(value) =>
-                  setFilterDraft((prev) => ({ ...prev, subjectId: value, groupId: "" }))
-                }
-                placeholder="Barcha fanlar"
-                options={[
-                  { value: "", label: "Barcha fanlar" },
-                  ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
-                ]}
-              />
-            </div>
-            <div>
-              <Label>Guruh</Label>
-              <Combobox
-                value={filterDraft.groupId}
-                onChange={(value) => setFilterDraft((prev) => ({ ...prev, groupId: value }))}
-                placeholder="Barcha guruhlar"
-                options={[
-                  { value: "", label: "Barcha guruhlar" },
-                  ...financeFilterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
-                ]}
-              />
-            </div>
+            {isTeacherTarget && (
+              <>
+                <div>
+                  <Label>Fan</Label>
+                  <Combobox
+                    value={filterDraft.subjectId}
+                    onChange={(value) =>
+                      setFilterDraft((prev) => ({ ...prev, subjectId: value, groupId: "" }))
+                    }
+                    placeholder="Barcha fanlar"
+                    options={[
+                      { value: "", label: "Barcha fanlar" },
+                      ...subjects.map((s) => ({ value: String(s.id), label: s.name })),
+                    ]}
+                  />
+                </div>
+                <div>
+                  <Label>Guruh</Label>
+                  <Combobox
+                    value={filterDraft.groupId}
+                    onChange={(value) => setFilterDraft((prev) => ({ ...prev, groupId: value }))}
+                    placeholder="Barcha guruhlar"
+                    options={[
+                      { value: "", label: "Barcha guruhlar" },
+                      ...financeFilterGroupOptions.map((g) => ({ value: String(g.id), label: g.name })),
+                    ]}
+                  />
+                </div>
+              </>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button className="flex-1" onClick={applyFinanceFilters}>
                 Qo'llash
@@ -473,7 +558,7 @@ export function StaffDetailPage() {
 
       {isPayoutModalOpen && (
         <Modal title="Pul berish (balansdan yechish)" onClose={() => setIsPayoutModalOpen(false)}>
-          <form onSubmit={handlePayout} className="space-y-4">
+          <form onSubmit={requestPayout} className="space-y-4">
             <div>
               <Label>Summa</Label>
               <Input
@@ -497,6 +582,32 @@ export function StaffDetailPage() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={isPayoutConfirmOpen}
+        title="Pul berishni tasdiqlang"
+        message={`${staffMember.full_name}ga ${Number(payoutAmount || 0).toLocaleString("uz-UZ")} so'm berilsinmi? Summani diqqat bilan tekshiring.`}
+        confirmLabel="Ha, berish"
+        variant="danger"
+        isLoading={isSubmitting}
+        onConfirm={confirmPayout}
+        onClose={() => setIsPayoutConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={reverseTarget !== null}
+        title="To'lovni bekor qilish"
+        message={
+          reverseTarget
+            ? `${Math.abs(reverseTarget.amount).toLocaleString("uz-UZ")} so'mlik to'lov bekor qilinsinmi? Summa balansga qaytariladi.`
+            : ""
+        }
+        confirmLabel="Ha, bekor qilish"
+        variant="danger"
+        isLoading={isReversing}
+        onConfirm={handleReverse}
+        onClose={() => setReverseTarget(null)}
+      />
 
       {isEditModalOpen && (
         <Modal title="Ma'lumotlarni tahrirlash" onClose={() => setIsEditModalOpen(false)}>

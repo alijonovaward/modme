@@ -18,6 +18,7 @@ REQUIRED_COLUMNS = {
         "comment": "VARCHAR",
         "student_id": "INTEGER",
         "created_by_id": "INTEGER",
+        "reversed_at": "TIMESTAMP",
     },
     "group_students": {
         "status_reason": "VARCHAR",

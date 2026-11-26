@@ -54,6 +54,7 @@ export interface TeacherTransaction {
   type: TeacherTransactionType;
   comment: string | null;
   created_at: string;
+  reversed_at: string | null;
   student_name: string | null;
   group_name: string | null;
   lesson_date: string | null;
@@ -80,6 +81,7 @@ export interface TeacherTransactionGlobalListItem {
   type: TeacherTransactionType;
   comment: string | null;
   created_at: string;
+  reversed_at: string | null;
   group_id: number | null;
   group_name: string | null;
   lesson_date: string | null;
