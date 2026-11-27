@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { listAuditLogs } from "../../api/endpoints";
 import {
   Card,
@@ -64,6 +65,19 @@ function formatDateTime(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function targetHref(log: AuditLogItem): string | null {
+  switch (log.target_type) {
+    case "student":
+      return `/admin/students/${log.target_id}`;
+    case "staff":
+      return `/superadmin/staff/${log.target_id}`;
+    case "group":
+      return `/admin/groups/${log.target_id}`;
+    default:
+      return null;
+  }
 }
 
 function formatDetails(log: AuditLogItem): string | null {
@@ -186,7 +200,13 @@ export function AuditLogPage() {
                     {ACTION_LABELS[log.action] ?? log.action}
                   </td>
                   <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
-                    {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                    {targetHref(log) ? (
+                      <Link to={targetHref(log)!} className="text-indigo-600 hover:underline dark:text-indigo-400">
+                        {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                      </Link>
+                    ) : (
+                      <>{TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}</>
+                    )}
                   </td>
                   <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                     {formatDetails(log) ?? "—"}
@@ -205,7 +225,13 @@ export function AuditLogPage() {
                   </p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                     {log.actor_name ?? "Noma'lum"} ·{" "}
-                    {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                    {targetHref(log) ? (
+                      <Link to={targetHref(log)!} className="text-indigo-600 hover:underline dark:text-indigo-400">
+                        {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                      </Link>
+                    ) : (
+                      <>{TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}</>
+                    )}
                     {formatDetails(log) ? ` · ${formatDetails(log)}` : ""}
                   </p>
                 </div>

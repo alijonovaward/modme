@@ -362,7 +362,8 @@ def update_user_password(
             status_code=403, detail="Boshqa bosh administratorning parolini o'zgartira olmaysiz"
         )
     user.hashed_password = hash_password(payload.new_password)
-    log_action(db, current_user.id, "user.password_changed", "user", user.id)
+    target_type = "student" if user.role == UserRole.student else "staff"
+    log_action(db, current_user.id, "user.password_changed", target_type, user.id)
     db.commit()
     db.refresh(user)
     return user
