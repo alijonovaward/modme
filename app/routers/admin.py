@@ -174,6 +174,10 @@ def update_staff_user(
     user = db.get(User, user_id)
     if user is None or user.role == UserRole.student:
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    if user.role == UserRole.superadmin and user.id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Boshqa bosh administratorning ma'lumotlarini tahrirlay olmaysiz"
+        )
 
     if user.role == UserRole.teacher and payload.teacher_percentage is None:
         raise HTTPException(status_code=400, detail="O'qituvchi uchun foiz stavkasi kiritilishi shart")
@@ -303,6 +307,10 @@ def update_user_password(
     if current_user.role == UserRole.admin and user.role in (UserRole.admin, UserRole.superadmin):
         raise HTTPException(
             status_code=403, detail="Admin boshqa adminning yoki superadminning parolini o'zgartira olmaydi"
+        )
+    if user.role == UserRole.superadmin and user.id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Boshqa bosh administratorning parolini o'zgartira olmaysiz"
         )
     user.hashed_password = hash_password(payload.new_password)
     db.commit()

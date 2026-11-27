@@ -346,3 +346,38 @@ def test_reusing_a_deleted_students_phone_gives_a_restore_hint(client, superadmi
     )
     assert resp.status_code == 400, resp.text
     assert "Eski Ism" in resp.json()["detail"]
+
+
+def _make_second_superadmin(db_session, phone: str = "+998900400021") -> User:
+    second = User(
+        full_name="Second Super",
+        phone=phone,
+        hashed_password=hash_password("admin123"),
+        role=UserRole.superadmin,
+    )
+    db_session.add(second)
+    db_session.commit()
+    db_session.refresh(second)
+    return second
+
+
+def test_superadmin_cannot_edit_another_superadmins_profile(client, superadmin_headers, db_session):
+    second = _make_second_superadmin(db_session)
+
+    resp = client.put(
+        f"/api/v1/admin/users/{second.id}",
+        headers=superadmin_headers,
+        json={"full_name": "Changed", "phone": second.phone},
+    )
+    assert resp.status_code == 403, resp.text
+
+
+def test_superadmin_cannot_change_another_superadmins_password(client, superadmin_headers, db_session):
+    second = _make_second_superadmin(db_session, phone="+998900400022")
+
+    resp = client.put(
+        f"/api/v1/admin/users/{second.id}/password",
+        headers=superadmin_headers,
+        json={"new_password": "newpass123"},
+    )
+    assert resp.status_code == 403, resp.text

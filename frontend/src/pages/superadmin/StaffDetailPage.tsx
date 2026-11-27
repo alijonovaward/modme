@@ -307,6 +307,11 @@ export function StaffDetailPage() {
 
   const isTeacherTarget = staffMember.role === "teacher";
   const canPayout = isTeacherTarget || (staffMember.role === "admin" && viewer?.role === "superadmin");
+  const activeGroupCount = groups.filter((g) => g.status === "active").length;
+  const activeGroupsClause =
+    activeGroupCount > 0
+      ? `${activeGroupCount} ta faol guruhi avtomatik muzlatiladi`
+      : "faol guruhi yo'q, hech narsa muzlatilmaydi";
 
   return (
     <Layout>
@@ -725,7 +730,7 @@ export function StaffDetailPage() {
         message={
           staffMember.is_active
             ? isTeacherTarget
-              ? `${staffMember.full_name} bloklansinmi? Uning dars o'tayotgan barcha faol guruhlari avtomatik muzlatiladi.`
+              ? `${staffMember.full_name} bloklansinmi? Uning ${activeGroupsClause}.`
               : `${staffMember.full_name} bloklansinmi?`
             : `${staffMember.full_name} faollashtirilsinmi?`
         }
@@ -740,7 +745,7 @@ export function StaffDetailPage() {
         title="O'chirishni tasdiqlang"
         message={
           isTeacherTarget
-            ? `${staffMember.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi, dars o'tayotgan barcha faol guruhlari muzlatiladi. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`
+            ? `${staffMember.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi, uning ${activeGroupsClause}. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`
             : `${staffMember.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`
         }
         confirmLabel="Ha, o'chirish"
