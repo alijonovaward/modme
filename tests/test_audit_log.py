@@ -1,3 +1,5 @@
+import json
+
 from tests.conftest import make_staff, make_student
 
 
@@ -64,3 +66,54 @@ def test_staff_block_delete_restore_and_password_change_write_audit_log_entries(
 def test_only_superadmin_can_view_audit_logs(client, admin_headers):
     resp = client.get("/api/v1/admin/audit-logs", headers=admin_headers)
     assert resp.status_code == 403, resp.text
+
+
+def test_changing_teacher_percentage_writes_an_audit_log_entry_with_old_and_new_value(
+    client, superadmin_headers
+):
+    teacher = make_staff(
+        client, superadmin_headers, role="teacher", phone="+998900600004", teacher_percentage=40
+    )
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}",
+        headers=superadmin_headers,
+        json={
+            "full_name": teacher["full_name"],
+            "phone": teacher["phone"],
+            "teacher_percentage": 55,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "teacher.percentage_changed" and l["target_id"] == teacher["id"]
+    )
+    assert entry["details"] is not None
+    details = json.loads(entry["details"])
+    assert details == {"old": 40.0, "new": 55}
+
+
+def test_updating_teacher_without_changing_percentage_does_not_write_an_audit_log_entry(
+    client, superadmin_headers
+):
+    teacher = make_staff(
+        client, superadmin_headers, role="teacher", phone="+998900600005", teacher_percentage=40
+    )
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}",
+        headers=superadmin_headers,
+        json={
+            "full_name": "Changed Name",
+            "phone": teacher["phone"],
+            "teacher_percentage": 40,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    assert not any(
+        l["action"] == "teacher.percentage_changed" and l["target_id"] == teacher["id"] for l in logs
+    )

@@ -189,10 +189,20 @@ def update_staff_user(
 
     _check_phone_available(db, payload.phone, exclude_id=user.id)
 
+    old_percentage = user.teacher_percentage
     user.full_name = payload.full_name
     user.phone = payload.phone
     if user.role == UserRole.teacher:
         user.teacher_percentage = payload.teacher_percentage
+        if old_percentage != payload.teacher_percentage:
+            log_action(
+                db,
+                current_user.id,
+                "teacher.percentage_changed",
+                "staff",
+                user.id,
+                {"old": old_percentage, "new": payload.teacher_percentage},
+            )
     db.commit()
     db.refresh(user)
     return user

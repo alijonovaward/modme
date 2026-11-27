@@ -23,6 +23,7 @@ const ACTION_LABELS: Record<string, string> = {
   "staff.deleted": "Xodim o'chirildi",
   "staff.restored": "Xodim tiklandi",
   "user.password_changed": "Parol o'zgartirildi",
+  "teacher.percentage_changed": "O'qituvchi foizi o'zgartirildi",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
@@ -36,6 +37,19 @@ function formatDateTime(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function formatDetails(log: AuditLogItem): string | null {
+  if (!log.details) return null;
+  try {
+    const parsed = JSON.parse(log.details) as Record<string, unknown>;
+    if (log.action === "teacher.percentage_changed" && "old" in parsed && "new" in parsed) {
+      return `${parsed.old ?? "—"}% → ${parsed.new ?? "—"}%`;
+    }
+    return JSON.stringify(parsed);
+  } catch {
+    return log.details;
+  }
 }
 
 export function AuditLogPage() {
@@ -77,7 +91,7 @@ export function AuditLogPage() {
         ) : (
           <>
           <div className="hidden sm:block">
-            <Table headers={["Sana", "Kim", "Amal", "Nishon"]}>
+            <Table headers={["Sana", "Kim", "Amal", "Nishon", "Tafsilot"]}>
               {logs.map((log) => (
                 <tr key={log.id}>
                   <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
@@ -91,6 +105,9 @@ export function AuditLogPage() {
                   </td>
                   <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                     {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                  </td>
+                  <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
+                    {formatDetails(log) ?? "—"}
                   </td>
                 </tr>
               ))}
@@ -107,6 +124,7 @@ export function AuditLogPage() {
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                     {log.actor_name ?? "Noma'lum"} ·{" "}
                     {TARGET_TYPE_LABELS[log.target_type] ?? log.target_type} #{log.target_id}
+                    {formatDetails(log) ? ` · ${formatDetails(log)}` : ""}
                   </p>
                 </div>
                 <p className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
