@@ -24,12 +24,22 @@ const ACTION_LABELS: Record<string, string> = {
   "staff.restored": "Xodim tiklandi",
   "user.password_changed": "Parol o'zgartirildi",
   "teacher.percentage_changed": "O'qituvchi foizi o'zgartirildi",
+  "group.teacher_reassigned": "Guruh o'qituvchisi almashtirildi",
+  "group.price_changed": "Guruh narxi o'zgartirildi",
+  "group.status_changed": "Guruh holati o'zgartirildi",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
   student: "O'quvchi",
   staff: "Xodim",
   user: "Foydalanuvchi",
+  group: "Guruh",
+};
+
+const GROUP_STATUS_LABELS: Record<string, string> = {
+  active: "Faol",
+  frozen: "Muzlatilgan",
+  archived: "Arxivlangan",
 };
 
 function formatDateTime(value: string): string {
@@ -45,6 +55,17 @@ function formatDetails(log: AuditLogItem): string | null {
     const parsed = JSON.parse(log.details) as Record<string, unknown>;
     if (log.action === "teacher.percentage_changed" && "old" in parsed && "new" in parsed) {
       return `${parsed.old ?? "—"}% → ${parsed.new ?? "—"}%`;
+    }
+    if (log.action === "group.price_changed" && "old" in parsed && "new" in parsed) {
+      return `${Number(parsed.old).toLocaleString("uz-UZ")} so'm → ${Number(parsed.new).toLocaleString("uz-UZ")} so'm`;
+    }
+    if (log.action === "group.status_changed" && "old" in parsed && "new" in parsed) {
+      const oldLabel = GROUP_STATUS_LABELS[String(parsed.old)] ?? String(parsed.old);
+      const newLabel = GROUP_STATUS_LABELS[String(parsed.new)] ?? String(parsed.new);
+      return `${oldLabel} → ${newLabel}`;
+    }
+    if (log.action === "group.teacher_reassigned" && "old_teacher_id" in parsed && "new_teacher_id" in parsed) {
+      return `O'qituvchi #${parsed.old_teacher_id} → #${parsed.new_teacher_id}`;
     }
     return JSON.stringify(parsed);
   } catch {

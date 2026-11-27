@@ -6,6 +6,7 @@ from sqlalchemy import case
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.money import round_som
@@ -235,11 +236,35 @@ def update_group(
 
     _raise_if_schedule_conflict(db, payload.teacher_id, payload.schedule, exclude_group_id=group.id)
 
+    old_teacher_id = group.teacher_id
+    old_lesson_price = group.lesson_price
+    new_lesson_price = round_som(payload.lesson_price)
+
     group.name = payload.name
     group.subject_id = payload.subject_id
     group.teacher_id = payload.teacher_id
-    group.lesson_price = round_som(payload.lesson_price)
+    group.lesson_price = new_lesson_price
     _replace_group_schedule(db, group.id, payload.schedule)
+
+    if old_teacher_id != payload.teacher_id:
+        log_action(
+            db,
+            current_user.id,
+            "group.teacher_reassigned",
+            "group",
+            group.id,
+            {"old_teacher_id": old_teacher_id, "new_teacher_id": payload.teacher_id},
+        )
+    if old_lesson_price != new_lesson_price:
+        log_action(
+            db,
+            current_user.id,
+            "group.price_changed",
+            "group",
+            group.id,
+            {"old": int(old_lesson_price), "new": int(new_lesson_price)},
+        )
+
     db.commit()
     db.refresh(group)
     group.schedule = payload.schedule
@@ -717,7 +742,17 @@ def update_group_status(
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
     group = _get_group_or_404(db, group_id)
+    old_status = group.status
     group.status = payload.status
+    if old_status != payload.status:
+        log_action(
+            db,
+            current_user.id,
+            "group.status_changed",
+            "group",
+            group.id,
+            {"old": old_status.value, "new": payload.status.value},
+        )
     db.commit()
     db.refresh(group)
     return group

@@ -1,6 +1,6 @@
 import json
 
-from tests.conftest import make_staff, make_student
+from tests.conftest import make_group, make_staff, make_student, make_subject
 
 
 def test_blocking_a_student_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
@@ -117,3 +117,76 @@ def test_updating_teacher_without_changing_percentage_does_not_write_an_audit_lo
     assert not any(
         l["action"] == "teacher.percentage_changed" and l["target_id"] == teacher["id"] for l in logs
     )
+
+
+def test_changing_group_price_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600006")
+    subject = make_subject(client, admin_headers, "Audit-Subject")
+    group = make_group(
+        client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"], lesson_price=30000
+    )
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}",
+        headers=admin_headers,
+        json={
+            "name": group["name"],
+            "subject_id": subject["id"],
+            "teacher_id": teacher["id"],
+            "lesson_price": 45000,
+            "schedule": [],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "group.price_changed" and l["target_id"] == group["id"]
+    )
+    assert json.loads(entry["details"]) == {"old": 30000, "new": 45000}
+
+
+def test_reassigning_a_groups_teacher_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher_a = make_staff(client, superadmin_headers, role="teacher", phone="+998900600007")
+    teacher_b = make_staff(client, superadmin_headers, role="teacher", phone="+998900600008")
+    subject = make_subject(client, admin_headers, "Audit-Subject-2")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher_a["id"])
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}",
+        headers=admin_headers,
+        json={
+            "name": group["name"],
+            "subject_id": subject["id"],
+            "teacher_id": teacher_b["id"],
+            "lesson_price": group["lesson_price"],
+            "schedule": [],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "group.teacher_reassigned" and l["target_id"] == group["id"]
+    )
+    assert json.loads(entry["details"]) == {
+        "old_teacher_id": teacher_a["id"],
+        "new_teacher_id": teacher_b["id"],
+    }
+
+
+def test_changing_group_status_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600009")
+    subject = make_subject(client, admin_headers, "Audit-Subject-3")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}/status", headers=admin_headers, json={"status": "frozen"}
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "group.status_changed" and l["target_id"] == group["id"]
+    )
+    assert json.loads(entry["details"]) == {"old": "active", "new": "frozen"}
