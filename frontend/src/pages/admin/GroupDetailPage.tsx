@@ -17,6 +17,7 @@ import {
   Button,
   Card,
   Combobox,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -78,6 +79,7 @@ export function GroupDetailPage() {
   const [editScheduleDays, setEditScheduleDays] = useState<number[]>([]);
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
+  const [isReactivateConfirmOpen, setIsReactivateConfirmOpen] = useState(false);
 
   const attendanceFilter = useDateRangeFilter((range) => reloadAttendance(range));
 
@@ -195,6 +197,8 @@ export function GroupDetailPage() {
     }
     setError(null);
     setSuccess(null);
+    const wasFrozen = group.status === "frozen";
+    const teacherChanged = Number(editTeacherId) !== group.teacher_id;
     try {
       await updateGroup(id, {
         name: editName,
@@ -209,6 +213,22 @@ export function GroupDetailPage() {
       });
       setSuccess("Guruh ma'lumotlari saqlandi");
       setIsEditModalOpen(false);
+      await loadAll();
+      if (wasFrozen && teacherChanged) {
+        setIsReactivateConfirmOpen(true);
+      }
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleReactivateAfterReassign = async () => {
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateGroupStatus(id, "active");
+      setSuccess("Guruh qayta faollashtirildi");
+      setIsReactivateConfirmOpen(false);
       await loadAll();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -485,6 +505,16 @@ export function GroupDetailPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={isReactivateConfirmOpen}
+        title="Guruhni faollashtirish"
+        message="Guruh muzlatilgan edi. Yangi o'qituvchi bilan qayta faollashtirib qo'yaylikmi?"
+        confirmLabel="Ha, faollashtirish"
+        variant="primary"
+        onConfirm={handleReactivateAfterReassign}
+        onClose={() => setIsReactivateConfirmOpen(false)}
+      />
     </Layout>
   );
 }
