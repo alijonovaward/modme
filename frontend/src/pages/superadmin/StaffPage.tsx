@@ -46,6 +46,7 @@ export function StaffPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [draftRoleFilter, setDraftRoleFilter] = useState<UserRole | "">("");
@@ -58,12 +59,18 @@ export function StaffPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const load = async (pageArg: number, searchArg: string, roleArg: UserRole | "") => {
+  const load = async (
+    pageArg: number,
+    searchArg: string,
+    roleArg: UserRole | "",
+    showDeletedArg: boolean,
+  ) => {
     setIsLoading(true);
     try {
       const data = await listStaffUsersPage({
         search: searchArg || undefined,
         role: roleArg || undefined,
+        show_deleted: showDeletedArg || undefined,
         page: pageArg,
         page_size: PAGE_SIZE,
       });
@@ -78,9 +85,9 @@ export function StaffPage() {
   };
 
   useEffect(() => {
-    load(1, debouncedSearch, roleFilter);
+    load(1, debouncedSearch, roleFilter, showDeleted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, roleFilter]);
+  }, [debouncedSearch, roleFilter, showDeleted]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -127,7 +134,7 @@ export function StaffPage() {
       setSuccess("Xodim muvaffaqiyatli yaratildi");
       setIsModalOpen(false);
       resetForm();
-      await load(page, debouncedSearch, roleFilter);
+      await load(page, debouncedSearch, roleFilter, showDeleted);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -161,12 +168,24 @@ export function StaffPage() {
           <Button variant="secondary" onClick={openFilterModal}>
             Filterlar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Button>
+          <button
+            onClick={() => setShowDeleted((prev) => !prev)}
+            className={`select-none rounded-xl px-3.5 py-2 text-sm font-medium transition-all active:scale-95 ${
+              showDeleted ? "bg-rose-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+            }`}
+          >
+            O'chirilganlar
+          </button>
           <Button
             variant="secondary"
             onClick={() =>
               downloadXlsx(
                 "/api/v1/admin/users/export",
-                { search: debouncedSearch || undefined, role: roleFilter || undefined },
+                {
+                  search: debouncedSearch || undefined,
+                  role: roleFilter || undefined,
+                  show_deleted: showDeleted || undefined,
+                },
                 "xodimlar.xlsx",
               )
             }
@@ -192,10 +211,16 @@ export function StaffPage() {
                     <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
                       {ROLE_LABEL[s.role] ?? s.role}
                     </Badge>
-                    {!s.is_active && (
+                    {s.deleted_at ? (
                       <span className="ml-1">
-                        <Badge color="red">Bloklangan</Badge>
+                        <Badge color="red">O'chirilgan</Badge>
                       </span>
+                    ) : (
+                      !s.is_active && (
+                        <span className="ml-1">
+                          <Badge color="red">Bloklangan</Badge>
+                        </span>
+                      )
                     )}
                   </td>
                   <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
@@ -223,7 +248,11 @@ export function StaffPage() {
                     <Badge color={s.role === "superadmin" ? "amber" : "slate"}>
                       {ROLE_LABEL[s.role] ?? s.role}
                     </Badge>
-                    {!s.is_active && <Badge color="red">Bloklangan</Badge>}
+                    {s.deleted_at ? (
+                      <Badge color="red">O'chirilgan</Badge>
+                    ) : (
+                      !s.is_active && <Badge color="red">Bloklangan</Badge>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {s.teacher_percentage !== null ? `${s.teacher_percentage}% · ` : ""}
@@ -238,7 +267,7 @@ export function StaffPage() {
             page={page}
             pageCount={pageCount}
             total={total}
-            onPageChange={(next) => load(next, debouncedSearch, roleFilter)}
+            onPageChange={(next) => load(next, debouncedSearch, roleFilter, showDeleted)}
           />
           </>
         )}

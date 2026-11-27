@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
+  deleteStaffUser,
+  getStaffUser,
   getTeacherFinanceById,
   getTeacherStats,
   listGroups,
-  listStaffUsers,
   listSubjects,
   payoutTeacher,
+  restoreStaffUser,
   reverseTeacherTransaction,
   updateStaffStatus,
   updateStaffUser,
@@ -87,6 +89,8 @@ export function StaffDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isToggleActiveConfirmOpen, setIsToggleActiveConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [reverseTarget, setReverseTarget] = useState<TeacherTransaction | null>(null);
   const [isReversing, setIsReversing] = useState(false);
   const reverseIdempotencyKey = useIdempotencyKey();
@@ -94,14 +98,11 @@ export function StaffDetailPage() {
   const load = async (filters: FinanceFilters = financeFilters) => {
     setIsLoading(true);
     try {
-      const staff = await listStaffUsers();
-      const found = staff.find((s) => s.id === id) ?? null;
+      const found = await getStaffUser(id);
       setStaffMember(found);
-      if (found) {
-        setEditFullName(found.full_name);
-        setEditPhone(found.phone);
-        setEditPercentage(found.teacher_percentage != null ? String(found.teacher_percentage) : "");
-      }
+      setEditFullName(found.full_name);
+      setEditPhone(found.phone);
+      setEditPercentage(found.teacher_percentage != null ? String(found.teacher_percentage) : "");
       const isTeacherTarget = found?.role === "teacher";
       const canViewAdminFinance = found?.role === "admin" && viewer?.role === "superadmin";
       if (isTeacherTarget || canViewAdminFinance) {
@@ -208,6 +209,36 @@ export function StaffDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!staffMember) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteStaffUser(id);
+      setSuccess("Xodim o'chirildi");
+      setIsDeleteConfirmOpen(false);
+      setIsEditModalOpen(false);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!staffMember) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await restoreStaffUser(id);
+      setSuccess("Xodim tiklandi");
+      setIsRestoreConfirmOpen(false);
+      setIsEditModalOpen(false);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
   const requestPayout = (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(payoutAmount);
@@ -300,7 +331,11 @@ export function StaffDetailPage() {
             </button>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {!staffMember.is_active && <Badge color="red">Bloklangan</Badge>}
+            {staffMember.deleted_at ? (
+              <Badge color="red">O'chirilgan</Badge>
+            ) : (
+              !staffMember.is_active && <Badge color="red">Bloklangan</Badge>
+            )}
             <Badge color={staffMember.telegram_linked ? "green" : "slate"}>
               Telegram: {staffMember.telegram_linked ? "Ulangan" : "Ulanmagan"}
             </Badge>
@@ -653,13 +688,32 @@ export function StaffDetailPage() {
             <>
               <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
 
-              <Button
-                variant={staffMember.is_active ? "danger" : "secondary"}
-                className="w-full"
-                onClick={() => setIsToggleActiveConfirmOpen(true)}
-              >
-                {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
-              </Button>
+              {staffMember.deleted_at ? (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setIsRestoreConfirmOpen(true)}
+                >
+                  Tiklash
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <Button
+                    variant={staffMember.is_active ? "danger" : "secondary"}
+                    className="w-full"
+                    onClick={() => setIsToggleActiveConfirmOpen(true)}
+                  >
+                    {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="w-full"
+                    onClick={() => setIsDeleteConfirmOpen(true)}
+                  >
+                    O'chirish
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </Modal>
@@ -679,6 +733,30 @@ export function StaffDetailPage() {
         variant="danger"
         onConfirm={handleToggleActive}
         onClose={() => setIsToggleActiveConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="O'chirishni tasdiqlang"
+        message={
+          isTeacherTarget
+            ? `${staffMember.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi, dars o'tayotgan barcha faol guruhlari muzlatiladi. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`
+            : `${staffMember.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`
+        }
+        confirmLabel="Ha, o'chirish"
+        variant="danger"
+        onConfirm={handleDelete}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={isRestoreConfirmOpen}
+        title="Tiklashni tasdiqlang"
+        message={`${staffMember.full_name} tiklansinmi? U qaytadan ro'yxat va qidiruvda ko'rinadi.`}
+        confirmLabel="Ha, tiklash"
+        variant="primary"
+        onConfirm={handleRestore}
+        onClose={() => setIsRestoreConfirmOpen(false)}
       />
     </Layout>
   );

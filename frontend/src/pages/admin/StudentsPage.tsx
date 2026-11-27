@@ -44,6 +44,7 @@ export function StudentsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debtorsOnly, setDebtorsOnly] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
@@ -71,6 +72,7 @@ export function StudentsPage() {
     searchArg: string,
     debtorsOnlyArg: boolean,
     groupIdArg: string,
+    showDeletedArg: boolean,
   ) => {
     setIsLoading(true);
     try {
@@ -78,6 +80,7 @@ export function StudentsPage() {
         search: searchArg || undefined,
         debtors_only: debtorsOnlyArg || undefined,
         group_id: groupIdArg ? Number(groupIdArg) : undefined,
+        show_deleted: showDeletedArg || undefined,
         page: pageArg,
         page_size: PAGE_SIZE,
       });
@@ -93,9 +96,9 @@ export function StudentsPage() {
   };
 
   useEffect(() => {
-    load(1, debouncedSearch, debtorsOnly, groupId);
+    load(1, debouncedSearch, debtorsOnly, groupId, showDeleted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, debtorsOnly, groupId]);
+  }, [debouncedSearch, debtorsOnly, groupId, showDeleted]);
 
   useEffect(() => {
     listGroups().then(setGroups).catch(() => undefined);
@@ -160,7 +163,7 @@ export function StudentsPage() {
       setSuccess("O'quvchi muvaffaqiyatli qo'shildi ✨");
       setIsModalOpen(false);
       resetForm();
-      await load(page, debouncedSearch, debtorsOnly, groupId);
+      await load(page, debouncedSearch, debtorsOnly, groupId, showDeleted);
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -205,6 +208,14 @@ export function StudentsPage() {
           <Button variant="secondary" onClick={openFilterModal}>
             Filterlar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Button>
+          <button
+            onClick={() => setShowDeleted((prev) => !prev)}
+            className={`select-none rounded-xl px-3.5 py-2 text-sm font-medium transition-all active:scale-95 ${
+              showDeleted ? "bg-rose-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+            }`}
+          >
+            O'chirilganlar
+          </button>
           <Button
             variant="secondary"
             onClick={() =>
@@ -214,6 +225,7 @@ export function StudentsPage() {
                   search: debouncedSearch || undefined,
                   debtors_only: debtorsOnly || undefined,
                   group_id: groupId ? Number(groupId) : undefined,
+                  show_deleted: showDeleted || undefined,
                 },
                 "oquvchilar.xlsx",
               )
@@ -244,7 +256,9 @@ export function StudentsPage() {
                     {s.balance.toLocaleString("uz-UZ")} so'm
                   </td>
                   <td className="px-3.5 py-2.5">
-                    {s.is_active ? (
+                    {s.deleted_at ? (
+                      <Badge color="red">O'chirilgan</Badge>
+                    ) : s.is_active ? (
                       <Badge color="green">Faol</Badge>
                     ) : (
                       <Badge color="red">Bloklangan</Badge>
@@ -272,7 +286,9 @@ export function StudentsPage() {
                   >
                     {s.balance.toLocaleString("uz-UZ")} so'm
                   </p>
-                  {s.is_active ? (
+                  {s.deleted_at ? (
+                    <Badge color="red">O'chirilgan</Badge>
+                  ) : s.is_active ? (
                     <Badge color="green">Faol</Badge>
                   ) : (
                     <Badge color="red">Bloklangan</Badge>
@@ -286,7 +302,7 @@ export function StudentsPage() {
             page={page}
             pageCount={pageCount}
             total={total}
-            onPageChange={(next) => load(next, debouncedSearch, debtorsOnly, groupId)}
+            onPageChange={(next) => load(next, debouncedSearch, debtorsOnly, groupId, showDeleted)}
           />
           </>
         )}

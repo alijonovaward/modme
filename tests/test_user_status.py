@@ -1,3 +1,5 @@
+from app.core.security import hash_password
+from app.models.user import User, UserRole
 from tests.conftest import (
     add_student_to_group,
     auth_headers,
@@ -246,3 +248,101 @@ def test_deleted_student_rejects_double_delete_and_student_delete_rejects_studen
     student = make_student(client, admin_headers, phone="+998900400014")
     resp = client.delete(f"/api/v1/admin/users/{student['id']}", headers=superadmin_headers)
     assert resp.status_code == 404, resp.text
+
+
+def test_superadmin_cannot_block_or_delete_another_superadmin(client, superadmin_headers, db_session):
+    second = User(
+        full_name="Second Super",
+        phone="+998900400015",
+        hashed_password=hash_password("admin123"),
+        role=UserRole.superadmin,
+    )
+    db_session.add(second)
+    db_session.commit()
+    db_session.refresh(second)
+
+    resp = client.put(
+        f"/api/v1/admin/users/{second.id}/status",
+        headers=superadmin_headers,
+        json={"is_active": False},
+    )
+    assert resp.status_code == 403, resp.text
+
+    resp = client.delete(f"/api/v1/admin/users/{second.id}", headers=superadmin_headers)
+    assert resp.status_code == 403, resp.text
+
+
+def test_deleted_student_hidden_by_default_but_visible_with_show_deleted_filter(
+    client, superadmin_headers, admin_headers
+):
+    student = make_student(client, admin_headers, phone="+998900400016")
+    client.delete(f"/api/v1/students/{student['id']}", headers=admin_headers)
+
+    resp = client.get("/api/v1/students", headers=admin_headers)
+    ids = [s["id"] for s in resp.json()["items"]]
+    assert student["id"] not in ids
+
+    resp = client.get("/api/v1/students", headers=admin_headers, params={"show_deleted": True})
+    ids = [s["id"] for s in resp.json()["items"]]
+    assert student["id"] in ids
+
+
+def test_deleted_teacher_hidden_by_default_but_visible_with_show_deleted_filter(
+    client, superadmin_headers, admin_headers
+):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400017")
+    client.delete(f"/api/v1/admin/users/{teacher['id']}", headers=superadmin_headers)
+
+    resp = client.get("/api/v1/admin/users", headers=admin_headers)
+    ids = [s["id"] for s in resp.json()["items"]]
+    assert teacher["id"] not in ids
+
+    resp = client.get("/api/v1/admin/users", headers=admin_headers, params={"show_deleted": True})
+    ids = [s["id"] for s in resp.json()["items"]]
+    assert teacher["id"] in ids
+
+
+def test_restoring_a_deleted_student_clears_deleted_at_but_not_is_active(
+    client, superadmin_headers, admin_headers
+):
+    student = make_student(client, admin_headers, phone="+998900400018")
+    client.delete(f"/api/v1/students/{student['id']}", headers=admin_headers)
+
+    resp = client.put(f"/api/v1/students/{student['id']}/restore", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["deleted_at"] is None
+    assert body["is_active"] is False
+
+    resp = client.put(f"/api/v1/students/{student['id']}/restore", headers=admin_headers)
+    assert resp.status_code == 400, resp.text
+
+
+def test_restoring_a_deleted_teacher_requires_superadmin(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400019")
+    client.delete(f"/api/v1/admin/users/{teacher['id']}", headers=superadmin_headers)
+
+    resp = client.put(f"/api/v1/admin/users/{teacher['id']}/restore", headers=admin_headers)
+    assert resp.status_code == 403, resp.text
+
+    resp = client.put(f"/api/v1/admin/users/{teacher['id']}/restore", headers=superadmin_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["deleted_at"] is None
+
+
+def test_reusing_a_deleted_students_phone_gives_a_restore_hint(client, superadmin_headers, admin_headers):
+    student = make_student(client, admin_headers, full_name="Eski Ism", phone="+998900400020")
+    client.delete(f"/api/v1/students/{student['id']}", headers=admin_headers)
+
+    resp = client.post(
+        "/api/v1/students",
+        headers=admin_headers,
+        json={
+            "full_name": "Yangi Ism",
+            "phone": "+998900400020",
+            "password": "pass123",
+            "role": "student",
+        },
+    )
+    assert resp.status_code == 400, resp.text
+    assert "Eski Ism" in resp.json()["detail"]

@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  deleteStudent,
   depositToStudent,
+  getStudent,
   getStudentAttendanceHistory,
   getStudentGroups,
   getStudentPendingCharges,
-  listStudents,
+  restoreStudent,
   updateStudent,
   updateStudentStatus,
   updateUserPassword,
@@ -83,17 +85,16 @@ export function StudentDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isToggleActiveConfirmOpen, setIsToggleActiveConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
     try {
-      const students = await listStudents();
-      const found = students.find((s) => s.id === id) ?? null;
+      const found = await getStudent(id);
       setStudent(found);
-      if (found) {
-        setEditFullName(found.full_name);
-        setEditPhone(found.phone);
-      }
+      setEditFullName(found.full_name);
+      setEditPhone(found.phone);
       setAttendance(await getStudentAttendanceHistory(id));
       setGroups(await getStudentGroups(id));
       setPendingCharges(await getStudentPendingCharges(id));
@@ -200,6 +201,36 @@ export function StudentDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!student) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteStudent(id);
+      setSuccess("O'quvchi o'chirildi");
+      setIsDeleteConfirmOpen(false);
+      setIsEditModalOpen(false);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!student) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await restoreStudent(id);
+      setSuccess("O'quvchi tiklandi");
+      setIsRestoreConfirmOpen(false);
+      setIsEditModalOpen(false);
+      await load();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
   const {
     page: attendancePage,
     setPage: setAttendancePage,
@@ -242,7 +273,11 @@ export function StudentDetailPage() {
             </button>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {!student.is_active && <Badge color="red">Bloklangan</Badge>}
+            {student.deleted_at ? (
+              <Badge color="red">O'chirilgan</Badge>
+            ) : (
+              !student.is_active && <Badge color="red">Bloklangan</Badge>
+            )}
             <Badge color={student.telegram_linked ? "green" : "slate"}>
               Telegram: {student.telegram_linked ? "Ulangan" : "Ulanmagan"}
             </Badge>
@@ -591,13 +626,24 @@ export function StudentDetailPage() {
 
           <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
 
-          <Button
-            variant={student.is_active ? "danger" : "secondary"}
-            className="w-full"
-            onClick={() => setIsToggleActiveConfirmOpen(true)}
-          >
-            {student.is_active ? "Bloklash" : "Faollashtirish"}
-          </Button>
+          {student.deleted_at ? (
+            <Button variant="secondary" className="w-full" onClick={() => setIsRestoreConfirmOpen(true)}>
+              Tiklash
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Button
+                variant={student.is_active ? "danger" : "secondary"}
+                className="w-full"
+                onClick={() => setIsToggleActiveConfirmOpen(true)}
+              >
+                {student.is_active ? "Bloklash" : "Faollashtirish"}
+              </Button>
+              <Button variant="danger" className="w-full" onClick={() => setIsDeleteConfirmOpen(true)}>
+                O'chirish
+              </Button>
+            </div>
+          )}
         </Modal>
       )}
 
@@ -613,6 +659,26 @@ export function StudentDetailPage() {
         variant="danger"
         onConfirm={handleToggleActive}
         onClose={() => setIsToggleActiveConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="O'chirishni tasdiqlang"
+        message={`${student.full_name} o'chirilsinmi? U ro'yxat va qidiruvdan butunlay yashiriladi (lekin to'lov tarixi saqlanadi), barcha faol guruh a'zoliklari muzlatiladi. Keyin "O'chirilganlar" filtri orqali topib tiklash mumkin.`}
+        confirmLabel="Ha, o'chirish"
+        variant="danger"
+        onConfirm={handleDelete}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={isRestoreConfirmOpen}
+        title="Tiklashni tasdiqlang"
+        message={`${student.full_name} tiklansinmi? U qaytadan ro'yxat va qidiruvda ko'rinadi.`}
+        confirmLabel="Ha, tiklash"
+        variant="primary"
+        onConfirm={handleRestore}
+        onClose={() => setIsRestoreConfirmOpen(false)}
       />
     </Layout>
   );

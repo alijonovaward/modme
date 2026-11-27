@@ -57,10 +57,16 @@ export async function listStaffUsers(role?: UserRole): Promise<User[]> {
 export async function listStaffUsersPage(params: {
   role?: UserRole;
   search?: string;
+  show_deleted?: boolean;
   page: number;
   page_size: number;
 }): Promise<StaffListPage> {
   const { data } = await apiClient.get<StaffListPage>("/api/v1/admin/users", { params });
+  return data;
+}
+
+export async function getStaffUser(userId: number): Promise<User> {
+  const { data } = await apiClient.get<User>(`/api/v1/admin/users/${userId}`);
   return data;
 }
 
@@ -97,6 +103,16 @@ export async function updateStaffStatus(userId: number, isActive: boolean): Prom
   return data;
 }
 
+export async function deleteStaffUser(userId: number): Promise<User> {
+  const { data } = await apiClient.delete<User>(`/api/v1/admin/users/${userId}`);
+  return data;
+}
+
+export async function restoreStaffUser(userId: number): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/admin/users/${userId}/restore`);
+  return data;
+}
+
 export async function listStudents(): Promise<User[]> {
   const { data } = await apiClient.get<StudentListPage>("/api/v1/students", {
     params: { page_size: 500 },
@@ -108,10 +124,16 @@ export async function listStudentsPage(params: {
   search?: string;
   debtors_only?: boolean;
   group_id?: number;
+  show_deleted?: boolean;
   page: number;
   page_size: number;
 }): Promise<StudentListPage> {
   const { data } = await apiClient.get<StudentListPage>("/api/v1/students", { params });
+  return data;
+}
+
+export async function getStudent(studentId: number): Promise<User> {
+  const { data } = await apiClient.get<User>(`/api/v1/students/${studentId}`);
   return data;
 }
 
@@ -139,6 +161,16 @@ export async function updateStudentStatus(studentId: number, isActive: boolean):
   const { data } = await apiClient.put<User>(`/api/v1/students/${studentId}/status`, {
     is_active: isActive,
   });
+  return data;
+}
+
+export async function deleteStudent(studentId: number): Promise<User> {
+  const { data } = await apiClient.delete<User>(`/api/v1/students/${studentId}`);
+  return data;
+}
+
+export async function restoreStudent(studentId: number): Promise<User> {
+  const { data } = await apiClient.put<User>(`/api/v1/students/${studentId}/restore`);
   return data;
 }
 

@@ -15,6 +15,7 @@ export interface User {
   teacher_percentage: number | null;
   balance: number;
   is_active: boolean;
+  deleted_at: string | null;
   created_at: string;
   telegram_linked: boolean;
 }

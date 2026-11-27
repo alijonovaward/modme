@@ -38,9 +38,16 @@ router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 
 def _build_students_query(
-    db: Session, search: Optional[str], debtors_only: bool, group_id: Optional[int] = None
+    db: Session,
+    search: Optional[str],
+    debtors_only: bool,
+    group_id: Optional[int] = None,
+    show_deleted: bool = False,
 ):
     query = db.query(User).filter(User.role == UserRole.student)
+    query = query.filter(User.deleted_at.isnot(None)) if show_deleted else query.filter(
+        User.deleted_at.is_(None)
+    )
     if search:
         term = f"%{search}%"
         query = query.filter(or_(User.full_name.ilike(term), User.phone.ilike(term)))
@@ -60,16 +67,19 @@ def list_students(
     search: Optional[str] = Query(default=None),
     debtors_only: bool = Query(default=False),
     group_id: Optional[int] = Query(default=None),
+    show_deleted: bool = Query(default=False),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
-    query = _build_students_query(db, search, debtors_only, group_id)
+    query = _build_students_query(db, search, debtors_only, group_id, show_deleted)
 
     total = query.count()
     debtor_count = (
-        db.query(User).filter(User.role == UserRole.student, User.balance < 0).count()
+        db.query(User)
+        .filter(User.role == UserRole.student, User.balance < 0, User.deleted_at.is_(None))
+        .count()
     )
     items = (
         query.order_by(User.created_at.desc())
@@ -85,21 +95,52 @@ def export_students(
     search: Optional[str] = Query(default=None),
     debtors_only: bool = Query(default=False),
     group_id: Optional[int] = Query(default=None),
+    show_deleted: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
     students = (
-        _build_students_query(db, search, debtors_only, group_id)
+        _build_students_query(db, search, debtors_only, group_id, show_deleted)
         .order_by(User.created_at.desc())
         .all()
     )
     rows = [
-        [s.full_name, s.phone, s.balance, "Faol" if s.is_active else "Bloklangan"]
+        [
+            s.full_name,
+            s.phone,
+            s.balance,
+            "O'chirilgan" if s.deleted_at is not None else ("Faol" if s.is_active else "Bloklangan"),
+        ]
         for s in students
     ]
     return xlsx_response(
         "oquvchilar.xlsx", ["F.I.O", "Telefon", "Balans", "Holat"], rows
     )
+
+
+def _check_phone_available(db: Session, phone: str, exclude_id: Optional[int] = None) -> None:
+    """Raises 400 if `phone` is already taken. A phone that belongs to a soft-deleted
+    row can't just be reused for a new signup (the DB's unique constraint would still
+    reject it) - so this surfaces that as a distinct, actionable message instead of
+    the generic "already registered" one, since the right fix is usually to restore
+    the old record rather than create a duplicate.
+    """
+    query = db.query(User).filter(User.phone == phone)
+    if exclude_id is not None:
+        query = query.filter(User.id != exclude_id)
+    existing = query.first()
+    if existing is None:
+        return
+    if existing.deleted_at is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Bu telefon raqam oldin o'chirilgan '{existing.full_name}' ismli yozuvga tegishli. "
+                "Agar bu o'sha odam bo'lsa, uni tiklang (ro'yxatda \"O'chirilganlar\" filtri orqali "
+                "topiladi), aks holda boshqa raqam kiriting."
+            ),
+        )
+    raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -111,9 +152,7 @@ def create_student(
     if payload.role != UserRole.student:
         raise HTTPException(status_code=400, detail="Ushbu endpoint faqat o'quvchi qo'shish uchun")
 
-    existing = db.query(User).filter(User.phone == payload.phone).first()
-    if existing is not None:
-        raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
+    _check_phone_available(db, payload.phone)
 
     student = User(
         full_name=payload.full_name,
@@ -140,6 +179,17 @@ def _get_student_or_404(db: Session, student_id: int) -> User:
     return student
 
 
+@router.get("/{student_id}", response_model=UserOut)
+def get_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    # Deliberately ignores deleted_at - a detail page must still be able to open a
+    # deleted student (e.g. to restore them), even though the list view hides them.
+    return _get_student_or_404(db, student_id)
+
+
 @router.put("/{student_id}", response_model=UserOut)
 def update_student(
     student_id: int,
@@ -149,13 +199,7 @@ def update_student(
 ):
     student = _get_student_or_404(db, student_id)
 
-    existing = (
-        db.query(User)
-        .filter(User.phone == payload.phone, User.id != student.id)
-        .first()
-    )
-    if existing is not None:
-        raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
+    _check_phone_available(db, payload.phone, exclude_id=student.id)
 
     student.full_name = payload.full_name
     student.phone = payload.phone
@@ -229,6 +273,28 @@ def delete_student(
     student.is_active = False
     _freeze_active_group_memberships(db, student, "O'quvchi o'chirilgani uchun avtomatik muzlatildi")
 
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.put("/{student_id}/restore", response_model=UserOut)
+def restore_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    """Undoes a delete: clears deleted_at/deleted_by_id so the student reappears in
+    lists and search. Does NOT also reactivate the account (is_active stays False) -
+    that's a separate, deliberate step via `/status`, same as a group's freeze never
+    auto-resuming on reactivation.
+    """
+    student = _get_student_or_404(db, student_id)
+    if student.deleted_at is None:
+        raise HTTPException(status_code=400, detail="O'quvchi o'chirilmagan")
+
+    student.deleted_at = None
+    student.deleted_by_id = None
     db.commit()
     db.refresh(student)
     return student

@@ -12,10 +12,12 @@ vi.mock("../../components/Layout", () => ({
 vi.mock("../../api/endpoints", () => ({
   depositToStudent: vi.fn(),
   withdrawFromStudent: vi.fn(),
+  deleteStudent: vi.fn(),
+  getStudent: vi.fn(),
   getStudentAttendanceHistory: vi.fn(),
   getStudentGroups: vi.fn(),
   getStudentPendingCharges: vi.fn(),
-  listStudents: vi.fn(),
+  restoreStudent: vi.fn(),
   updateStudent: vi.fn(),
   updateStudentStatus: vi.fn(),
   updateUserPassword: vi.fn(),
@@ -23,10 +25,10 @@ vi.mock("../../api/endpoints", () => ({
 
 import {
   depositToStudent,
+  getStudent,
   getStudentAttendanceHistory,
   getStudentGroups,
   getStudentPendingCharges,
-  listStudents,
   withdrawFromStudent,
 } from "../../api/endpoints";
 
@@ -39,6 +41,7 @@ function makeStudent(): User {
     teacher_percentage: null,
     balance: 50000,
     is_active: true,
+    deleted_at: null,
     created_at: "2026-01-01T00:00:00",
     telegram_linked: false,
   };
@@ -55,7 +58,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  vi.mocked(listStudents).mockReset().mockResolvedValue([makeStudent()]);
+  vi.mocked(getStudent).mockReset().mockResolvedValue(makeStudent());
   vi.mocked(getStudentAttendanceHistory).mockReset().mockResolvedValue([]);
   vi.mocked(getStudentGroups).mockReset().mockResolvedValue([]);
   vi.mocked(getStudentPendingCharges).mockReset().mockResolvedValue([]);
