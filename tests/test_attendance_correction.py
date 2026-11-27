@@ -151,6 +151,68 @@ def test_frozen_student_is_never_charged_even_after_edit(client, superadmin_head
     assert _balance(db_session, student["id"]) == student_balance_before
 
 
+def test_dropped_student_is_never_charged_even_though_their_old_attendance_row_exists(
+    client, superadmin_headers, admin_headers, db_session
+):
+    """Regression test: dropping a student from a group must stop billing just like
+    freezing does - should_charge only used to check for `frozen`, so a `dropped`
+    membership was silently still billable."""
+    teacher, group, lesson, students, teacher_headers = _setup_lesson_with_attendance(
+        client, superadmin_headers, admin_headers, teacher_phone="+998900500009", student_phones=["+998900500010"]
+    )
+    student = students[0]
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}/students/{student['id']}",
+        headers=admin_headers,
+        json={"status": "dropped", "reason": "to'lamadi"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    student_balance_before = _balance(db_session, student["id"])
+    teacher_balance_before = _balance(db_session, teacher["id"])
+
+    resp = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp.status_code == 201, resp.text
+
+    assert _balance(db_session, student["id"]) == student_balance_before
+    assert _balance(db_session, teacher["id"]) == teacher_balance_before
+
+
+def test_frozen_group_stops_charging_a_lesson_created_before_the_freeze(
+    client, superadmin_headers, admin_headers, db_session
+):
+    """Regression test: freezing/archiving a GROUP only blocked new lessons and new
+    enrollments - a lesson created before the freeze could still be charged via
+    mark_attendance/update_attendance, since neither checked Group.status at all."""
+    teacher, group, lesson, students, teacher_headers = _setup_lesson_with_attendance(
+        client, superadmin_headers, admin_headers, teacher_phone="+998900500011", student_phones=["+998900500012"]
+    )
+    student = students[0]
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}/status", headers=admin_headers, json={"status": "frozen"}
+    )
+    assert resp.status_code == 200, resp.text
+
+    student_balance_before = _balance(db_session, student["id"])
+    teacher_balance_before = _balance(db_session, teacher["id"])
+
+    resp = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp.status_code == 201, resp.text
+
+    assert _balance(db_session, student["id"]) == student_balance_before
+    assert _balance(db_session, teacher["id"]) == teacher_balance_before
+
+
 def test_teacher_blocked_after_24h_but_admin_can_still_correct(client, superadmin_headers, admin_headers, db_session):
     teacher, group, lesson, students, teacher_headers = _setup_lesson_with_attendance(
         client, superadmin_headers, admin_headers, teacher_phone="+998900500009", student_phones=["+998900500010"]

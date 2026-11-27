@@ -692,10 +692,14 @@ def mark_attendance(
                 status_code=400, detail="Test natijasi faqat kelgan o'quvchiga kiritiladi"
             )
 
-        is_frozen = group_student.status == GroupStudentStatus.frozen
+        # Only an `active` membership in an `active` group gets charged - `frozen`
+        # (billing paused) and `dropped` (no longer enrolled) must both skip it, not
+        # just frozen, and a group frozen/archived after this lesson was already
+        # created must stop billing too, not just block new lessons/enrollments.
         should_charge = (
             item.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
-            and not is_frozen
+            and group.status == GroupStatus.active
+            and group_student.status == GroupStudentStatus.active
             and not item.is_trial
         )
 
@@ -818,7 +822,6 @@ def update_attendance(
         .filter(GroupStudent.group_id == group.id, GroupStudent.student_id == student_id)
         .first()
     )
-    is_frozen = group_student is not None and group_student.status == GroupStudentStatus.frozen
 
     # Lock the student/teacher rows BEFORE reading old_deduction/old_pending below, so a
     # second concurrent correction request blocks here (on Postgres) until the first one
@@ -827,9 +830,15 @@ def update_attendance(
     student = lock_user_for_update(db, student_id)
     teacher = lock_user_for_update(db, group.teacher_id)
 
+    # Only an `active` membership in an `active` group gets charged - `frozen`
+    # (billing paused) and `dropped` (no longer enrolled) must both skip it, not
+    # just frozen, and a group frozen/archived after this lesson was already
+    # created must stop billing too, not just block new lessons/enrollments.
     should_charge = (
         payload.status in (AttendanceStatus.present, AttendanceStatus.unexcused)
-        and not is_frozen
+        and group.status == GroupStatus.active
+        and group_student is not None
+        and group_student.status == GroupStudentStatus.active
         and not payload.is_trial
     )
     teacher_percentage = (teacher.teacher_percentage or 0.0) if teacher else 0.0
