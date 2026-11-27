@@ -34,6 +34,8 @@ REQUIRED_COLUMNS = {
         "telegram_chat_id": "VARCHAR",
         "deleted_at": "TIMESTAMP",
         "deleted_by_id": "INTEGER",
+        "failed_login_attempts": "INTEGER",
+        "locked_until": "TIMESTAMP",
     },
     "lessons": {
         "start_time": "TIME",
@@ -201,6 +203,9 @@ def _run_migrations() -> None:
     if "users" in existing_tables:
         with engine.begin() as conn:
             conn.execute(text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
+            conn.execute(
+                text("UPDATE users SET failed_login_attempts = 0 WHERE failed_login_attempts IS NULL")
+            )
 
     if "attendances" in existing_tables:
         with engine.begin() as conn:

@@ -18,10 +18,19 @@ def _validate_phone(value: str) -> str:
 Phone = Annotated[str, AfterValidator(_validate_phone)]
 
 
+def _validate_password(value: str) -> str:
+    if len(value) < 6:
+        raise ValueError("Parol kamida 6 belgidan iborat bo'lishi kerak")
+    return value
+
+
+Password = Annotated[str, AfterValidator(_validate_password)]
+
+
 class UserCreate(BaseModel):
     full_name: str
     phone: Phone
-    password: str
+    password: Password
     role: UserRole
     teacher_percentage: Optional[float] = None
 
@@ -47,7 +56,7 @@ class UserOut(BaseModel):
 
 
 class PasswordUpdate(BaseModel):
-    new_password: str
+    new_password: Password
 
 
 class StudentUpdate(BaseModel):

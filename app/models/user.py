@@ -31,3 +31,9 @@ class User(Base):
     # user is deleted - deleted_at marks the stronger, "hide from every list" state.
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Login lockout: counts consecutive wrong-password attempts, reset to 0 on a
+    # successful login. Once it hits the threshold (see app/routers/auth.py),
+    # locked_until is set and login is refused - without even checking the
+    # password - until that time passes.
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
