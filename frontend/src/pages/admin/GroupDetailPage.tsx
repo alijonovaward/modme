@@ -187,6 +187,7 @@ export function GroupDetailPage() {
   };
 
   const handleEditSubmit = async () => {
+    if (!group) return;
     if (!editSubjectId || !editTeacherId) {
       setError("Fan va o'qituvchini tanlang");
       return;

@@ -36,6 +36,7 @@ function makeStudent(overrides: Partial<User> = {}): User {
     teacher_percentage: null,
     balance: 10000,
     is_active: true,
+    deleted_at: null,
     created_at: "2026-01-01T00:00:00",
     telegram_linked: false,
     ...overrides,
