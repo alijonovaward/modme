@@ -12,7 +12,7 @@ from app.models.group_student import GroupStudent
 from app.models.lesson import Lesson
 from app.models.transaction import Transaction
 from app.models.user import User, UserRole
-from app.routers.groups import _build_groups_query, _format_schedule_cell, _to_list_item
+from app.routers.groups import _build_groups_query, _format_schedule_cell, _to_list_items_bulk
 from app.routers.lessons import ATTENDANCE_STATUS_LABELS, _build_lesson_items, _build_lessons_query
 from app.routers.stats import _compute_stats_overview
 from app.routers.students import _build_student_transactions_query, _student_attendance_rows
@@ -107,8 +107,7 @@ def _handle_teacher_groups(db: Session, user: User) -> str:
     if not groups:
         return "Sizga biriktirilgan guruhlar yo'q."
     lines = []
-    for group in groups:
-        item = _to_list_item(group, db)
+    for item in _to_list_items_bulk(groups, db):
         lines.append(f"{item.name} ({item.subject_name}) — {_format_schedule_cell(item.schedule)}")
     return "👥 Guruhlaringiz:\n\n" + "\n".join(lines)
 

@@ -65,6 +65,47 @@ def _to_list_item(group: Group, db: Session) -> GroupListItemOut:
     )
 
 
+def _to_list_items_bulk(groups: list[Group], db: Session) -> list[GroupListItemOut]:
+    """Same output as calling `_to_list_item` once per group, but with 4 queries
+    total instead of 3 per group - the subjects/teachers/schedules for every group
+    are fetched together, up front."""
+    if not groups:
+        return []
+
+    subjects_by_id = {
+        s.id: s
+        for s in db.query(Subject).filter(Subject.id.in_({g.subject_id for g in groups}))
+    }
+    teachers_by_id = {
+        u.id: u
+        for u in db.query(User).filter(User.id.in_({g.teacher_id for g in groups}))
+    }
+    schedules_by_group_id: dict[int, list[GroupScheduleItem]] = {}
+    for row in db.query(GroupSchedule).filter(GroupSchedule.group_id.in_([g.id for g in groups])):
+        schedules_by_group_id.setdefault(row.group_id, []).append(
+            GroupScheduleItem(weekday=row.weekday, start_time=row.start_time, end_time=row.end_time)
+        )
+
+    items = []
+    for group in groups:
+        subject = subjects_by_id.get(group.subject_id)
+        teacher = teachers_by_id.get(group.teacher_id)
+        items.append(
+            GroupListItemOut(
+                id=group.id,
+                name=group.name,
+                subject_id=group.subject_id,
+                subject_name=subject.name if subject else "",
+                teacher_id=group.teacher_id,
+                teacher_name=teacher.full_name if teacher else "",
+                lesson_price=group.lesson_price,
+                status=group.status,
+                schedule=schedules_by_group_id.get(group.id, []),
+            )
+        )
+    return items
+
+
 def _times_overlap(a_start, a_end, b_start, b_end) -> bool:
     return a_start < b_end and b_start < a_end
 
@@ -223,7 +264,7 @@ def list_groups(
     ),
 ):
     query = _build_groups_query(db, current_user, teacher_id)
-    return [_to_list_item(group, db) for group in query.all()]
+    return _to_list_items_bulk(query.all(), db)
 
 
 GROUP_STATUS_LABELS = {
@@ -253,8 +294,7 @@ def export_groups(
 ):
     groups = _build_groups_query(db, current_user, teacher_id).all()
     rows = []
-    for group in groups:
-        item = _to_list_item(group, db)
+    for item in _to_list_items_bulk(groups, db):
         rows.append(
             [
                 item.name,
@@ -285,9 +325,14 @@ def get_group_detail(
         raise HTTPException(status_code=403, detail="Bu guruh sizga biriktirilmagan")
 
     roster = db.query(GroupStudent).filter(GroupStudent.group_id == group.id).all()
+    students_by_id = (
+        {u.id: u for u in db.query(User).filter(User.id.in_({gs.student_id for gs in roster}))}
+        if roster
+        else {}
+    )
     students = []
     for gs in roster:
-        student = db.get(User, gs.student_id)
+        student = students_by_id.get(gs.student_id)
         students.append(
             GroupRosterItemOut(
                 id=gs.id,
@@ -332,20 +377,29 @@ def get_group_attendance_stats(
         present = sum(1 for status, _ in records if status == AttendanceStatus.present)
         return round(present / len(records) * 100, 1)
 
-    results: list[StudentAttendanceStatsOut] = []
-    for gs in roster:
-        student = db.get(User, gs.student_id)
-        period_query = (
-            db.query(Attendance.status, Lesson.lesson_date)
+    student_ids = [gs.student_id for gs in roster]
+    students_by_id = (
+        {u.id: u for u in db.query(User).filter(User.id.in_(student_ids))} if student_ids else {}
+    )
+
+    records_by_student_id: dict[int, list] = {}
+    if student_ids:
+        attendance_query = (
+            db.query(Attendance.student_id, Attendance.status, Lesson.lesson_date)
             .join(Lesson, Lesson.id == Attendance.lesson_id)
-            .filter(Lesson.group_id == group_id, Attendance.student_id == gs.student_id)
+            .filter(Lesson.group_id == group_id, Attendance.student_id.in_(student_ids))
         )
         if date_from is not None:
-            period_query = period_query.filter(Lesson.lesson_date >= date_from)
+            attendance_query = attendance_query.filter(Lesson.lesson_date >= date_from)
         if date_to is not None:
-            period_query = period_query.filter(Lesson.lesson_date <= date_to)
-        rows = period_query.all()
+            attendance_query = attendance_query.filter(Lesson.lesson_date <= date_to)
+        for student_id, status, lesson_date in attendance_query.all():
+            records_by_student_id.setdefault(student_id, []).append((status, lesson_date))
 
+    results: list[StudentAttendanceStatsOut] = []
+    for gs in roster:
+        student = students_by_id.get(gs.student_id)
+        rows = records_by_student_id.get(gs.student_id, [])
         results.append(
             StudentAttendanceStatsOut(
                 student_id=gs.student_id,
