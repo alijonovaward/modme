@@ -8,6 +8,7 @@ import { HomePage } from "./pages/Home";
 import { StaffPage } from "./pages/superadmin/StaffPage";
 import { StaffDetailPage } from "./pages/superadmin/StaffDetailPage";
 import { StatsPage } from "./pages/superadmin/StatsPage";
+import { AuditLogPage } from "./pages/superadmin/AuditLogPage";
 import { StudentsPage } from "./pages/admin/StudentsPage";
 import { StudentDetailPage } from "./pages/admin/StudentDetailPage";
 import { SubjectsPage } from "./pages/admin/SubjectsPage";
@@ -51,6 +52,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["superadmin"]}>
                 <StatsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/audit-log"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin"]}>
+                <AuditLogPage />
               </ProtectedRoute>
             }
           />

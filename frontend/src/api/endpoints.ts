@@ -4,6 +4,7 @@ import type {
   AttendanceDetail,
   AttendanceGrid,
   AttendanceStatus,
+  AuditLogListPage,
   GroupDetail,
   GroupListItem,
   GroupScheduleItem,
@@ -62,6 +63,14 @@ export async function listStaffUsersPage(params: {
   page_size: number;
 }): Promise<StaffListPage> {
   const { data } = await apiClient.get<StaffListPage>("/api/v1/admin/users", { params });
+  return data;
+}
+
+export async function listAuditLogs(params: {
+  page: number;
+  page_size: number;
+}): Promise<AuditLogListPage> {
+  const { data } = await apiClient.get<AuditLogListPage>("/api/v1/admin/audit-logs", { params });
   return data;
 }
 

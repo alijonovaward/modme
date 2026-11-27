@@ -6,12 +6,15 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.security import hash_password
 from app.db.session import get_db
+from app.models.audit_log import AuditLog
 from app.models.group import Group, GroupStatus
 from app.models.user import User, UserRole
+from app.schemas.audit_log import AuditLogListOut, AuditLogOut
 from app.schemas.user import (
     ActiveStatusUpdate,
     PasswordUpdate,
@@ -234,6 +237,13 @@ def update_staff_status(
         # account but says nothing about the groups they teach.
         _freeze_active_groups(db, user)
 
+    log_action(
+        db,
+        current_user.id,
+        "staff.blocked" if not payload.is_active else "staff.unblocked",
+        "staff",
+        user.id,
+    )
     db.commit()
     db.refresh(user)
     return user
@@ -267,6 +277,7 @@ def delete_staff_user(
     if user.role == UserRole.teacher:
         _freeze_active_groups(db, user)
 
+    log_action(db, current_user.id, "staff.deleted", "staff", user.id)
     db.commit()
     db.refresh(user)
     return user
@@ -289,6 +300,7 @@ def restore_staff_user(
 
     user.deleted_at = None
     user.deleted_by_id = None
+    log_action(db, current_user.id, "staff.restored", "staff", user.id)
     db.commit()
     db.refresh(user)
     return user
@@ -313,6 +325,37 @@ def update_user_password(
             status_code=403, detail="Boshqa bosh administratorning parolini o'zgartira olmaysiz"
         )
     user.hashed_password = hash_password(payload.new_password)
+    log_action(db, current_user.id, "user.password_changed", "user", user.id)
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/audit-logs", response_model=AuditLogListOut)
+def list_audit_logs(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin)),
+):
+    query = (
+        db.query(AuditLog, User)
+        .outerjoin(User, User.id == AuditLog.actor_id)
+        .order_by(AuditLog.created_at.desc())
+    )
+    total = query.count()
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [
+        AuditLogOut(
+            id=log.id,
+            actor_id=log.actor_id,
+            actor_name=actor.full_name if actor else None,
+            action=log.action,
+            target_type=log.target_type,
+            target_id=log.target_id,
+            details=log.details,
+            created_at=log.created_at,
+        )
+        for log, actor in rows
+    ]
+    return AuditLogListOut(items=items, total=total, page=page, page_size=page_size)

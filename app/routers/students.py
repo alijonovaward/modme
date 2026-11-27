@@ -7,6 +7,7 @@ from sqlalchemy import case, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.idempotency import (
@@ -247,6 +248,13 @@ def update_student_status(
             db, student, "O'quvchi bloklangani uchun avtomatik muzlatildi"
         )
 
+    log_action(
+        db,
+        current_user.id,
+        "student.blocked" if not payload.is_active else "student.unblocked",
+        "student",
+        student.id,
+    )
     db.commit()
     db.refresh(student)
     return student
@@ -273,6 +281,7 @@ def delete_student(
     student.is_active = False
     _freeze_active_group_memberships(db, student, "O'quvchi o'chirilgani uchun avtomatik muzlatildi")
 
+    log_action(db, current_user.id, "student.deleted", "student", student.id)
     db.commit()
     db.refresh(student)
     return student
@@ -295,6 +304,7 @@ def restore_student(
 
     student.deleted_at = None
     student.deleted_by_id = None
+    log_action(db, current_user.id, "student.restored", "student", student.id)
     db.commit()
     db.refresh(student)
     return student

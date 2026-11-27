@@ -267,6 +267,19 @@ export interface StudentListPage extends Page<User> {
 
 export type StaffListPage = Page<User>;
 
+export interface AuditLogItem {
+  id: number;
+  actor_id: number | null;
+  actor_name: string | null;
+  action: string;
+  target_type: string;
+  target_id: number;
+  details: string | null;
+  created_at: string;
+}
+
+export type AuditLogListPage = Page<AuditLogItem>;
+
 export interface LessonListPage extends Page<LessonListItem> {
   completed_count: number;
   planned_count: number;

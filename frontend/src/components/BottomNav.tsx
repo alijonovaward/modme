@@ -155,6 +155,15 @@ const SUPERADMIN_MORE_ITEMS: BottomNavItem[] = [
       </svg>
     ),
   },
+  {
+    to: "/superadmin/audit-log",
+    label: "Harakatlar tarixi",
+    icon: (active) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "0" : "1.8"} className="h-5 w-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+  },
 ];
 
 export function BottomNav() {

@@ -10,6 +10,7 @@ from app.models.attendance import Attendance, AttendanceStatus
 from app.models.pending_charge import PendingCharge
 from app.models.app_state import AppState
 from app.models.idempotency_key import IdempotencyKey
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "PendingCharge",
     "AppState",
     "IdempotencyKey",
+    "AuditLog",
 ]
