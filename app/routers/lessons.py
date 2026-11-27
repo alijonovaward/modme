@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
-from app.core.money import lock_user_for_update, pct_of, to_decimal
+from app.core.money import ZERO, lock_user_for_update, pct_of, to_decimal
 from app.core.telegram import send_telegram_message
 from app.db.session import get_db
 from app.models.attendance import Attendance, AttendanceStatus
@@ -139,7 +140,6 @@ def _reverse_lesson_fee(
     db: Session,
     student: User,
     lesson: Lesson,
-    teacher: Optional[User],
     created_by_id: int,
     comment_suffix: str,
 ) -> None:
@@ -147,6 +147,12 @@ def _reverse_lesson_fee(
     lesson+student: refunds the full original fee to the student, claws back every
     teacher earning tied to this lesson (including ones credited later via partial
     pending-charge settlements), and drops any still-unresolved PendingCharge.
+
+    Earnings are clawed back from whichever teacher each one was actually credited to
+    (`TeacherTransaction.teacher_id`), never from the group's current teacher - a group
+    can be reassigned to a different teacher after the lesson was taught, and a
+    same-day attendance correction must not take money from that new teacher for a
+    lesson they never earned from.
     """
     deductions = (
         db.query(Transaction)
@@ -180,12 +186,22 @@ def _reverse_lesson_fee(
         )
         .all()
     )
-    total_teacher_share = sum(e.amount for e in earnings)
-    if teacher is not None and total_teacher_share > 0:
+    shares_by_teacher_id: dict[int, Decimal] = {}
+    for earning in earnings:
+        shares_by_teacher_id[earning.teacher_id] = (
+            shares_by_teacher_id.get(earning.teacher_id, ZERO) + earning.amount
+        )
+
+    for teacher_id, total_teacher_share in shares_by_teacher_id.items():
+        if total_teacher_share <= 0:
+            continue
+        teacher = lock_user_for_update(db, teacher_id)
+        if teacher is None:
+            continue
         teacher.balance -= total_teacher_share
         db.add(
             TeacherTransaction(
-                teacher_id=teacher.id,
+                teacher_id=teacher_id,
                 lesson_id=lesson.id,
                 student_id=student.id,
                 amount=-total_teacher_share,
@@ -260,7 +276,7 @@ def _sync_lesson_charge(
         db.delete(old_pending)
 
     if was_charged and not should_charge:
-        _reverse_lesson_fee(db, student, lesson, teacher, created_by_id, comment_suffix)
+        _reverse_lesson_fee(db, student, lesson, created_by_id, comment_suffix)
         return False
 
     if not was_charged and not was_pending and should_charge:

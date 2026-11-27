@@ -214,6 +214,51 @@ def test_double_submit_attendance_does_not_deduct_twice(client, superadmin_heade
     assert resp.status_code == 200, resp.text
 
 
+def test_correcting_attendance_after_group_is_reassigned_claws_back_the_original_teacher(
+    client, superadmin_headers, admin_headers, db_session
+):
+    """Regression test: a lesson taught by teacher A, corrected after the group is
+    reassigned to teacher B, must claw the earning back from A (who actually earned
+    it) - not from B, who never earned anything from that lesson."""
+    teacher_a, group, lesson, students, teacher_a_headers = _setup_lesson_with_attendance(
+        client, superadmin_headers, admin_headers, teacher_phone="+998900500070", student_phones=["+998900500071"]
+    )
+    student = students[0]
+
+    resp = client.post(
+        f"/api/v1/lessons/{lesson['id']}/attendance",
+        headers=teacher_a_headers,
+        json={"records": [{"student_id": student["id"], "status": "present", "correct_count": 5, "total_count": 5}]},
+    )
+    assert resp.status_code == 201, resp.text
+    assert _balance(db_session, teacher_a["id"]) == 20000.0  # 40% of 50000
+
+    teacher_b = make_staff(client, superadmin_headers, role="teacher", phone="+998900500072", teacher_percentage=40)
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}",
+        headers=admin_headers,
+        json={
+            "name": group["name"],
+            "subject_id": group["subject_id"],
+            "teacher_id": teacher_b["id"],
+            "lesson_price": group["lesson_price"],
+            "schedule": [],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    teacher_b_headers = auth_headers(login(client, teacher_b["phone"], "pass123"))
+    resp = client.put(
+        f"/api/v1/lessons/{lesson['id']}/attendance/{student['id']}",
+        headers=teacher_b_headers,
+        json={"status": "excused"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    assert _balance(db_session, teacher_a["id"]) == 0.0, "the teacher who actually earned it must be clawed back"
+    assert _balance(db_session, teacher_b["id"]) == 0.0, "the new teacher never earned from this lesson"
+
+
 def test_resubmitting_mark_attendance_with_a_different_status_still_reverses_the_charge(
     client, superadmin_headers, admin_headers, db_session
 ):
