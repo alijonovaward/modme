@@ -1,8 +1,9 @@
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,8 @@ from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.audit_log import AuditLog
 from app.models.group import Group, GroupStatus
+from app.models.teacher_transaction import TeacherTransaction, TeacherTransactionType
+from app.models.transaction import Transaction, TransactionType
 from app.models.user import User, UserRole
 from app.schemas.audit_log import AuditLogListOut, AuditLogOut
 from app.schemas.user import (
@@ -348,24 +351,83 @@ def list_audit_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.superadmin)),
 ):
-    query = (
-        db.query(AuditLog, User)
-        .outerjoin(User, User.id == AuditLog.actor_id)
-        .order_by(AuditLog.created_at.desc())
+    """Merges the AuditLog table with the deliberate money movements that already
+    carry their own created_by_id - a manual deposit/withdrawal and a teacher payout
+    (including its reversal) - into one timeline. Routine, automatic entries (a
+    lesson charge, a lesson-earning credit) are excluded: they're not an admin
+    decision to review, and including them would flood this feed.
+    """
+    entries: list[dict] = [
+        {
+            "id": log.id,
+            "actor_id": log.actor_id,
+            "action": log.action,
+            "target_type": log.target_type,
+            "target_id": log.target_id,
+            "details": log.details,
+            "created_at": log.created_at,
+        }
+        for log in db.query(AuditLog).all()
+    ]
+
+    manual_transactions = (
+        db.query(Transaction)
+        .filter(
+            or_(
+                Transaction.type == TransactionType.deposit,
+                and_(Transaction.type == TransactionType.deduction, Transaction.lesson_id.is_(None)),
+            )
+        )
+        .all()
     )
-    total = query.count()
-    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    for t in manual_transactions:
+        entries.append(
+            {
+                "id": -t.id,
+                "actor_id": t.created_by_id,
+                "action": "transaction.deposit" if t.type == TransactionType.deposit else "transaction.withdraw",
+                "target_type": "student",
+                "target_id": t.student_id,
+                "details": json.dumps({"amount": int(t.amount), "comment": t.comment}),
+                "created_at": t.created_at,
+            }
+        )
+
+    payouts = (
+        db.query(TeacherTransaction).filter(TeacherTransaction.type == TeacherTransactionType.payout).all()
+    )
+    for t in payouts:
+        entries.append(
+            {
+                "id": -(1_000_000_000 + t.id),
+                "actor_id": t.created_by_id,
+                "action": "teacher_transaction.payout",
+                "target_type": "staff",
+                "target_id": t.teacher_id,
+                "details": json.dumps({"amount": int(t.amount), "comment": t.comment}),
+                "created_at": t.created_at,
+            }
+        )
+
+    entries.sort(key=lambda e: e["created_at"], reverse=True)
+    total = len(entries)
+    start = (page - 1) * page_size
+    page_entries = entries[start : start + page_size]
+
+    actor_ids = {e["actor_id"] for e in page_entries if e["actor_id"] is not None}
+    actors_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(actor_ids))} if actor_ids else {}
+
     items = [
         AuditLogOut(
-            id=log.id,
-            actor_id=log.actor_id,
-            actor_name=actor.full_name if actor else None,
-            action=log.action,
-            target_type=log.target_type,
-            target_id=log.target_id,
-            details=log.details,
-            created_at=log.created_at,
+            id=e["id"],
+            actor_id=e["actor_id"],
+            actor_name=actors_by_id[e["actor_id"]].full_name if e["actor_id"] in actors_by_id else None,
+            action=e["action"],
+            target_type=e["target_type"],
+            target_id=e["target_id"],
+            details=e["details"],
+            created_at=e["created_at"],
         )
-        for log, actor in rows
+        for e in page_entries
     ]
     return AuditLogListOut(items=items, total=total, page=page, page_size=page_size)

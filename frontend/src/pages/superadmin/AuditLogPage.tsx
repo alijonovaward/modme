@@ -27,6 +27,9 @@ const ACTION_LABELS: Record<string, string> = {
   "group.teacher_reassigned": "Guruh o'qituvchisi almashtirildi",
   "group.price_changed": "Guruh narxi o'zgartirildi",
   "group.status_changed": "Guruh holati o'zgartirildi",
+  "transaction.deposit": "Balansga pul qo'yildi",
+  "transaction.withdraw": "Balansdan pul qaytarib berildi",
+  "teacher_transaction.payout": "O'qituvchiga to'lov",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
@@ -66,6 +69,15 @@ function formatDetails(log: AuditLogItem): string | null {
     }
     if (log.action === "group.teacher_reassigned" && "old_teacher_id" in parsed && "new_teacher_id" in parsed) {
       return `O'qituvchi #${parsed.old_teacher_id} → #${parsed.new_teacher_id}`;
+    }
+    if (
+      (log.action === "transaction.deposit" ||
+        log.action === "transaction.withdraw" ||
+        log.action === "teacher_transaction.payout") &&
+      "amount" in parsed
+    ) {
+      const amountText = `${Math.abs(Number(parsed.amount)).toLocaleString("uz-UZ")} so'm`;
+      return parsed.comment ? `${amountText} — ${parsed.comment}` : amountText;
     }
     return JSON.stringify(parsed);
   } catch {
