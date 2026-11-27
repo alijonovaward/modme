@@ -86,6 +86,7 @@ export function StaffDetailPage() {
   const [editPercentage, setEditPercentage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isToggleActiveConfirmOpen, setIsToggleActiveConfirmOpen] = useState(false);
   const [reverseTarget, setReverseTarget] = useState<TeacherTransaction | null>(null);
   const [isReversing, setIsReversing] = useState(false);
   const reverseIdempotencyKey = useIdempotencyKey();
@@ -199,6 +200,7 @@ export function StaffDetailPage() {
     try {
       await updateStaffStatus(id, !staffMember.is_active);
       setSuccess(staffMember.is_active ? "Xodim bloklandi" : "Xodim faollashtirildi");
+      setIsToggleActiveConfirmOpen(false);
       setIsEditModalOpen(false);
       await load();
     } catch (err) {
@@ -654,7 +656,7 @@ export function StaffDetailPage() {
               <Button
                 variant={staffMember.is_active ? "danger" : "secondary"}
                 className="w-full"
-                onClick={handleToggleActive}
+                onClick={() => setIsToggleActiveConfirmOpen(true)}
               >
                 {staffMember.is_active ? "Bloklash" : "Faollashtirish"}
               </Button>
@@ -662,6 +664,22 @@ export function StaffDetailPage() {
           )}
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={isToggleActiveConfirmOpen}
+        title={staffMember.is_active ? "Bloklashni tasdiqlang" : "Faollashtirishni tasdiqlang"}
+        message={
+          staffMember.is_active
+            ? isTeacherTarget
+              ? `${staffMember.full_name} bloklansinmi? Uning dars o'tayotgan barcha faol guruhlari avtomatik muzlatiladi.`
+              : `${staffMember.full_name} bloklansinmi?`
+            : `${staffMember.full_name} faollashtirilsinmi?`
+        }
+        confirmLabel={staffMember.is_active ? "Ha, bloklash" : "Ha, faollashtirish"}
+        variant="danger"
+        onConfirm={handleToggleActive}
+        onClose={() => setIsToggleActiveConfirmOpen(false)}
+      />
     </Layout>
   );
 }

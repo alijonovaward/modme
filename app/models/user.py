@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Boolean, Column, Integer, String, Float, Numeric, DateTime, Enum
+from sqlalchemy import Boolean, Column, Integer, String, Float, Numeric, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 
 from app.db.session import Base
@@ -26,3 +26,8 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     telegram_chat_id = Column(String, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Soft delete: distinct from is_active (which also covers a plain, reversible
+    # block). A deleted user always has is_active=False too, but not every blocked
+    # user is deleted - deleted_at marks the stronger, "hide from every list" state.
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)

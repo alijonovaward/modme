@@ -164,6 +164,26 @@ def update_student(
     return student
 
 
+def _freeze_active_group_memberships(db: Session, student: User, reason: str) -> None:
+    """Freezes every group the student is actively enrolled in, so attendance/charges
+    stop too. Used whenever a student is blocked or deleted - either way, billing
+    must not silently continue for someone who can no longer use their account.
+    Reactivating/restoring does NOT auto-unfreeze: an admin must resume each group on
+    purpose, so billing never silently restarts.
+    """
+    active_memberships = (
+        db.query(GroupStudent)
+        .filter(
+            GroupStudent.student_id == student.id,
+            GroupStudent.status == GroupStudentStatus.active,
+        )
+        .all()
+    )
+    for membership in active_memberships:
+        membership.status = GroupStudentStatus.frozen
+        membership.status_reason = reason
+
+
 @router.put("/{student_id}/status", response_model=UserOut)
 def update_student_status(
     student_id: int,
@@ -172,25 +192,42 @@ def update_student_status(
     current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
 ):
     student = _get_student_or_404(db, student_id)
+    if student.deleted_at is not None:
+        raise HTTPException(
+            status_code=400, detail="O'chirilgan o'quvchini bloklash/faollashtirish mumkin emas"
+        )
     student.is_active = payload.is_active
 
     if not payload.is_active:
-        # Blocking a student stops them from using their own account, but says
-        # nothing on its own about whether they're still being billed - freeze
-        # every group they're actively enrolled in so attendance/charges stop too.
-        # Reactivating does NOT auto-unfreeze: an admin must resume each group on
-        # purpose, so billing never silently restarts.
-        active_memberships = (
-            db.query(GroupStudent)
-            .filter(
-                GroupStudent.student_id == student.id,
-                GroupStudent.status == GroupStudentStatus.active,
-            )
-            .all()
+        _freeze_active_group_memberships(
+            db, student, "O'quvchi bloklangani uchun avtomatik muzlatildi"
         )
-        for membership in active_memberships:
-            membership.status = GroupStudentStatus.frozen
-            membership.status_reason = "O'quvchi bloklangani uchun avtomatik muzlatildi"
+
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.delete("/{student_id}", response_model=UserOut)
+def delete_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin, UserRole.admin)),
+):
+    """Soft-deletes a student: distinct from blocking (`/status`). A deleted student
+    is also blocked (is_active=False), but is additionally hidden from every list and
+    search - unlike a plain block, which just stops the account from being used while
+    staying visible everywhere. The row itself is never removed, so existing ledger
+    history keeps resolving their name correctly.
+    """
+    student = _get_student_or_404(db, student_id)
+    if student.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="O'quvchi allaqachon o'chirilgan")
+
+    student.deleted_at = datetime.now(timezone.utc)
+    student.deleted_by_id = current_user.id
+    student.is_active = False
+    _freeze_active_group_memberships(db, student, "O'quvchi o'chirilgani uchun avtomatik muzlatildi")
 
     db.commit()
     db.refresh(student)

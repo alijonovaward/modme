@@ -146,3 +146,103 @@ def test_blocking_student_auto_freezes_active_groups_but_unblocking_does_not_unf
     roster = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()["students"]
     membership = next(s for s in roster if s["student_id"] == student["id"])
     assert membership["status"] == "frozen", "reactivating a student must not silently resume billing"
+
+
+def test_blocking_teacher_auto_freezes_active_groups_but_unblocking_does_not_unfreeze(
+    client, superadmin_headers, admin_headers
+):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400009")
+    subject = make_subject(client, admin_headers, "Biology")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}/status",
+        headers=superadmin_headers,
+        json={"is_active": False},
+    )
+    assert resp.status_code == 200, resp.text
+
+    group_detail = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()
+    assert group_detail["status"] == "frozen", group_detail
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}/status",
+        headers=superadmin_headers,
+        json={"is_active": True},
+    )
+    assert resp.status_code == 200, resp.text
+
+    group_detail = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()
+    assert group_detail["status"] == "frozen", "reactivating a teacher must not silently resume their groups"
+
+
+def test_deleted_student_is_blocked_frozen_and_cannot_be_toggled(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400010")
+    student = make_student(client, admin_headers, phone="+998900400011")
+    subject = make_subject(client, admin_headers, "History")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+    add_student_to_group(client, admin_headers, group_id=group["id"], student_id=student["id"])
+
+    resp = client.delete(f"/api/v1/students/{student['id']}", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["is_active"] is False
+    assert body["deleted_at"] is not None
+
+    roster = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()["students"]
+    membership = next(s for s in roster if s["student_id"] == student["id"])
+    assert membership["status"] == "frozen", membership
+
+    resp = client.delete(f"/api/v1/students/{student['id']}", headers=admin_headers)
+    assert resp.status_code == 400, resp.text
+
+    resp = client.put(
+        f"/api/v1/students/{student['id']}/status",
+        headers=admin_headers,
+        json={"is_active": True},
+    )
+    assert resp.status_code == 400, resp.text
+
+
+def test_deleted_teacher_is_blocked_frozen_and_cannot_be_toggled(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400012")
+    subject = make_subject(client, admin_headers, "Physics")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+
+    resp = client.delete(f"/api/v1/admin/users/{teacher['id']}", headers=superadmin_headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["is_active"] is False
+    assert body["deleted_at"] is not None
+
+    group_detail = client.get(f"/api/v1/groups/{group['id']}", headers=admin_headers).json()
+    assert group_detail["status"] == "frozen", group_detail
+
+    resp = client.delete(f"/api/v1/admin/users/{teacher['id']}", headers=superadmin_headers)
+    assert resp.status_code == 400, resp.text
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}/status",
+        headers=superadmin_headers,
+        json={"is_active": True},
+    )
+    assert resp.status_code == 400, resp.text
+
+
+def test_admin_cannot_delete_self_and_admin_role_cannot_delete_staff(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900400013")
+
+    resp = client.delete(f"/api/v1/admin/users/{teacher['id']}", headers=admin_headers)
+    assert resp.status_code == 403, resp.text
+
+    me = client.get("/api/v1/auth/me", headers=superadmin_headers).json()
+    resp = client.delete(f"/api/v1/admin/users/{me['id']}", headers=superadmin_headers)
+    assert resp.status_code == 400, resp.text
+
+
+def test_deleted_student_rejects_double_delete_and_student_delete_rejects_student_role_mismatch(
+    client, superadmin_headers, admin_headers
+):
+    student = make_student(client, admin_headers, phone="+998900400014")
+    resp = client.delete(f"/api/v1/admin/users/{student['id']}", headers=superadmin_headers)
+    assert resp.status_code == 404, resp.text

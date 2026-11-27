@@ -32,6 +32,8 @@ REQUIRED_COLUMNS = {
     "users": {
         "is_active": "BOOLEAN",
         "telegram_chat_id": "VARCHAR",
+        "deleted_at": "TIMESTAMP",
+        "deleted_by_id": "INTEGER",
     },
     "lessons": {
         "start_time": "TIME",

@@ -15,6 +15,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmModal,
   ErrorMessage,
   extractErrorMessage,
   Input,
@@ -81,6 +82,7 @@ export function StudentDetailPage() {
   const [editPhone, setEditPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isToggleActiveConfirmOpen, setIsToggleActiveConfirmOpen] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
@@ -190,6 +192,7 @@ export function StudentDetailPage() {
     try {
       await updateStudentStatus(id, !student.is_active);
       setSuccess(student.is_active ? "O'quvchi bloklandi" : "O'quvchi faollashtirildi");
+      setIsToggleActiveConfirmOpen(false);
       setIsEditModalOpen(false);
       await load();
     } catch (err) {
@@ -591,12 +594,26 @@ export function StudentDetailPage() {
           <Button
             variant={student.is_active ? "danger" : "secondary"}
             className="w-full"
-            onClick={handleToggleActive}
+            onClick={() => setIsToggleActiveConfirmOpen(true)}
           >
             {student.is_active ? "Bloklash" : "Faollashtirish"}
           </Button>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={isToggleActiveConfirmOpen}
+        title={student.is_active ? "Bloklashni tasdiqlang" : "Faollashtirishni tasdiqlang"}
+        message={
+          student.is_active
+            ? `${student.full_name} bloklansinmi? Uning barcha faol guruh a'zoliklari avtomatik muzlatiladi.`
+            : `${student.full_name} faollashtirilsinmi?`
+        }
+        confirmLabel={student.is_active ? "Ha, bloklash" : "Ha, faollashtirish"}
+        variant="danger"
+        onConfirm={handleToggleActive}
+        onClose={() => setIsToggleActiveConfirmOpen(false)}
+      />
     </Layout>
   );
 }

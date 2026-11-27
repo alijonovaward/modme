@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,6 +10,7 @@ from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.security import hash_password
 from app.db.session import get_db
+from app.models.group import Group, GroupStatus
 from app.models.user import User, UserRole
 from app.schemas.user import (
     ActiveStatusUpdate,
@@ -151,6 +153,19 @@ def update_staff_user(
     return user
 
 
+def _freeze_active_groups(db: Session, teacher: User) -> None:
+    """Freezes every group the teacher actively teaches, so lesson/attendance
+    creation stops too. Used whenever a teacher is blocked or deleted. Reactivating/
+    restoring does NOT auto-unfreeze, same as with students."""
+    active_groups = (
+        db.query(Group)
+        .filter(Group.teacher_id == teacher.id, Group.status == GroupStatus.active)
+        .all()
+    )
+    for group in active_groups:
+        group.status = GroupStatus.frozen
+
+
 @router.put("/users/{user_id}/status", response_model=UserOut)
 def update_staff_status(
     user_id: int,
@@ -163,8 +178,49 @@ def update_staff_status(
         raise HTTPException(status_code=404, detail="Xodim topilmadi")
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="O'zingizni bloklay olmaysiz")
+    if user.deleted_at is not None:
+        raise HTTPException(
+            status_code=400, detail="O'chirilgan xodimni bloklash/faollashtirish mumkin emas"
+        )
 
     user.is_active = payload.is_active
+
+    if user.role == UserRole.teacher and not payload.is_active:
+        # Mirrors the student block flow: blocking a teacher stops their own
+        # account but says nothing about the groups they teach.
+        _freeze_active_groups(db, user)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete("/users/{user_id}", response_model=UserOut)
+def delete_staff_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.superadmin)),
+):
+    """Soft-deletes a teacher/admin: distinct from blocking (`/status`). A deleted
+    staff member is also blocked (is_active=False), but is additionally hidden from
+    every staff list and search. The row itself is never removed, so existing
+    ledger history (commissions, payouts) keeps resolving their name correctly.
+    """
+    user = db.get(User, user_id)
+    if user is None or user.role == UserRole.student:
+        raise HTTPException(status_code=404, detail="Xodim topilmadi")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="O'zingizni o'chira olmaysiz")
+    if user.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="Xodim allaqachon o'chirilgan")
+
+    user.deleted_at = datetime.now(timezone.utc)
+    user.deleted_by_id = current_user.id
+    user.is_active = False
+
+    if user.role == UserRole.teacher:
+        _freeze_active_groups(db, user)
+
     db.commit()
     db.refresh(user)
     return user

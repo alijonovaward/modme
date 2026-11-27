@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     teacher_percentage: Optional[float] = None
     balance: float
     is_active: bool
+    deleted_at: Optional[datetime] = None
     created_at: datetime
     telegram_chat_id: Optional[str] = Field(default=None, exclude=True)
 
