@@ -146,12 +146,21 @@ def create_staff_user(
     )
     db.add(user)
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         # Closes the race a pre-check alone can't: two near-simultaneous requests
         # with the same new phone number both passing the check above.
         db.rollback()
         raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
+    log_action(
+        db,
+        current_user.id,
+        "staff.created",
+        "staff",
+        user.id,
+        {"full_name": user.full_name, "phone": user.phone, "role": user.role.value},
+    )
+    db.commit()
     db.refresh(user)
     return user
 
@@ -193,8 +202,23 @@ def update_staff_user(
     _check_phone_available(db, payload.phone, exclude_id=user.id)
 
     old_percentage = user.teacher_percentage
+    old_full_name, old_phone = user.full_name, user.phone
     user.full_name = payload.full_name
     user.phone = payload.phone
+    if old_full_name != payload.full_name or old_phone != payload.phone:
+        log_action(
+            db,
+            current_user.id,
+            "staff.updated",
+            "staff",
+            user.id,
+            {
+                "old_full_name": old_full_name,
+                "new_full_name": payload.full_name,
+                "old_phone": old_phone,
+                "new_phone": payload.phone,
+            },
+        )
     if user.role == UserRole.teacher:
         user.teacher_percentage = payload.teacher_percentage
         if old_percentage != payload.teacher_percentage:

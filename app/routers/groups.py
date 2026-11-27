@@ -199,6 +199,14 @@ def create_group(
     db.add(group)
     db.flush()
     _replace_group_schedule(db, group.id, payload.schedule)
+    log_action(
+        db,
+        current_user.id,
+        "group.created",
+        "group",
+        group.id,
+        {"name": group.name, "subject_id": group.subject_id, "teacher_id": group.teacher_id},
+    )
     db.commit()
     db.refresh(group)
     group.schedule = payload.schedule
@@ -236,15 +244,32 @@ def update_group(
 
     _raise_if_schedule_conflict(db, payload.teacher_id, payload.schedule, exclude_group_id=group.id)
 
+    old_name = group.name
+    old_subject_id = group.subject_id
     old_teacher_id = group.teacher_id
     old_lesson_price = group.lesson_price
     new_lesson_price = round_som(payload.lesson_price)
+    old_schedule = _get_group_schedule(db, group.id)
 
     group.name = payload.name
     group.subject_id = payload.subject_id
     group.teacher_id = payload.teacher_id
     group.lesson_price = new_lesson_price
     _replace_group_schedule(db, group.id, payload.schedule)
+
+    update_details: dict = {}
+    if old_name != payload.name:
+        update_details["old_name"] = old_name
+        update_details["new_name"] = payload.name
+    if old_subject_id != payload.subject_id:
+        update_details["old_subject_id"] = old_subject_id
+        update_details["new_subject_id"] = payload.subject_id
+    old_schedule_set = {(s.weekday, s.start_time, s.end_time) for s in old_schedule}
+    new_schedule_set = {(s.weekday, s.start_time, s.end_time) for s in payload.schedule}
+    if old_schedule_set != new_schedule_set:
+        update_details["schedule_changed"] = True
+    if update_details:
+        log_action(db, current_user.id, "group.updated", "group", group.id, update_details)
 
     if old_teacher_id != payload.teacher_id:
         log_action(
@@ -582,6 +607,20 @@ def generate_group_lessons(
                 created.append(lesson)
         current_date += timedelta(days=1)
 
+    if created:
+        log_action(
+            db,
+            current_user.id,
+            "group.lessons_generated",
+            "group",
+            group_id,
+            {
+                "created_count": len(created),
+                "skipped_count": skipped_count,
+                "date_from": payload.date_from,
+                "date_to": payload.date_to,
+            },
+        )
     db.commit()
     for lesson in created:
         db.refresh(lesson)
@@ -729,6 +768,15 @@ def update_group_student_status(
 
     group_student.status = payload.status
     group_student.status_reason = payload.reason if payload.status == GroupStudentStatus.dropped else None
+    if payload.status == GroupStudentStatus.dropped:
+        log_action(
+            db,
+            current_user.id,
+            "group_student.dropped",
+            "student",
+            student_id,
+            {"group_id": group_id, "reason": payload.reason},
+        )
     db.commit()
     db.refresh(group_student)
     return group_student

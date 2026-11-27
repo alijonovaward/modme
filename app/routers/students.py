@@ -163,12 +163,21 @@ def create_student(
     )
     db.add(student)
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         # Closes the race a pre-check alone can't: two near-simultaneous requests
         # with the same new phone number both passing the check above.
         db.rollback()
         raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
+    log_action(
+        db,
+        current_user.id,
+        "student.created",
+        "student",
+        student.id,
+        {"full_name": student.full_name, "phone": student.phone},
+    )
+    db.commit()
     db.refresh(student)
     return student
 
@@ -202,8 +211,23 @@ def update_student(
 
     _check_phone_available(db, payload.phone, exclude_id=student.id)
 
+    old_full_name, old_phone = student.full_name, student.phone
     student.full_name = payload.full_name
     student.phone = payload.phone
+    if old_full_name != payload.full_name or old_phone != payload.phone:
+        log_action(
+            db,
+            current_user.id,
+            "student.updated",
+            "student",
+            student.id,
+            {
+                "old_full_name": old_full_name,
+                "new_full_name": payload.full_name,
+                "old_phone": old_phone,
+                "new_phone": payload.phone,
+            },
+        )
     db.commit()
     db.refresh(student)
     return student

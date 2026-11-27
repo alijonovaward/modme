@@ -7,6 +7,7 @@ from sqlalchemy import case, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.deps import require_roles
 from app.core.excel import xlsx_response
 from app.core.money import ZERO, lock_user_for_update, pct_of, to_decimal
@@ -571,7 +572,7 @@ def create_lesson(
     lesson = Lesson(group_id=payload.group_id, lesson_date=payload.lesson_date)
     db.add(lesson)
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         # Closes the race a pre-check alone can't: two near-simultaneous requests
         # (double-click, slow-network retry) both passing the check above.
@@ -579,6 +580,15 @@ def create_lesson(
         raise HTTPException(
             status_code=400, detail="Bu guruh uchun shu sanada dars allaqachon mavjud"
         )
+    log_action(
+        db,
+        current_user.id,
+        "lesson.created",
+        "lesson",
+        lesson.id,
+        {"group_id": lesson.group_id, "lesson_date": lesson.lesson_date},
+    )
+    db.commit()
     db.refresh(lesson)
     return lesson
 
@@ -602,6 +612,14 @@ def delete_lesson(
             detail="Davomat olingan darsni o'chirib bo'lmaydi",
         )
 
+    log_action(
+        db,
+        current_user.id,
+        "lesson.deleted",
+        "lesson",
+        lesson.id,
+        {"group_id": lesson.group_id, "lesson_date": lesson.lesson_date},
+    )
     db.delete(lesson)
     db.commit()
 

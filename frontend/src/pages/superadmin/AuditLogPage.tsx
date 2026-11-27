@@ -30,6 +30,18 @@ const ACTION_LABELS: Record<string, string> = {
   "transaction.deposit": "Balansga pul qo'yildi",
   "transaction.withdraw": "Balansdan pul qaytarib berildi",
   "teacher_transaction.payout": "O'qituvchiga to'lov",
+  "student.created": "O'quvchi qo'shildi",
+  "student.updated": "O'quvchi ma'lumotlari o'zgartirildi",
+  "staff.created": "Xodim qo'shildi",
+  "staff.updated": "Xodim ma'lumotlari o'zgartirildi",
+  "group.created": "Guruh yaratildi",
+  "group.updated": "Guruh ma'lumotlari o'zgartirildi",
+  "group.lessons_generated": "Guruhga darslar generatsiya qilindi",
+  "group_student.dropped": "O'quvchi guruhdan chiqarildi",
+  "subject.created": "Fan qo'shildi",
+  "subject.deleted": "Fan o'chirildi",
+  "lesson.created": "Dars ochildi",
+  "lesson.deleted": "Dars o'chirildi",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
@@ -37,6 +49,8 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   staff: "Xodim",
   user: "Foydalanuvchi",
   group: "Guruh",
+  subject: "Fan",
+  lesson: "Dars",
 };
 
 const GROUP_STATUS_LABELS: Record<string, string> = {
@@ -78,6 +92,41 @@ function formatDetails(log: AuditLogItem): string | null {
     ) {
       const amountText = `${Math.abs(Number(parsed.amount)).toLocaleString("uz-UZ")} so'm`;
       return parsed.comment ? `${amountText} — ${parsed.comment}` : amountText;
+    }
+    if ((log.action === "student.created" || log.action === "staff.created") && "full_name" in parsed) {
+      return `${parsed.full_name} · ${parsed.phone}`;
+    }
+    if (log.action === "student.updated" || log.action === "staff.updated") {
+      const parts: string[] = [];
+      if (parsed.old_full_name !== parsed.new_full_name) {
+        parts.push(`${parsed.old_full_name} → ${parsed.new_full_name}`);
+      }
+      if (parsed.old_phone !== parsed.new_phone) {
+        parts.push(`${parsed.old_phone} → ${parsed.new_phone}`);
+      }
+      return parts.join(", ") || null;
+    }
+    if (log.action === "group.created" && "name" in parsed) {
+      return String(parsed.name);
+    }
+    if (log.action === "group.updated") {
+      const parts: string[] = [];
+      if ("old_name" in parsed) parts.push(`${parsed.old_name} → ${parsed.new_name}`);
+      if ("old_subject_id" in parsed) parts.push(`Fan #${parsed.old_subject_id} → #${parsed.new_subject_id}`);
+      if (parsed.schedule_changed) parts.push("Jadval o'zgartirildi");
+      return parts.join(", ") || null;
+    }
+    if (log.action === "group.lessons_generated") {
+      return `${parsed.created_count} ta dars yaratildi (${parsed.skipped_count} ta o'tkazib yuborildi), ${parsed.date_from} — ${parsed.date_to}`;
+    }
+    if (log.action === "group_student.dropped" && "reason" in parsed) {
+      return String(parsed.reason);
+    }
+    if ((log.action === "subject.created" || log.action === "subject.deleted") && "name" in parsed) {
+      return String(parsed.name);
+    }
+    if ((log.action === "lesson.created" || log.action === "lesson.deleted") && "lesson_date" in parsed) {
+      return `Guruh #${parsed.group_id}, ${parsed.lesson_date}`;
     }
     return JSON.stringify(parsed);
   } catch {

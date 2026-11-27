@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 
 from tests.conftest import add_student_to_group, auth_headers, login, make_group, make_lesson, make_staff, make_student, make_subject
 
@@ -277,6 +278,185 @@ def test_routine_lesson_charge_and_earning_do_not_appear_in_the_audit_log(
     # The earlier manual deposit must still show up - only the lesson charge/earning
     # that followed it must be excluded.
     student_entries = [l for l in logs if l["target_id"] == student["id"] and l["target_type"] == "student"]
-    assert len(student_entries) == 1
-    assert student_entries[0]["action"] == "transaction.deposit"
-    assert not any(l["target_id"] == teacher["id"] and l["target_type"] == "staff" for l in logs)
+    assert {l["action"] for l in student_entries} == {"student.created", "transaction.deposit"}
+    # The teacher's own "staff.created" entry is expected - only their lesson-earning
+    # credit (routine, automatic) must stay excluded.
+    staff_entries = [l for l in logs if l["target_id"] == teacher["id"] and l["target_type"] == "staff"]
+    assert {l["action"] for l in staff_entries} == {"staff.created"}
+
+
+def test_updating_a_student_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    student = make_student(client, admin_headers, full_name="Old Name", phone="+998900600015")
+
+    resp = client.put(
+        f"/api/v1/students/{student['id']}",
+        headers=admin_headers,
+        json={"full_name": "New Name", "phone": student["phone"]},
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(l for l in logs if l["action"] == "student.updated" and l["target_id"] == student["id"])
+    details = json.loads(entry["details"])
+    assert details["old_full_name"] == "Old Name"
+    assert details["new_full_name"] == "New Name"
+
+
+def test_updating_a_staff_members_name_writes_an_audit_log_entry(client, superadmin_headers):
+    teacher = make_staff(
+        client, superadmin_headers, role="teacher", phone="+998900600016", full_name="Old Teacher"
+    )
+
+    resp = client.put(
+        f"/api/v1/admin/users/{teacher['id']}",
+        headers=superadmin_headers,
+        json={
+            "full_name": "New Teacher",
+            "phone": teacher["phone"],
+            "teacher_percentage": teacher["teacher_percentage"],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(l for l in logs if l["action"] == "staff.updated" and l["target_id"] == teacher["id"])
+    details = json.loads(entry["details"])
+    assert details["old_full_name"] == "Old Teacher"
+    assert details["new_full_name"] == "New Teacher"
+
+
+def test_creating_a_group_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600017")
+    subject = make_subject(client, admin_headers, "Audit-Subject-6")
+
+    group = make_group(
+        client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"], name="Audit Group"
+    )
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(l for l in logs if l["action"] == "group.created" and l["target_id"] == group["id"])
+    details = json.loads(entry["details"])
+    assert details["name"] == "Audit Group"
+
+
+def test_updating_a_groups_name_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600018")
+    subject = make_subject(client, admin_headers, "Audit-Subject-7")
+    group = make_group(
+        client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"], name="Old Group Name"
+    )
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}",
+        headers=admin_headers,
+        json={
+            "name": "New Group Name",
+            "subject_id": subject["id"],
+            "teacher_id": teacher["id"],
+            "lesson_price": group["lesson_price"],
+            "schedule": [],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(l for l in logs if l["action"] == "group.updated" and l["target_id"] == group["id"])
+    details = json.loads(entry["details"])
+    assert details["old_name"] == "Old Group Name"
+    assert details["new_name"] == "New Group Name"
+
+
+def test_dropping_a_student_from_a_group_writes_an_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600019")
+    student = make_student(client, admin_headers, phone="+998900600020")
+    subject = make_subject(client, admin_headers, "Audit-Subject-8")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+    add_student_to_group(client, admin_headers, group_id=group["id"], student_id=student["id"])
+
+    resp = client.put(
+        f"/api/v1/groups/{group['id']}/students/{student['id']}",
+        headers=admin_headers,
+        json={"status": "dropped", "reason": "To'lamadi"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "group_student.dropped" and l["target_id"] == student["id"]
+    )
+    details = json.loads(entry["details"])
+    assert details["group_id"] == group["id"]
+    assert details["reason"] == "To'lamadi"
+
+
+def test_creating_and_deleting_a_subject_writes_audit_log_entries(client, superadmin_headers, admin_headers):
+    subject = make_subject(client, admin_headers, "Audit-Subject-9")
+
+    resp = client.delete(f"/api/v1/subjects/{subject['id']}", headers=admin_headers)
+    assert resp.status_code == 204, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    created_entry = next(
+        l for l in logs if l["action"] == "subject.created" and l["target_id"] == subject["id"]
+    )
+    assert json.loads(created_entry["details"]) == {"name": "Audit-Subject-9"}
+    deleted_entry = next(
+        l for l in logs if l["action"] == "subject.deleted" and l["target_id"] == subject["id"]
+    )
+    assert json.loads(deleted_entry["details"]) == {"name": "Audit-Subject-9"}
+
+
+def test_creating_and_deleting_a_lesson_writes_audit_log_entries(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600021")
+    subject = make_subject(client, admin_headers, "Audit-Subject-10")
+    group = make_group(client, admin_headers, subject_id=subject["id"], teacher_id=teacher["id"])
+
+    lesson = make_lesson(client, admin_headers, group_id=group["id"], lesson_date="2026-10-20")
+
+    resp = client.delete(f"/api/v1/lessons/{lesson['id']}", headers=admin_headers)
+    assert resp.status_code == 204, resp.text
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    created_entry = next(
+        l for l in logs if l["action"] == "lesson.created" and l["target_id"] == lesson["id"]
+    )
+    assert json.loads(created_entry["details"]) == {"group_id": group["id"], "lesson_date": "2026-10-20"}
+    deleted_entry = next(
+        l for l in logs if l["action"] == "lesson.deleted" and l["target_id"] == lesson["id"]
+    )
+    assert json.loads(deleted_entry["details"]) == {"group_id": group["id"], "lesson_date": "2026-10-20"}
+
+
+def test_generating_group_lessons_writes_one_audit_log_entry(client, superadmin_headers, admin_headers):
+    teacher = make_staff(client, superadmin_headers, role="teacher", phone="+998900600022")
+    subject = make_subject(client, admin_headers, "Audit-Subject-11")
+    target_date = date.today() + timedelta(days=14)
+    group = make_group(
+        client,
+        admin_headers,
+        subject_id=subject["id"],
+        teacher_id=teacher["id"],
+        schedule=[
+            {
+                "weekday": target_date.weekday(),
+                "start_time": "10:00",
+                "end_time": "11:00",
+            }
+        ],
+    )
+
+    resp = client.post(
+        f"/api/v1/groups/{group['id']}/lessons/generate",
+        headers=admin_headers,
+        json={"date_from": str(target_date), "date_to": str(target_date)},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["created_count"] == 1
+
+    logs = client.get("/api/v1/admin/audit-logs", headers=superadmin_headers).json()["items"]
+    entry = next(
+        l for l in logs if l["action"] == "group.lessons_generated" and l["target_id"] == group["id"]
+    )
+    details = json.loads(entry["details"])
+    assert details["created_count"] == 1
+    assert details["skipped_count"] == 0

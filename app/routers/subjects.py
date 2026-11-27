@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.deps import get_current_user, require_roles
 from app.db.session import get_db
 from app.models.group import Group
@@ -35,6 +36,8 @@ def create_subject(
 
     subject = Subject(name=clean_name)
     db.add(subject)
+    db.flush()
+    log_action(db, current_user.id, "subject.created", "subject", subject.id, {"name": subject.name})
     db.commit()
     db.refresh(subject)
     return subject
@@ -100,5 +103,6 @@ def delete_subject(
             detail="Bu fan guruhlarda ishlatilmoqda, avval o'chirib bo'lmaydi",
         )
 
+    log_action(db, current_user.id, "subject.deleted", "subject", subject.id, {"name": subject.name})
     db.delete(subject)
     db.commit()
